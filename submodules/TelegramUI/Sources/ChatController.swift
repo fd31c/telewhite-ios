@@ -416,6 +416,13 @@ public final class ChatControllerImpl: TelegramBaseController, ChatController, G
     }
     var canReadHistoryDisposable: Disposable?
     var computedCanReadHistoryPromise = ValuePromise<Bool>(false, ignoreRepeated: true)
+    var telewhiteModsSettings = TelewhiteModsSettings.current
+    private var telewhiteDisablesReadHistory: Bool {
+        return self.telewhiteModsSettings.ghostMode || self.telewhiteModsSettings.hideReadReceipts
+    }
+    private var telewhiteDisablesActivity: Bool {
+        return self.telewhiteModsSettings.ghostMode || self.telewhiteModsSettings.hideTypingStatus
+    }
     
     var chatThemeAndDarkAppearancePreviewPromise = Promise<(ChatTheme?, Bool?)>((nil, nil))
     var didSetPresentationData = false
@@ -4743,10 +4750,13 @@ public final class ChatControllerImpl: TelegramBaseController, ChatController, G
             return strongSelf.chatDisplayNode.messageTransitionNode
         }, updateChoosingSticker: { [weak self] value in
             if let strongSelf = self {
-                strongSelf.choosingStickerActivityPromise.set(value)
+                strongSelf.choosingStickerActivityPromise.set(strongSelf.telewhiteDisablesActivity ? false : value)
             }
         }, commitEmojiInteraction: { [weak self] messageId, emoji, interaction, file in
             guard let strongSelf = self, let peer = strongSelf.presentationInterfaceState.renderedPeer?.chatMainPeer, peer.id != strongSelf.context.account.peerId else {
+                return
+            }
+            if strongSelf.telewhiteDisablesActivity {
                 return
             }
             
@@ -5903,6 +5913,29 @@ public final class ChatControllerImpl: TelegramBaseController, ChatController, G
                             f(.dismissWithoutContent)
                             self?.interfaceInteraction?.beginMessageSearch(.everything, "")
                         })))
+
+                        let modsSettings = TelewhiteModsSettings.current
+                        items.append(.action(ContextMenuActionItem(text: "Translate Chat", icon: { theme in
+                            return generateTintedImage(image: UIImage(bundleImageName: "Chat/Title Panels/Translate"), color: theme.actionSheet.primaryTextColor)
+                        }, action: { _, f in
+                            f(.dismissWithoutContent)
+                            self?.interfaceInteraction?.toggleTranslation(.translated)
+                        })))
+                        if modsSettings.showUserIds || modsSettings.showChatIds {
+                            let idText = String(peer.id.toInt64())
+                            items.append(.action(ContextMenuActionItem(text: "Copy ID: \(idText)", icon: { theme in
+                                return generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/Copy"), color: theme.actionSheet.primaryTextColor)
+                            }, action: { [weak self] _, f in
+                                f(.dismissWithoutContent)
+                                UIPasteboard.general.string = idText
+                                guard let strongSelf = self else {
+                                    return
+                                }
+                                strongSelf.present(UndoOverlayController(presentationData: strongSelf.presentationData, content: .copy(text: "ID copied"), elevatedLayout: false, animateInAsReplacement: false, action: { _ in
+                                    return true
+                                }), in: .current)
+                            })))
+                        }
                                                 
                         return items
                     }
@@ -6449,6 +6482,10 @@ public final class ChatControllerImpl: TelegramBaseController, ChatController, G
             self.inputActivityDisposable = (self.typingActivityPromise.get()
             |> deliverOnMainQueue).startStrict(next: { [weak self] value in
                 if let strongSelf = self, strongSelf.presentationInterfaceState.interfaceState.editMessage == nil && strongSelf.presentationInterfaceState.subject != .scheduledMessages && strongSelf.presentationInterfaceState.currentSendAsPeerId == nil {
+                    if strongSelf.telewhiteDisablesActivity {
+                        strongSelf.context.account.updateLocalInputActivity(peerId: activitySpace, activity: .typingText, isPresent: false)
+                        return
+                    }
                     strongSelf.context.account.updateLocalInputActivity(peerId: activitySpace, activity: .typingText, isPresent: value)
                 }
             })
@@ -6463,6 +6500,11 @@ public final class ChatControllerImpl: TelegramBaseController, ChatController, G
             }
             |> deliverOnMainQueue).startStrict(next: { [weak self] value in
                 if let strongSelf = self, strongSelf.presentationInterfaceState.interfaceState.editMessage == nil && strongSelf.presentationInterfaceState.subject != .scheduledMessages && strongSelf.presentationInterfaceState.currentSendAsPeerId == nil {
+                    if strongSelf.telewhiteDisablesActivity {
+                        strongSelf.context.account.updateLocalInputActivity(peerId: activitySpace, activity: .typingText, isPresent: false)
+                        strongSelf.context.account.updateLocalInputActivity(peerId: activitySpace, activity: .choosingSticker, isPresent: false)
+                        return
+                    }
                     if value {
                         strongSelf.context.account.updateLocalInputActivity(peerId: activitySpace, activity: .typingText, isPresent: false)
                     }
@@ -6474,6 +6516,10 @@ public final class ChatControllerImpl: TelegramBaseController, ChatController, G
             |> deliverOnMainQueue).startStrict(next: { [weak self] value in
                 if let strongSelf = self, strongSelf.presentationInterfaceState.interfaceState.editMessage == nil && strongSelf.presentationInterfaceState.subject != .scheduledMessages && strongSelf.presentationInterfaceState.currentSendAsPeerId == nil {
                     strongSelf.acquiredRecordingActivityDisposable?.dispose()
+                    if strongSelf.telewhiteDisablesActivity {
+                        strongSelf.acquiredRecordingActivityDisposable = nil
+                        return
+                    }
                     switch value {
                         case .voice:
                             strongSelf.acquiredRecordingActivityDisposable = strongSelf.context.account.acquireLocalInputActivity(peerId: activitySpace, activity: .recordingVoice)
@@ -6783,13 +6829,31 @@ public final class ChatControllerImpl: TelegramBaseController, ChatController, G
         self.canReadHistoryDisposable = (combineLatest(
             context.sharedContext.applicationBindings.applicationInForeground,
             self.canReadHistory.get(),
-            self.hasBrowserOrAppInFront.get()
-        ) |> map { inForeground, globallyEnabled, hasBrowserOrWebAppInFront in
-            return inForeground && globallyEnabled && !hasBrowserOrWebAppInFront
+            self.hasBrowserOrAppInFront.get(),
+            TelewhiteModsSettings.signal()
+        ) |> map { inForeground, globallyEnabled, hasBrowserOrWebAppInFront, telewhiteSettings in
+            return (inForeground && globallyEnabled && !hasBrowserOrWebAppInFront, telewhiteSettings)
         } |> deliverOnMainQueue).startStrict(next: { [weak self] value in
-            if let strongSelf = self, strongSelf.canReadHistoryValue != value {
-                strongSelf.canReadHistoryValue = value
-                strongSelf.raiseToListen?.enabled = value
+            if let strongSelf = self {
+                let (baseCanRead, telewhiteSettings) = value
+                strongSelf.telewhiteModsSettings = telewhiteSettings
+                if strongSelf.telewhiteDisablesActivity {
+                    strongSelf.choosingStickerActivityPromise.set(false)
+                    if let activitySpace = activitySpace {
+                        strongSelf.context.account.updateLocalInputActivity(peerId: activitySpace, activity: .typingText, isPresent: false)
+                        strongSelf.context.account.updateLocalInputActivity(peerId: activitySpace, activity: .choosingSticker, isPresent: false)
+                    }
+                    strongSelf.acquiredRecordingActivityDisposable?.dispose()
+                    strongSelf.acquiredRecordingActivityDisposable = nil
+                }
+                let canRead = baseCanRead && !strongSelf.telewhiteDisablesReadHistory
+                if strongSelf.canReadHistoryValue != canRead {
+                    strongSelf.canReadHistoryValue = canRead
+                    strongSelf.raiseToListen?.enabled = canRead
+                }
+                if let avatarNode = strongSelf.avatarNode, let user = strongSelf.presentationInterfaceState.renderedPeer?.chatMainPeer as? TelegramUser {
+                    avatarNode.updateGhostModeButton(isVisible: user.id != strongSelf.context.account.peerId && !user.id.isSecretChat && user.isGenericUser, isEnabled: telewhiteSettings.ghostMode, theme: strongSelf.presentationData.theme)
+                }
             }
         })
         

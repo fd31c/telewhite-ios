@@ -2399,6 +2399,22 @@ func contextMenuForChatPresentationInterfaceState(chatPresentationInterfaceState
                 break
             }
         }
+
+        if TelewhiteModsSettings.current.showMessageIds {
+            if !actions.isEmpty {
+                actions.append(.separator)
+            }
+            let idText = String(message.id.id)
+            actions.append(.action(ContextMenuActionItem(text: "Copy Message ID: \(idText)", icon: { theme in
+                return generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/Copy"), color: theme.actionSheet.primaryTextColor)
+            }, action: { _, f in
+                UIPasteboard.general.string = idText
+                Queue.mainQueue().after(0.2, {
+                    controllerInteraction.displayUndo(.copy(text: "Message ID copied"))
+                })
+                f(.default)
+            })))
+        }
         
         return ContextController.Items(content: .list(actions), tip: nil)
     }

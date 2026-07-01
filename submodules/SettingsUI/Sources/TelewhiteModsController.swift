@@ -9,6 +9,8 @@ import AccountContext
 import AlertUI
 
 public struct TelewhiteModsSettings: Equatable {
+    public static let didChangeNotification = Notification.Name("TelewhiteModsSettingsDidChange")
+
     public var vpnEnabled: Bool
     public var vpnSubscription: String
     public var ghostMode: Bool
@@ -69,6 +71,19 @@ public struct TelewhiteModsSettings: Equatable {
         defaults.set(self.showUserIds, forKey: Key.showUserIds)
         defaults.set(self.showChatIds, forKey: Key.showChatIds)
         defaults.set(self.showMessageIds, forKey: Key.showMessageIds)
+        NotificationCenter.default.post(name: TelewhiteModsSettings.didChangeNotification, object: nil)
+    }
+
+    public static func signal() -> Signal<TelewhiteModsSettings, NoError> {
+        return Signal { subscriber in
+            subscriber.putNext(TelewhiteModsSettings.current)
+            let observer = NotificationCenter.default.addObserver(forName: TelewhiteModsSettings.didChangeNotification, object: nil, queue: .main, using: { _ in
+                subscriber.putNext(TelewhiteModsSettings.current)
+            })
+            return ActionDisposable {
+                NotificationCenter.default.removeObserver(observer)
+            }
+        }
     }
 }
 
