@@ -5836,6 +5836,26 @@ public final class ChatControllerImpl: TelegramBaseController, ChatController, G
         switch chatLocation {
         case .peer, .replyThread:
             let avatarNode = ChatAvatarNavigationNode()
+            avatarNode.ghostModeToggle = { [weak self, weak avatarNode] in
+                guard let strongSelf = self, let avatarNode else {
+                    return
+                }
+
+                var settings = TelewhiteModsSettings.current
+                settings.ghostMode = !settings.ghostMode
+                settings.save()
+
+                avatarNode.updateGhostModeButton(isVisible: true, isEnabled: settings.ghostMode, theme: strongSelf.presentationData.theme)
+
+                strongSelf.present(UndoOverlayController(
+                    presentationData: strongSelf.presentationData,
+                    content: .info(title: nil, text: settings.ghostMode ? "Ghost Mode enabled" : "Ghost Mode disabled", timeout: nil, customUndoText: nil),
+                    elevatedLayout: false,
+                    action: { _ in
+                        return false
+                    }
+                ), in: .current)
+            }
             avatarNode.contextAction = { [weak self] node, gesture in
                 guard let strongSelf = self, let peer = strongSelf.presentationInterfaceState.renderedPeer?.chatMainPeer else {
                     return

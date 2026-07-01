@@ -234,16 +234,26 @@ extension ChatControllerImpl {
         if let infoAvatar = contentData.state.infoAvatar {
             switch infoAvatar {
             case let .peer(peer, imageOverride, contextActionIsEnabled, accessibilityLabel):
-                (self.chatInfoNavigationButton?.buttonItem.customDisplayNode as? ChatAvatarNavigationNode)?.setPeer(context: self.context, theme: self.presentationData.theme, peer: peer, overrideImage: imageOverride, synchronousLoad: synchronous)
-                (self.chatInfoNavigationButton?.buttonItem.customDisplayNode as? ChatAvatarNavigationNode)?.contextActionIsEnabled = contextActionIsEnabled
+                let avatarNode = self.chatInfoNavigationButton?.buttonItem.customDisplayNode as? ChatAvatarNavigationNode
+                avatarNode?.setPeer(context: self.context, theme: self.presentationData.theme, peer: peer, overrideImage: imageOverride, synchronousLoad: synchronous)
+                avatarNode?.contextActionIsEnabled = contextActionIsEnabled
+                let showGhostModeButton: Bool
+                if case let .user(user) = peer {
+                    showGhostModeButton = user.id != self.context.account.peerId && !user.id.isSecretChat && user.isGenericUser
+                } else {
+                    showGhostModeButton = false
+                }
+                avatarNode?.updateGhostModeButton(isVisible: showGhostModeButton, isEnabled: TelewhiteModsSettings.current.ghostMode, theme: self.presentationData.theme)
                 self.chatInfoNavigationButton?.buttonItem.accessibilityLabel = accessibilityLabel
             case let .emojiStatus(content, contextActionIsEnabled):
                 (self.chatInfoNavigationButton?.buttonItem.customDisplayNode as? ChatAvatarNavigationNode)?.setStatus(context: self.context, content: content)
                 (self.chatInfoNavigationButton?.buttonItem.customDisplayNode as? ChatAvatarNavigationNode)?.contextActionIsEnabled = contextActionIsEnabled
+                (self.chatInfoNavigationButton?.buttonItem.customDisplayNode as? ChatAvatarNavigationNode)?.updateGhostModeButton(isVisible: false, isEnabled: false, theme: self.presentationData.theme)
                 self.chatInfoNavigationButton?.buttonItem.accessibilityLabel = self.presentationData.strings.Conversation_ContextMenuOpenProfile
             }
         } else {
             (self.chatInfoNavigationButton?.buttonItem.customDisplayNode as? ChatAvatarNavigationNode)?.contextActionIsEnabled = false
+            (self.chatInfoNavigationButton?.buttonItem.customDisplayNode as? ChatAvatarNavigationNode)?.updateGhostModeButton(isVisible: false, isEnabled: false, theme: self.presentationData.theme)
         }
         
         if let avatarNode = self.avatarNode {

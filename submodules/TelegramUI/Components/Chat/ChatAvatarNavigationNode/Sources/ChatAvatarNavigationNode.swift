@@ -21,12 +21,42 @@ import ComponentDisplayAdapters
 private let normalFont = avatarPlaceholderFont(size: 16.0)
 private let smallFont = avatarPlaceholderFont(size: 12.0)
 
+private func generateGhostModeIcon(backgroundColor: UIColor, foregroundColor: UIColor) -> UIImage? {
+    return generateImage(CGSize(width: 24.0, height: 24.0), contextGenerator: { size, context in
+        context.clear(CGRect(origin: CGPoint(), size: size))
+
+        context.setFillColor(backgroundColor.cgColor)
+        context.fillEllipse(in: CGRect(origin: CGPoint(), size: size))
+
+        let ghostPath = UIBezierPath()
+        ghostPath.move(to: CGPoint(x: 7.0, y: 18.0))
+        ghostPath.addLine(to: CGPoint(x: 7.0, y: 10.6))
+        ghostPath.addCurve(to: CGPoint(x: 12.0, y: 5.8), controlPoint1: CGPoint(x: 7.0, y: 7.9), controlPoint2: CGPoint(x: 9.1, y: 5.8))
+        ghostPath.addCurve(to: CGPoint(x: 17.0, y: 10.6), controlPoint1: CGPoint(x: 14.9, y: 5.8), controlPoint2: CGPoint(x: 17.0, y: 7.9))
+        ghostPath.addLine(to: CGPoint(x: 17.0, y: 18.0))
+        ghostPath.addLine(to: CGPoint(x: 14.9, y: 16.2))
+        ghostPath.addLine(to: CGPoint(x: 12.8, y: 18.0))
+        ghostPath.addLine(to: CGPoint(x: 10.7, y: 16.2))
+        ghostPath.addLine(to: CGPoint(x: 8.7, y: 18.0))
+        ghostPath.close()
+
+        context.setFillColor(foregroundColor.cgColor)
+        context.addPath(ghostPath.cgPath)
+        context.fillPath()
+
+        context.setFillColor(backgroundColor.cgColor)
+        context.fillEllipse(in: CGRect(x: 9.2, y: 10.7, width: 2.0, height: 2.4))
+        context.fillEllipse(in: CGRect(x: 12.8, y: 10.7, width: 2.0, height: 2.4))
+    })
+}
+
 public final class ChatAvatarNavigationNode: ASDisplayNode {
     private var context: AccountContext?
     
     private let containerNode: ContextControllerSourceNode
     public var avatarNode: AvatarNode
     private var avatarVideoNode: AvatarVideoNode?
+    private let ghostModeButtonNode: HighlightableButtonNode
     
     public private(set) var avatarStoryView: ComponentView<Empty>?
     public var storyData: (hasUnseen: Bool, hasUnseenCloseFriends: Bool, hasLiveItems: Bool)?
@@ -60,12 +90,16 @@ public final class ChatAvatarNavigationNode: ASDisplayNode {
         self.containerNode = ContextControllerSourceNode()
         self.containerNode.isGestureEnabled = false
         self.avatarNode = AvatarNode(font: normalFont)
+        self.ghostModeButtonNode = HighlightableButtonNode()
         self.statusView = ComponentView()
         
         super.init()
         
         self.addSubnode(self.containerNode)
         self.containerNode.addSubnode(self.avatarNode)
+        self.containerNode.addSubnode(self.ghostModeButtonNode)
+        self.ghostModeButtonNode.isHidden = true
+        self.ghostModeButtonNode.addTarget(self, action: #selector(self.ghostModeButtonPressed), forControlEvents: .touchUpInside)
         
         self.containerNode.activated = { [weak self] gesture, _ in
             guard let strongSelf = self else {
@@ -76,6 +110,7 @@ public final class ChatAvatarNavigationNode: ASDisplayNode {
         
         self.containerNode.frame = CGRect(origin: CGPoint(), size: CGSize(width: 44.0, height: 44.0))
         self.avatarNode.frame = self.containerNode.bounds.insetBy(dx: 3.0, dy: 3.0)
+        self.ghostModeButtonNode.frame = CGRect(origin: CGPoint(x: 0.0, y: 10.0), size: CGSize(width: 24.0, height: 24.0))
     }
     
     deinit {
@@ -273,6 +308,19 @@ public final class ChatAvatarNavigationNode: ASDisplayNode {
             }
         }
     }
+
+    public var ghostModeToggle: (() -> Void)?
+
+    public func updateGhostModeButton(isVisible: Bool, isEnabled: Bool, theme: PresentationTheme) {
+        self.ghostModeButtonNode.isHidden = !isVisible
+        guard isVisible else {
+            return
+        }
+
+        let backgroundColor = isEnabled ? theme.list.itemAccentColor : theme.rootController.navigationBar.opaqueBackgroundColor
+        let foregroundColor = isEnabled ? .white : theme.list.itemSecondaryTextColor
+        self.ghostModeButtonNode.setImage(generateGhostModeIcon(backgroundColor: backgroundColor, foregroundColor: foregroundColor), for: .normal)
+    }
     
     override public func calculateSizeThatFits(_ constrainedSize: CGSize) -> CGSize {
         return CGSize(width: 44.0, height: 44.0)
@@ -335,6 +383,10 @@ public final class ChatAvatarNavigationNode: ASDisplayNode {
             videoNode.updateLayout(size: self.avatarNode.frame.size, cornerRadius: self.avatarNode.frame.size.width / 2.0, transition: .immediate)
             videoNode.frame = self.avatarNode.bounds
         }
+    }
+
+    @objc private func ghostModeButtonPressed() {
+        self.ghostModeToggle?()
     }
 }
 
