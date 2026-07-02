@@ -10,6 +10,9 @@ private func generateVpnIcon(color: UIColor) -> UIImage? {
     return generateImage(CGSize(width: 30.0, height: 30.0), contextGenerator: { size, context in
         context.clear(CGRect(origin: CGPoint(), size: size))
 
+        context.translateBy(x: 0.0, y: size.height)
+        context.scaleBy(x: 1.0, y: -1.0)
+
         context.setStrokeColor(color.cgColor)
         context.setLineWidth(2.2)
         context.setLineCap(.round)
