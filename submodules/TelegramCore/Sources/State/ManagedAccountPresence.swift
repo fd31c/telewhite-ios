@@ -8,7 +8,7 @@ private typealias SignalKitTimer = SwiftSignalKit.Timer
 
 private func telewhiteGhostPresenceEnabled() -> Bool {
     let defaults = UserDefaults.standard
-    if defaults.bool(forKey: "telewhite.mods.ghostMode") {
+    if defaults.bool(forKey: "telewhite.mods.hideOnlineStatus") || defaults.bool(forKey: "telewhite.mods.ghostMode") {
         return true
     }
     return !(defaults.array(forKey: "telewhite.mods.ghostPeerIds") as? [NSNumber] ?? []).isEmpty

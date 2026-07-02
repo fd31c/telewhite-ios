@@ -12,12 +12,14 @@ import ItemListPeerItem
 import DeviceAccess
 import TelegramStringFormatting
 import PeerNameColorItem
+import SettingsUI
 
 enum SettingsSection: Int, CaseIterable {
     case edit
     case phone
     case accounts
     case myProfile
+    case telewhite
     case proxy
     case apps
     case shortcuts
@@ -150,6 +152,10 @@ func settingsItems(data: PeerInfoScreenData?, context: AccountContext, presentat
         items[.myProfile]!.append(PeerInfoScreenDisclosureItem(id: 0, text: presentationData.strings.Settings_MyProfile, icon: PresentationResourcesSettings.myProfile, action: {
             interaction.openSettings(.profile)
         }))
+        let telewhiteModsIcon = generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/Telegram"), color: presentationData.theme.list.itemAccentColor)
+        items[.telewhite]!.append(PeerInfoScreenDisclosureItem(id: 0, label: .titleBadge("MOD", presentationData.theme.list.itemAccentColor), text: "Telewhite Mods", icon: telewhiteModsIcon, action: {
+            interaction.openSettings(.telewhiteMods)
+        }))
         
         if !settings.proxySettings.servers.isEmpty {
             let proxyType: String
@@ -239,11 +245,6 @@ func settingsItems(data: PeerInfoScreenData?, context: AccountContext, presentat
     items[.advanced]!.append(PeerInfoScreenDisclosureItem(id: 3, text: presentationData.strings.Settings_Appearance, icon: PresentationResourcesSettings.appearance, action: {
         interaction.openSettings(.appearance)
     }))
-    let telewhiteModsIcon = generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/Telegram"), color: presentationData.theme.list.itemAccentColor)
-    items[.extra]!.append(PeerInfoScreenDisclosureItem(id: 10, label: .titleBadge("MOD", presentationData.theme.list.itemAccentColor), text: "Telewhite Mods", icon: telewhiteModsIcon, action: {
-        interaction.openSettings(.telewhiteMods)
-    }))
-    
     items[.advanced]!.append(PeerInfoScreenDisclosureItem(id: 6, label: .text(data.isPowerSavingEnabled == true ? presentationData.strings.Settings_PowerSavingOn : presentationData.strings.Settings_PowerSavingOff), text: presentationData.strings.Settings_PowerSaving, icon: PresentationResourcesSettings.powerSaving, action: {
         interaction.openSettings(.powerSaving)
     }))
@@ -447,7 +448,7 @@ func settingsEditingItems(data: PeerInfoScreenData?, state: PeerInfoState, conte
         }))
     }
     
-    if case let .user(user) = data.peer {
+    if case let .user(user) = data.peer, !TelewhiteModsSettings.current.hidePhoneInSettings {
         items[.info]!.append(PeerInfoScreenDisclosureItem(id: ItemPhoneNumber, label: .text(user.phone.flatMap({ formatPhoneNumber(context: context, number: $0) }) ?? ""), text: presentationData.strings.Settings_PhoneNumber, icon: PresentationResourcesSettings.recentCalls, action: {
             interaction.openSettings(.phoneNumber)
         }))

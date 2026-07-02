@@ -72,6 +72,17 @@
         <key>UIPrerenderedIcon</key>
         <true/>
     </dict>
+    <key>FontAwesomeTelegramIcon</key>
+    <dict>
+        <key>CFBundleIconFiles</key>
+        <array>
+            <string>FontAwesomeTelegramIconIpad</string>
+            <string>FontAwesomeTelegramIconLargeIpad</string>
+            <string>FontAwesomeTelegramNotificationIcon</string>
+        </array>
+        <key>UIPrerenderedIcon</key>
+        <true/>
+    </dict>
         <key>New1</key>
     <dict>
         <key>CFBundleIconFiles</key>

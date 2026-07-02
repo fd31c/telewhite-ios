@@ -111,10 +111,6 @@ func infoItems(
         let ItemBotAddToChatInfo = 9003
         let ItemVerification = 9004
 
-        if let cachedUserData = data.cachedData as? CachedUserData, cachedUserData.flags.contains(.unofficialSecurityRisk) {
-            items[.unofficial]!.append(PeerInfoScreenInfoItem(id: 0, title: "", text: .markdown(presentationData.strings.PeerInfo_UnofficialSecurityRisk(EnginePeer(user).compactDisplayTitle).string), style: .compact, linkAction: nil))
-        }
-
         if !callMessages.isEmpty {
             items[.calls]!.append(PeerInfoScreenCallListItem(id: ItemCallList, messages: callMessages))
         }
@@ -191,7 +187,9 @@ func infoItems(
 
         if TelewhiteModsSettings.current.showUserIds {
             let idText = "\(user.id.id._internalGetInt64Value())"
-            items[currentPeerInfoSection]!.append(PeerInfoScreenLabeledValueItem(id: ItemTelewhiteId, label: "Telewhite ID", text: idText, textColor: .primary, action: nil, longTapAction: { _ in
+            items[currentPeerInfoSection]!.append(PeerInfoScreenLabeledValueItem(id: ItemTelewhiteId, label: "Telewhite ID", text: idText, textColor: .accent, action: { _, _ in
+                UIPasteboard.general.string = idText
+            }, longTapAction: { _ in
                 UIPasteboard.general.string = idText
             }, requestLayout: { animated in
                 interaction.requestLayout(animated)
@@ -555,7 +553,9 @@ func infoItems(
 
         if TelewhiteModsSettings.current.showChatIds {
             let idText = "\(channel.id.id._internalGetInt64Value())"
-            items[currentPeerInfoSection]!.append(PeerInfoScreenLabeledValueItem(id: ItemTelewhiteId, label: "Telewhite ID", text: idText, textColor: .primary, action: nil, longTapAction: { _ in
+            items[currentPeerInfoSection]!.append(PeerInfoScreenLabeledValueItem(id: ItemTelewhiteId, label: "Telewhite ID", text: idText, textColor: .accent, action: { _, _ in
+                UIPasteboard.general.string = idText
+            }, longTapAction: { _ in
                 UIPasteboard.general.string = idText
             }, requestLayout: { animated in
                 interaction.requestLayout(animated)

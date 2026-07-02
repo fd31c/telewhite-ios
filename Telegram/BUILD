@@ -340,6 +340,7 @@ alternate_icon_folders = [
     "BlueClassicIcon",
     "BlueFilledIcon",
     "WhiteFilledIcon",
+    "FontAwesomeTelegramIcon",
     "New1",
     "New2",
     "Premium",

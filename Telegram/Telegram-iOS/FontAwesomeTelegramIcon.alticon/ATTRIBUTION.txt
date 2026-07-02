@@ -1,0 +1,9 @@
+This alternate app icon uses the Telegram glyph from Font Awesome Free.
+
+Source: https://fontawesome.com/icons/telegram?f=brands&s=solid
+License: Font Awesome Free, Icons: CC BY 4.0
+License URL: https://fontawesome.com/license/free
+
+Original SVG copyright notice:
+Font Awesome Free 7.3.0 by @fontawesome - https://fontawesome.com
+Copyright 2026 Fonticons, Inc.

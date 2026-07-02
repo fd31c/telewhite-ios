@@ -66,6 +66,16 @@
         <key>UIPrerenderedIcon</key>
         <true/>
     </dict>
+    <key>FontAwesomeTelegramIcon</key>
+    <dict>
+        <key>CFBundleIconFiles</key>
+        <array>
+            <string>FontAwesomeTelegramIcon</string>
+            <string>FontAwesomeTelegramNotificationIcon</string>
+        </array>
+        <key>UIPrerenderedIcon</key>
+        <true/>
+    </dict>
     <key>New1</key>
     <dict>
         <key>CFBundleIconFiles</key>

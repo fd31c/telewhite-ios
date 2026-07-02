@@ -966,7 +966,8 @@ private func extractAccountManagerState(records: AccountRecordsView<TelegramAcco
                     PresentationAppIcon(name: "BlueClassicIcon", imageName: "BlueClassicIcon"),
                     PresentationAppIcon(name: "BlackClassicIcon", imageName: "BlackClassicIcon"),
                     PresentationAppIcon(name: "BlueFilledIcon", imageName: "BlueFilledIcon"),
-                    PresentationAppIcon(name: "BlackFilledIcon", imageName: "BlackFilledIcon")
+                    PresentationAppIcon(name: "BlackFilledIcon", imageName: "BlackFilledIcon"),
+                    PresentationAppIcon(name: "FontAwesomeTelegramIcon", imageName: "FontAwesomeTelegramIcon")
                 ]
                 if buildConfig.isInternalBuild {
                     icons.append(PresentationAppIcon(name: "WhiteFilledIcon", imageName: "WhiteFilledIcon"))

@@ -392,6 +392,9 @@ class ThemeSettingsAppIconItemNode: ListViewItemNode, ItemListItemNode {
                                     bordered = false
                                 case "WhiteFilled":
                                     name = "⍺ White"
+                                case "FontAwesomeTelegramIcon":
+                                    name = "Telegram"
+                                    bordered = false
                                 case "New1":
                                     name = item.strings.Appearance_AppIconNew1
                                 case "New2":

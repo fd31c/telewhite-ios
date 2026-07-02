@@ -9,36 +9,36 @@ import Display
 import SettingsUI
 
 private func telewhiteGhostModeIcon(theme: PresentationTheme, isEnabled: Bool) -> UIImage? {
-    let color = theme.rootController.navigationBar.buttonColor
+    let color = UIColor.white
     let fillColor = isEnabled ? color : color.withAlphaComponent(0.0)
 
     return generateImage(CGSize(width: 30.0, height: 30.0), contextGenerator: { size, context in
         context.clear(CGRect(origin: CGPoint(), size: size))
 
-        let ghostRect = CGRect(x: 5.5, y: 4.5, width: 19.0, height: 21.0)
-        context.setLineWidth(2.1)
+        let ghostRect = CGRect(x: 5.0, y: 4.5, width: 20.0, height: 21.0)
+        context.setLineWidth(2.4)
         context.setLineJoin(.round)
         context.setLineCap(.round)
         context.setStrokeColor(color.cgColor)
         context.setFillColor(fillColor.cgColor)
 
         context.beginPath()
-        context.move(to: CGPoint(x: ghostRect.minX, y: ghostRect.maxY - 1.5))
-        context.addLine(to: CGPoint(x: ghostRect.minX, y: ghostRect.minY + 9.5))
-        context.addCurve(to: CGPoint(x: ghostRect.midX, y: ghostRect.minY), control1: CGPoint(x: ghostRect.minX, y: ghostRect.minY + 4.0), control2: CGPoint(x: ghostRect.minX + 4.0, y: ghostRect.minY))
-        context.addCurve(to: CGPoint(x: ghostRect.maxX, y: ghostRect.minY + 9.5), control1: CGPoint(x: ghostRect.maxX - 4.0, y: ghostRect.minY), control2: CGPoint(x: ghostRect.maxX, y: ghostRect.minY + 4.0))
-        context.addLine(to: CGPoint(x: ghostRect.maxX, y: ghostRect.maxY - 1.5))
-        context.addLine(to: CGPoint(x: ghostRect.maxX - 4.3, y: ghostRect.maxY - 4.8))
-        context.addLine(to: CGPoint(x: ghostRect.maxX - 8.6, y: ghostRect.maxY - 1.5))
-        context.addLine(to: CGPoint(x: ghostRect.maxX - 13.0, y: ghostRect.maxY - 4.8))
-        context.addLine(to: CGPoint(x: ghostRect.minX + 4.3, y: ghostRect.maxY - 1.5))
+        context.move(to: CGPoint(x: ghostRect.minX, y: ghostRect.maxY - 3.4))
+        context.addLine(to: CGPoint(x: ghostRect.minX, y: ghostRect.minY + 10.0))
+        context.addCurve(to: CGPoint(x: ghostRect.midX, y: ghostRect.minY), control1: CGPoint(x: ghostRect.minX, y: ghostRect.minY + 4.2), control2: CGPoint(x: ghostRect.minX + 4.3, y: ghostRect.minY))
+        context.addCurve(to: CGPoint(x: ghostRect.maxX, y: ghostRect.minY + 10.0), control1: CGPoint(x: ghostRect.maxX - 4.3, y: ghostRect.minY), control2: CGPoint(x: ghostRect.maxX, y: ghostRect.minY + 4.2))
+        context.addLine(to: CGPoint(x: ghostRect.maxX, y: ghostRect.maxY - 3.4))
+        context.addCurve(to: CGPoint(x: ghostRect.maxX - 5.0, y: ghostRect.maxY - 3.4), control1: CGPoint(x: ghostRect.maxX - 1.7, y: ghostRect.maxY - 5.2), control2: CGPoint(x: ghostRect.maxX - 3.3, y: ghostRect.maxY - 5.2))
+        context.addCurve(to: CGPoint(x: ghostRect.maxX - 10.0, y: ghostRect.maxY - 3.4), control1: CGPoint(x: ghostRect.maxX - 6.7, y: ghostRect.maxY - 1.6), control2: CGPoint(x: ghostRect.maxX - 8.3, y: ghostRect.maxY - 1.6))
+        context.addCurve(to: CGPoint(x: ghostRect.maxX - 15.0, y: ghostRect.maxY - 3.4), control1: CGPoint(x: ghostRect.maxX - 11.7, y: ghostRect.maxY - 5.2), control2: CGPoint(x: ghostRect.maxX - 13.3, y: ghostRect.maxY - 5.2))
+        context.addCurve(to: CGPoint(x: ghostRect.minX, y: ghostRect.maxY - 3.4), control1: CGPoint(x: ghostRect.minX + 3.3, y: ghostRect.maxY - 1.6), control2: CGPoint(x: ghostRect.minX + 1.7, y: ghostRect.maxY - 1.6))
         context.closePath()
         context.drawPath(using: .fillStroke)
 
-        let eyeColor = isEnabled ? theme.rootController.navigationBar.opaqueBackgroundColor : color
+        let eyeColor = isEnabled ? UIColor(white: 0.08, alpha: 1.0) : color
         context.setFillColor(eyeColor.cgColor)
-        context.fillEllipse(in: CGRect(x: 11.0, y: 12.1, width: 2.9, height: 4.3))
-        context.fillEllipse(in: CGRect(x: 16.1, y: 12.1, width: 2.9, height: 4.3))
+        context.fillEllipse(in: CGRect(x: 10.4, y: 12.0, width: 3.2, height: 5.0))
+        context.fillEllipse(in: CGRect(x: 16.4, y: 12.0, width: 3.2, height: 5.0))
     })
 }
 
@@ -319,14 +319,16 @@ func secondaryRightNavigationButtonForChatInterfaceState(context: AccountContext
 
     if case .standard(.default) = presentationInterfaceState.mode, presentationInterfaceState.subject == nil, let user = presentationInterfaceState.renderedPeer?.chatMainPeer as? TelegramUser, user.id != context.account.peerId, !user.id.isSecretChat, user.isGenericUser {
         let settings = TelewhiteModsSettings.current
-        let isEnabled = settings.isGhostEnabled(for: user.id)
-        let rawPeerId = user.id.toInt64()
-        if currentButton?.action == .toggleGhostMode(peerId: rawPeerId, isEnabled: isEnabled) {
-            return currentButton
-        } else {
-            let buttonItem = UIBarButtonItem(image: telewhiteGhostModeIcon(theme: presentationInterfaceState.theme, isEnabled: isEnabled), style: .plain, target: target, action: selector)
-            buttonItem.accessibilityLabel = isEnabled ? "Disable Ghost Mode for this chat" : "Enable Ghost Mode for this chat"
-            return ChatNavigationButton(action: .toggleGhostMode(peerId: rawPeerId, isEnabled: isEnabled), buttonItem: buttonItem)
+        if settings.ghostChatButtonEnabled {
+            let isEnabled = settings.isGhostEnabled(for: user.id)
+            let rawPeerId = user.id.toInt64()
+            if currentButton?.action == .toggleGhostMode(peerId: rawPeerId, isEnabled: isEnabled) {
+                return currentButton
+            } else {
+                let buttonItem = UIBarButtonItem(image: telewhiteGhostModeIcon(theme: presentationInterfaceState.theme, isEnabled: isEnabled), style: .plain, target: target, action: selector)
+                buttonItem.accessibilityLabel = isEnabled ? "Disable Ghost Mode for this chat" : "Enable Ghost Mode for this chat"
+                return ChatNavigationButton(action: .toggleGhostMode(peerId: rawPeerId, isEnabled: isEnabled), buttonItem: buttonItem)
+            }
         }
     }
 
