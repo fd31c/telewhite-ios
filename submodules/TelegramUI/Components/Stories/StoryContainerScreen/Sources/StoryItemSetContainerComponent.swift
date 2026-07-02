@@ -46,6 +46,15 @@ import SaveProgressScreen
 import DirectMediaImageCache
 import PromptUI
 
+private func telewhiteAllowsStoryDownloadBypass() -> Bool {
+    let defaults = UserDefaults.standard
+    return defaults.bool(forKey: "telewhite.mods.downloadStories") || defaults.bool(forKey: "telewhite.mods.contentRestrictionBypass")
+}
+
+private func telewhiteAllowsStoryForwardingBypass() -> Bool {
+    return UserDefaults.standard.bool(forKey: "telewhite.mods.contentRestrictionBypass")
+}
+
 public final class StoryAvailableReactions: Equatable {
     let reactionItems: [ReactionItem]
     
@@ -1794,7 +1803,7 @@ public final class StoryItemSetContainerComponent: Component {
                         if case .liveStream = component.slice.item.storyItem.media {
                             displayFooter = false
                         }
-                        if component.slice.item.storyItem.isForwardingDisabled {
+                        if component.slice.item.storyItem.isForwardingDisabled && !telewhiteAllowsStoryForwardingBypass() {
                             canShare = false
                         }
                         
@@ -3237,7 +3246,7 @@ public final class StoryItemSetContainerComponent: Component {
                             }
                         },
                         timeoutAction: nil,
-                        forwardAction: (!isLiveStream && component.slice.item.storyItem.isPublic && !component.slice.item.storyItem.isForwardingDisabled) ? { [weak self] in
+                        forwardAction: (!isLiveStream && component.slice.item.storyItem.isPublic && (!component.slice.item.storyItem.isForwardingDisabled || telewhiteAllowsStoryForwardingBypass())) ? { [weak self] in
                             guard let self else {
                                 return
                             }
@@ -7421,10 +7430,10 @@ public final class StoryItemSetContainerComponent: Component {
                             }
                             self.beginPictureInPicture()
                         })))
-                    } else if !component.slice.item.storyItem.isForwardingDisabled {
+                    } else if !component.slice.item.storyItem.isForwardingDisabled || telewhiteAllowsStoryDownloadBypass() {
                         let saveText: String = component.strings.Story_Context_SaveToGallery
                         items.append(.action(ContextMenuActionItem(text: saveText, icon: { theme in
-                            return generateTintedImage(image: UIImage(bundleImageName: accountUser.isPremium ? "Chat/Context Menu/Download" : "Chat/Context Menu/DownloadLocked"), color: theme.contextMenu.primaryColor)
+                            return generateTintedImage(image: UIImage(bundleImageName: accountUser.isPremium || telewhiteAllowsStoryDownloadBypass() ? "Chat/Context Menu/Download" : "Chat/Context Menu/DownloadLocked"), color: theme.contextMenu.primaryColor)
                         }, action: { [weak self] _, a in
                             a(.default)
                             
@@ -7432,7 +7441,7 @@ public final class StoryItemSetContainerComponent: Component {
                                 return
                             }
                             
-                            if accountUser.isPremium {
+                            if accountUser.isPremium || telewhiteAllowsStoryDownloadBypass() {
                                 self.requestSave()
                             } else {
                                 self.presentSaveUpgradeScreen()

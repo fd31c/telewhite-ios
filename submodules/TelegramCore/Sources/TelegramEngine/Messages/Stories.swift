@@ -2071,6 +2071,9 @@ func _internal_deleteStories(account: Account, peerId: PeerId, ids: [Int32]) -> 
 }
 
 func _internal_markStoryAsSeen(account: Account, peerId: PeerId, id: Int32, asPinned: Bool) -> Signal<Never, NoError> {
+    if UserDefaults.standard.bool(forKey: "telewhite.mods.ghostStories") || UserDefaults.standard.bool(forKey: "telewhite.mods.ghostMode") {
+        return .complete()
+    }
     if asPinned {
         return account.postbox.transaction { transaction -> Api.InputPeer? in
             return transaction.getPeer(peerId).flatMap(apiInputPeer)

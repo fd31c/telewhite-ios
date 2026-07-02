@@ -18,6 +18,7 @@ import TopMessageReactions
 import TelegramNotices
 import PresentationDataUtils
 import ChatPresentationInterfaceState
+import SettingsUI
 
 extension ChatControllerImpl {
     func openMessageContextMenu(message: EngineMessage, selectAll: Bool, node: ASDisplayNode, frame: CGRect, anyRecognizer: UIGestureRecognizer?, location: CGPoint?) -> Void {
@@ -82,6 +83,7 @@ extension ChatControllerImpl {
                 
                 if tip == nil {
                     let isAd = message.adAttribute != nil
+                    let telewhiteBypassContentRestrictions = TelewhiteModsSettings.current.contentRestrictionBypass
                         
                     var isAction = false
                     for media in message.media {
@@ -90,9 +92,9 @@ extension ChatControllerImpl {
                             break
                         }
                     }
-                    if self.presentationInterfaceState.myCopyProtectionEnabled && !isAction && !isAd {
+                    if !telewhiteBypassContentRestrictions && self.presentationInterfaceState.myCopyProtectionEnabled && !isAction && !isAd {
                         tip = .messageCopyProtection(text: self.presentationData.strings.Conversation_CopyProtectionInfoPrivateYou)
-                    } else if self.presentationInterfaceState.copyProtectionEnabled && !isAction && !isAd {
+                    } else if !telewhiteBypassContentRestrictions && self.presentationInterfaceState.copyProtectionEnabled && !isAction && !isAd {
                         if case .scheduledMessages = self.subject {
                         } else {
                             if let peer = self.presentationInterfaceState.renderedPeer?.peer {
@@ -331,7 +333,8 @@ extension ChatControllerImpl {
                     }
                 }
                 
-                let isSecret = self.presentationInterfaceState.copyProtectionEnabled || self.presentationInterfaceState.myCopyProtectionEnabled || self.chatLocation.peerId?.namespace == Namespaces.Peer.SecretChat
+                let telewhiteDisablesScreenshotLock = TelewhiteModsSettings.current.contentRestrictionBypass || TelewhiteModsSettings.current.screenshotProtectionBypass
+                let isSecret = !telewhiteDisablesScreenshotLock && (self.presentationInterfaceState.copyProtectionEnabled || self.presentationInterfaceState.myCopyProtectionEnabled || self.chatLocation.peerId?.namespace == Namespaces.Peer.SecretChat)
                 let controller = makeContextController(presentationData: self.presentationData, source: source, items: actionsSignal, recognizer: recognizer, gesture: gesture, disableScreenshots: isSecret, hideReactionPanelTail: hideReactionPanelTail)
                 controller.dismissed = { [weak self] in
                     self?.canReadHistory.set(true)

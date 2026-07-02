@@ -19,6 +19,7 @@ import ChatMessageWebpageBubbleContentNode
 import PremiumUI
 import UndoUI
 import WebsiteType
+import SettingsUI
 
 private enum OptionsId: Hashable {
     case reply
@@ -415,7 +416,8 @@ private func generateChatReplyOptionItems(selfController: ChatControllerImpl, ch
         var canReplyInAnotherChat = true
         
         if let message = messages.first {
-            if selfController.presentationInterfaceState.copyProtectionEnabled {
+            let telewhiteBypassContentRestrictions = TelewhiteModsSettings.current.contentRestrictionBypass
+            if !telewhiteBypassContentRestrictions && selfController.presentationInterfaceState.copyProtectionEnabled {
                 canReplyInAnotherChat = false
             }
             
@@ -433,7 +435,7 @@ private func generateChatReplyOptionItems(selfController: ChatControllerImpl, ch
             if isAction {
                 canReplyInAnotherChat = false
             }
-            if message.isCopyProtected() {
+            if !telewhiteBypassContentRestrictions && message.isCopyProtected() {
                 canReplyInAnotherChat = false
             }
             if message.id.peerId.namespace == Namespaces.Peer.SecretChat {

@@ -178,19 +178,23 @@ private final class TelewhiteModsControllerArguments {
     let updateSettings: ((TelewhiteModsSettings) -> TelewhiteModsSettings) -> Void
     let updateTranslationSettings: (@escaping (TranslationSettings) -> TranslationSettings) -> Void
     let startVpn: () -> Void
+    let openTab: (TelewhiteModsTab) -> Void
     
     init(
         updateSettings: @escaping ((TelewhiteModsSettings) -> TelewhiteModsSettings) -> Void,
         updateTranslationSettings: @escaping (@escaping (TranslationSettings) -> TranslationSettings) -> Void,
-        startVpn: @escaping () -> Void
+        startVpn: @escaping () -> Void,
+        openTab: @escaping (TelewhiteModsTab) -> Void = { _ in }
     ) {
         self.updateSettings = updateSettings
         self.updateTranslationSettings = updateTranslationSettings
         self.startVpn = startVpn
+        self.openTab = openTab
     }
 }
 
 private enum TelewhiteModsSection: Int32 {
+    case menu
     case messenger
     case privacy
     case stealth
@@ -213,7 +217,20 @@ private enum TelewhiteModsTab: Int32, Equatable {
     case developer
 }
 
+private enum TelewhiteModsMenuIcon: Int32, Equatable {
+    case privacy
+    case ghost
+    case messages
+    case groups
+    case media
+    case calls
+    case appearance
+    case developer
+}
+
 private enum TelewhiteModsEntry: ItemListNodeEntry, Equatable {
+    case menuItem(Int32, TelewhiteModsMenuIcon, String, String, TelewhiteModsTab)
+
     case messengerHeader(String)
     case preserveDeletedMessages(String, Bool)
     case translateMessages(String, Bool)
@@ -277,6 +294,8 @@ private enum TelewhiteModsEntry: ItemListNodeEntry, Equatable {
     
     var section: ItemListSectionId {
         switch self {
+        case .menuItem:
+            return TelewhiteModsSection.menu.rawValue
         case .messengerHeader, .preserveDeletedMessages, .translateMessages, .translateChats, .autoTranslateEnglish, .translationTargetLanguage, .messengerInfo, .oneTimeMediaUnlimited, .downloadOneTimeMedia, .uploadVoice, .voiceChangeSettings, .uploadVideoMessage:
             return TelewhiteModsSection.messenger.rawValue
         case .vpnHeader, .vpnEnabled, .vpnSubscription, .vpnStatus, .vpnStart, .vpnInfo:
@@ -287,11 +306,11 @@ private enum TelewhiteModsEntry: ItemListNodeEntry, Equatable {
             return TelewhiteModsSection.stealth.rawValue
         case .channelsHeader, .channelContentRestrictionBypass, .channelsInfo:
             return TelewhiteModsSection.channels.rawValue
-        case .mediaHeader, .downloadStories, .mediaInfo:
+        case .mediaHeader, .downloadStories, .hideStories, .mediaInfo:
             return TelewhiteModsSection.media.rawValue
         case .callsHeader, .autoRecordCalls, .callRecordButton, .callsInfo:
             return TelewhiteModsSection.calls.rawValue
-        case .appearanceHeader, .hideStories, .compactChatList, .amoledMode:
+        case .appearanceHeader, .compactChatList, .amoledMode:
             return TelewhiteModsSection.appearance.rawValue
         case .developerHeader, .showUserIds, .showChatIds, .showMessageIds, .developerInfo:
             return TelewhiteModsSection.developer.rawValue
@@ -300,6 +319,8 @@ private enum TelewhiteModsEntry: ItemListNodeEntry, Equatable {
     
     var stableId: Int32 {
         switch self {
+        case let .menuItem(index, _, _, _, _):
+            return -1000 + index
         case .messengerHeader:
             return 0
         case .preserveDeletedMessages:
@@ -414,10 +435,14 @@ private enum TelewhiteModsEntry: ItemListNodeEntry, Equatable {
     func item(presentationData: ItemListPresentationData, arguments: Any) -> ListViewItem {
         let arguments = arguments as! TelewhiteModsControllerArguments
         switch self {
+        case let .menuItem(_, icon, title, subtitle, tab):
+            return ItemListDisclosureItem(presentationData: presentationData, systemStyle: .glass, icon: telewhiteMenuIcon(icon), title: title, titleFont: .bold, label: subtitle, labelStyle: .multilineDetailText, sectionId: self.section, style: .blocks, disclosureStyle: .arrow, action: {
+                arguments.openTab(tab)
+            })
         case let .messengerHeader(text), let .vpnHeader(text), let .privacyHeader(text), let .stealthHeader(text), let .channelsHeader(text), let .mediaHeader(text), let .callsHeader(text), let .appearanceHeader(text), let .developerHeader(text):
             return ItemListSectionHeaderItem(presentationData: presentationData, text: text, sectionId: self.section)
         case let .preserveDeletedMessages(text, value):
-            return ItemListSwitchItem(presentationData: presentationData, systemStyle: .glass, title: text, value: value, sectionId: self.section, style: .blocks, updated: { value in
+            return ItemListSwitchItem(presentationData: presentationData, systemStyle: .glass, title: text, text: telewhiteEntryDescription(self, presentationData: presentationData), value: value, maximumNumberOfLines: 3, sectionId: self.section, style: .blocks, updated: { value in
                 arguments.updateSettings { current in
                     var updated = current
                     updated.preserveDeletedMessages = value
@@ -425,7 +450,7 @@ private enum TelewhiteModsEntry: ItemListNodeEntry, Equatable {
                 }
             })
         case let .translateMessages(text, value):
-            return ItemListSwitchItem(presentationData: presentationData, systemStyle: .glass, title: text, value: value, sectionId: self.section, style: .blocks, updated: { value in
+            return ItemListSwitchItem(presentationData: presentationData, systemStyle: .glass, title: text, text: telewhiteEntryDescription(self, presentationData: presentationData), value: value, maximumNumberOfLines: 3, sectionId: self.section, style: .blocks, updated: { value in
                 arguments.updateTranslationSettings { current in
                     var updated = current.withUpdatedShowTranslate(value)
                     if !updated.showTranslate && !updated.translateChats {
@@ -435,7 +460,7 @@ private enum TelewhiteModsEntry: ItemListNodeEntry, Equatable {
                 }
             })
         case let .translateChats(text, value):
-            return ItemListSwitchItem(presentationData: presentationData, systemStyle: .glass, title: text, value: value, sectionId: self.section, style: .blocks, updated: { value in
+            return ItemListSwitchItem(presentationData: presentationData, systemStyle: .glass, title: text, text: telewhiteEntryDescription(self, presentationData: presentationData), value: value, maximumNumberOfLines: 3, sectionId: self.section, style: .blocks, updated: { value in
                 arguments.updateTranslationSettings { current in
                     var updated = current.withUpdatedTranslateChats(value)
                     if !updated.showTranslate && !updated.translateChats {
@@ -445,7 +470,7 @@ private enum TelewhiteModsEntry: ItemListNodeEntry, Equatable {
                 }
             })
         case let .autoTranslateEnglish(text, value):
-            return ItemListSwitchItem(presentationData: presentationData, systemStyle: .glass, title: text, value: value, sectionId: self.section, style: .blocks, updated: { value in
+            return ItemListSwitchItem(presentationData: presentationData, systemStyle: .glass, title: text, text: telewhiteEntryDescription(self, presentationData: presentationData), value: value, maximumNumberOfLines: 3, sectionId: self.section, style: .blocks, updated: { value in
                 arguments.updateSettings { current in
                     var updated = current
                     updated.autoTranslateEnglish = value
@@ -462,7 +487,7 @@ private enum TelewhiteModsEntry: ItemListNodeEntry, Equatable {
         case let .translationTargetLanguage(text, value):
             return ItemListDisclosureItem(presentationData: presentationData, systemStyle: .glass, title: text, label: value.uppercased(), labelStyle: .text, sectionId: self.section, style: .blocks, disclosureStyle: .none, action: nil)
         case let .oneTimeMediaUnlimited(text, value):
-            return ItemListSwitchItem(presentationData: presentationData, systemStyle: .glass, title: text, value: value, sectionId: self.section, style: .blocks, updated: { value in
+            return ItemListSwitchItem(presentationData: presentationData, systemStyle: .glass, title: text, text: telewhiteEntryDescription(self, presentationData: presentationData), value: value, maximumNumberOfLines: 3, sectionId: self.section, style: .blocks, updated: { value in
                 arguments.updateSettings { current in
                     var updated = current
                     updated.oneTimeMediaUnlimited = value
@@ -470,7 +495,7 @@ private enum TelewhiteModsEntry: ItemListNodeEntry, Equatable {
                 }
             })
         case let .downloadOneTimeMedia(text, value):
-            return ItemListSwitchItem(presentationData: presentationData, systemStyle: .glass, title: text, value: value, sectionId: self.section, style: .blocks, updated: { value in
+            return ItemListSwitchItem(presentationData: presentationData, systemStyle: .glass, title: text, text: telewhiteEntryDescription(self, presentationData: presentationData), value: value, maximumNumberOfLines: 3, sectionId: self.section, style: .blocks, updated: { value in
                 arguments.updateSettings { current in
                     var updated = current
                     updated.downloadOneTimeMedia = value
@@ -478,7 +503,7 @@ private enum TelewhiteModsEntry: ItemListNodeEntry, Equatable {
                 }
             })
         case let .uploadVoice(text, value):
-            return ItemListSwitchItem(presentationData: presentationData, systemStyle: .glass, title: text, value: value, sectionId: self.section, style: .blocks, updated: { value in
+            return ItemListSwitchItem(presentationData: presentationData, systemStyle: .glass, title: text, text: telewhiteEntryDescription(self, presentationData: presentationData), value: value, maximumNumberOfLines: 3, sectionId: self.section, style: .blocks, updated: { value in
                 arguments.updateSettings { current in
                     var updated = current
                     updated.uploadVoice = value
@@ -488,7 +513,7 @@ private enum TelewhiteModsEntry: ItemListNodeEntry, Equatable {
         case let .voiceChangeSettings(text):
             return ItemListDisclosureItem(presentationData: presentationData, systemStyle: .glass, title: text, label: "", labelStyle: .text, sectionId: self.section, style: .blocks, disclosureStyle: .arrow, action: nil)
         case let .uploadVideoMessage(text, value):
-            return ItemListSwitchItem(presentationData: presentationData, systemStyle: .glass, title: text, value: value, sectionId: self.section, style: .blocks, updated: { value in
+            return ItemListSwitchItem(presentationData: presentationData, systemStyle: .glass, title: text, text: telewhiteEntryDescription(self, presentationData: presentationData), value: value, maximumNumberOfLines: 3, sectionId: self.section, style: .blocks, updated: { value in
                 arguments.updateSettings { current in
                     var updated = current
                     updated.uploadVideoMessage = value
@@ -496,7 +521,7 @@ private enum TelewhiteModsEntry: ItemListNodeEntry, Equatable {
                 }
             })
         case let .vpnEnabled(text, value):
-            return ItemListSwitchItem(presentationData: presentationData, systemStyle: .glass, title: text, value: value, sectionId: self.section, style: .blocks, updated: { value in
+            return ItemListSwitchItem(presentationData: presentationData, systemStyle: .glass, title: text, text: telewhiteEntryDescription(self, presentationData: presentationData), value: value, maximumNumberOfLines: 3, sectionId: self.section, style: .blocks, updated: { value in
                 arguments.updateSettings { current in
                     var updated = current
                     updated.vpnEnabled = value
@@ -520,7 +545,7 @@ private enum TelewhiteModsEntry: ItemListNodeEntry, Equatable {
         case let .messengerInfo(text), let .vpnInfo(text), let .privacyInfo(text), let .stealthInfo(text), let .channelsInfo(text), let .mediaInfo(text), let .callsInfo(text), let .developerInfo(text):
             return ItemListTextItem(presentationData: presentationData, text: .plain(text), sectionId: self.section)
         case let .hideOnlineStatus(text, value):
-            return ItemListSwitchItem(presentationData: presentationData, systemStyle: .glass, title: text, value: value, sectionId: self.section, style: .blocks, updated: { value in
+            return ItemListSwitchItem(presentationData: presentationData, systemStyle: .glass, title: text, text: telewhiteEntryDescription(self, presentationData: presentationData), value: value, maximumNumberOfLines: 3, sectionId: self.section, style: .blocks, updated: { value in
                 arguments.updateSettings { current in
                     var updated = current
                     updated.hideOnlineStatus = value
@@ -528,7 +553,7 @@ private enum TelewhiteModsEntry: ItemListNodeEntry, Equatable {
                 }
             })
         case let .ghostMode(text, value):
-            return ItemListSwitchItem(presentationData: presentationData, systemStyle: .glass, title: text, value: value, sectionId: self.section, style: .blocks, updated: { value in
+            return ItemListSwitchItem(presentationData: presentationData, systemStyle: .glass, title: text, text: telewhiteEntryDescription(self, presentationData: presentationData), value: value, maximumNumberOfLines: 3, sectionId: self.section, style: .blocks, updated: { value in
                 arguments.updateSettings { current in
                     var updated = current
                     updated.ghostMode = value
@@ -536,7 +561,7 @@ private enum TelewhiteModsEntry: ItemListNodeEntry, Equatable {
                 }
             })
         case let .ghostChatButtonEnabled(text, value):
-            return ItemListSwitchItem(presentationData: presentationData, systemStyle: .glass, title: text, value: value, sectionId: self.section, style: .blocks, updated: { value in
+            return ItemListSwitchItem(presentationData: presentationData, systemStyle: .glass, title: text, text: telewhiteEntryDescription(self, presentationData: presentationData), value: value, maximumNumberOfLines: 3, sectionId: self.section, style: .blocks, updated: { value in
                 arguments.updateSettings { current in
                     var updated = current
                     updated.ghostChatButtonEnabled = value
@@ -544,7 +569,7 @@ private enum TelewhiteModsEntry: ItemListNodeEntry, Equatable {
                 }
             })
         case let .hideTypingStatus(text, value):
-            return ItemListSwitchItem(presentationData: presentationData, systemStyle: .glass, title: text, value: value, sectionId: self.section, style: .blocks, updated: { value in
+            return ItemListSwitchItem(presentationData: presentationData, systemStyle: .glass, title: text, text: telewhiteEntryDescription(self, presentationData: presentationData), value: value, maximumNumberOfLines: 3, sectionId: self.section, style: .blocks, updated: { value in
                 arguments.updateSettings { current in
                     var updated = current
                     updated.hideTypingStatus = value
@@ -552,7 +577,7 @@ private enum TelewhiteModsEntry: ItemListNodeEntry, Equatable {
                 }
             })
         case let .hideReadReceipts(text, value):
-            return ItemListSwitchItem(presentationData: presentationData, systemStyle: .glass, title: text, value: value, sectionId: self.section, style: .blocks, updated: { value in
+            return ItemListSwitchItem(presentationData: presentationData, systemStyle: .glass, title: text, text: telewhiteEntryDescription(self, presentationData: presentationData), value: value, maximumNumberOfLines: 3, sectionId: self.section, style: .blocks, updated: { value in
                 arguments.updateSettings { current in
                     var updated = current
                     updated.hideReadReceipts = value
@@ -560,7 +585,7 @@ private enum TelewhiteModsEntry: ItemListNodeEntry, Equatable {
                 }
             })
         case let .screenshotProtectionBypass(text, value):
-            return ItemListSwitchItem(presentationData: presentationData, systemStyle: .glass, title: text, value: value, sectionId: self.section, style: .blocks, updated: { value in
+            return ItemListSwitchItem(presentationData: presentationData, systemStyle: .glass, title: text, text: telewhiteEntryDescription(self, presentationData: presentationData), value: value, maximumNumberOfLines: 3, sectionId: self.section, style: .blocks, updated: { value in
                 arguments.updateSettings { current in
                     var updated = current
                     updated.screenshotProtectionBypass = value
@@ -568,7 +593,7 @@ private enum TelewhiteModsEntry: ItemListNodeEntry, Equatable {
                 }
             })
         case let .contentRestrictionBypass(text, value):
-            return ItemListSwitchItem(presentationData: presentationData, systemStyle: .glass, title: text, value: value, sectionId: self.section, style: .blocks, updated: { value in
+            return ItemListSwitchItem(presentationData: presentationData, systemStyle: .glass, title: text, text: telewhiteEntryDescription(self, presentationData: presentationData), value: value, maximumNumberOfLines: 3, sectionId: self.section, style: .blocks, updated: { value in
                 arguments.updateSettings { current in
                     var updated = current
                     updated.contentRestrictionBypass = value
@@ -576,7 +601,7 @@ private enum TelewhiteModsEntry: ItemListNodeEntry, Equatable {
                 }
             })
         case let .hidePhoneInSettings(text, value):
-            return ItemListSwitchItem(presentationData: presentationData, systemStyle: .glass, title: text, value: value, sectionId: self.section, style: .blocks, updated: { value in
+            return ItemListSwitchItem(presentationData: presentationData, systemStyle: .glass, title: text, text: telewhiteEntryDescription(self, presentationData: presentationData), value: value, maximumNumberOfLines: 3, sectionId: self.section, style: .blocks, updated: { value in
                 arguments.updateSettings { current in
                     var updated = current
                     updated.hidePhoneInSettings = value
@@ -584,7 +609,7 @@ private enum TelewhiteModsEntry: ItemListNodeEntry, Equatable {
                 }
             })
         case let .showProfileIds(text, value):
-            return ItemListSwitchItem(presentationData: presentationData, systemStyle: .glass, title: text, value: value, sectionId: self.section, style: .blocks, updated: { value in
+            return ItemListSwitchItem(presentationData: presentationData, systemStyle: .glass, title: text, text: telewhiteEntryDescription(self, presentationData: presentationData), value: value, maximumNumberOfLines: 3, sectionId: self.section, style: .blocks, updated: { value in
                 arguments.updateSettings { current in
                     var updated = current
                     updated.showUserIds = value
@@ -593,7 +618,7 @@ private enum TelewhiteModsEntry: ItemListNodeEntry, Equatable {
                 }
             })
         case let .ghostMessages(text, value):
-            return ItemListSwitchItem(presentationData: presentationData, systemStyle: .glass, title: text, value: value, sectionId: self.section, style: .blocks, updated: { value in
+            return ItemListSwitchItem(presentationData: presentationData, systemStyle: .glass, title: text, text: telewhiteEntryDescription(self, presentationData: presentationData), value: value, maximumNumberOfLines: 3, sectionId: self.section, style: .blocks, updated: { value in
                 arguments.updateSettings { current in
                     var updated = current
                     updated.hideReadReceipts = value
@@ -601,7 +626,7 @@ private enum TelewhiteModsEntry: ItemListNodeEntry, Equatable {
                 }
             })
         case let .ghostStories(text, value):
-            return ItemListSwitchItem(presentationData: presentationData, systemStyle: .glass, title: text, value: value, sectionId: self.section, style: .blocks, updated: { value in
+            return ItemListSwitchItem(presentationData: presentationData, systemStyle: .glass, title: text, text: telewhiteEntryDescription(self, presentationData: presentationData), value: value, maximumNumberOfLines: 3, sectionId: self.section, style: .blocks, updated: { value in
                 arguments.updateSettings { current in
                     var updated = current
                     updated.ghostStories = value
@@ -609,7 +634,7 @@ private enum TelewhiteModsEntry: ItemListNodeEntry, Equatable {
                 }
             })
         case let .channelContentRestrictionBypass(text, value):
-            return ItemListSwitchItem(presentationData: presentationData, systemStyle: .glass, title: text, value: value, sectionId: self.section, style: .blocks, updated: { value in
+            return ItemListSwitchItem(presentationData: presentationData, systemStyle: .glass, title: text, text: telewhiteEntryDescription(self, presentationData: presentationData), value: value, maximumNumberOfLines: 3, sectionId: self.section, style: .blocks, updated: { value in
                 arguments.updateSettings { current in
                     var updated = current
                     updated.contentRestrictionBypass = value
@@ -617,7 +642,7 @@ private enum TelewhiteModsEntry: ItemListNodeEntry, Equatable {
                 }
             })
         case let .downloadStories(text, value):
-            return ItemListSwitchItem(presentationData: presentationData, systemStyle: .glass, title: text, value: value, sectionId: self.section, style: .blocks, updated: { value in
+            return ItemListSwitchItem(presentationData: presentationData, systemStyle: .glass, title: text, text: telewhiteEntryDescription(self, presentationData: presentationData), value: value, maximumNumberOfLines: 3, sectionId: self.section, style: .blocks, updated: { value in
                 arguments.updateSettings { current in
                     var updated = current
                     updated.downloadStories = value
@@ -625,7 +650,7 @@ private enum TelewhiteModsEntry: ItemListNodeEntry, Equatable {
                 }
             })
         case let .autoRecordCalls(text, value):
-            return ItemListSwitchItem(presentationData: presentationData, systemStyle: .glass, title: text, value: value, sectionId: self.section, style: .blocks, updated: { value in
+            return ItemListSwitchItem(presentationData: presentationData, systemStyle: .glass, title: text, text: telewhiteEntryDescription(self, presentationData: presentationData), value: value, maximumNumberOfLines: 3, sectionId: self.section, style: .blocks, updated: { value in
                 arguments.updateSettings { current in
                     var updated = current
                     updated.autoRecordCalls = value
@@ -633,7 +658,7 @@ private enum TelewhiteModsEntry: ItemListNodeEntry, Equatable {
                 }
             })
         case let .callRecordButton(text, value):
-            return ItemListSwitchItem(presentationData: presentationData, systemStyle: .glass, title: text, value: value, sectionId: self.section, style: .blocks, updated: { value in
+            return ItemListSwitchItem(presentationData: presentationData, systemStyle: .glass, title: text, text: telewhiteEntryDescription(self, presentationData: presentationData), value: value, maximumNumberOfLines: 3, sectionId: self.section, style: .blocks, updated: { value in
                 arguments.updateSettings { current in
                     var updated = current
                     updated.callRecordButton = value
@@ -641,7 +666,7 @@ private enum TelewhiteModsEntry: ItemListNodeEntry, Equatable {
                 }
             })
         case let .hideStories(text, value):
-            return ItemListSwitchItem(presentationData: presentationData, systemStyle: .glass, title: text, value: value, sectionId: self.section, style: .blocks, updated: { value in
+            return ItemListSwitchItem(presentationData: presentationData, systemStyle: .glass, title: text, text: telewhiteEntryDescription(self, presentationData: presentationData), value: value, maximumNumberOfLines: 3, sectionId: self.section, style: .blocks, updated: { value in
                 arguments.updateSettings { current in
                     var updated = current
                     updated.hideStories = value
@@ -649,7 +674,7 @@ private enum TelewhiteModsEntry: ItemListNodeEntry, Equatable {
                 }
             })
         case let .compactChatList(text, value):
-            return ItemListSwitchItem(presentationData: presentationData, systemStyle: .glass, title: text, value: value, sectionId: self.section, style: .blocks, updated: { value in
+            return ItemListSwitchItem(presentationData: presentationData, systemStyle: .glass, title: text, text: telewhiteEntryDescription(self, presentationData: presentationData), value: value, maximumNumberOfLines: 3, sectionId: self.section, style: .blocks, updated: { value in
                 arguments.updateSettings { current in
                     var updated = current
                     updated.compactChatList = value
@@ -657,7 +682,7 @@ private enum TelewhiteModsEntry: ItemListNodeEntry, Equatable {
                 }
             })
         case let .amoledMode(text, value):
-            return ItemListSwitchItem(presentationData: presentationData, systemStyle: .glass, title: text, value: value, sectionId: self.section, style: .blocks, updated: { value in
+            return ItemListSwitchItem(presentationData: presentationData, systemStyle: .glass, title: text, text: telewhiteEntryDescription(self, presentationData: presentationData), value: value, maximumNumberOfLines: 3, sectionId: self.section, style: .blocks, updated: { value in
                 arguments.updateSettings { current in
                     var updated = current
                     updated.amoledMode = value
@@ -665,7 +690,7 @@ private enum TelewhiteModsEntry: ItemListNodeEntry, Equatable {
                 }
             })
         case let .showUserIds(text, value):
-            return ItemListSwitchItem(presentationData: presentationData, systemStyle: .glass, title: text, value: value, sectionId: self.section, style: .blocks, updated: { value in
+            return ItemListSwitchItem(presentationData: presentationData, systemStyle: .glass, title: text, text: telewhiteEntryDescription(self, presentationData: presentationData), value: value, maximumNumberOfLines: 3, sectionId: self.section, style: .blocks, updated: { value in
                 arguments.updateSettings { current in
                     var updated = current
                     updated.showUserIds = value
@@ -673,7 +698,7 @@ private enum TelewhiteModsEntry: ItemListNodeEntry, Equatable {
                 }
             })
         case let .showChatIds(text, value):
-            return ItemListSwitchItem(presentationData: presentationData, systemStyle: .glass, title: text, value: value, sectionId: self.section, style: .blocks, updated: { value in
+            return ItemListSwitchItem(presentationData: presentationData, systemStyle: .glass, title: text, text: telewhiteEntryDescription(self, presentationData: presentationData), value: value, maximumNumberOfLines: 3, sectionId: self.section, style: .blocks, updated: { value in
                 arguments.updateSettings { current in
                     var updated = current
                     updated.showChatIds = value
@@ -681,7 +706,7 @@ private enum TelewhiteModsEntry: ItemListNodeEntry, Equatable {
                 }
             })
         case let .showMessageIds(text, value):
-            return ItemListSwitchItem(presentationData: presentationData, systemStyle: .glass, title: text, value: value, sectionId: self.section, style: .blocks, updated: { value in
+            return ItemListSwitchItem(presentationData: presentationData, systemStyle: .glass, title: text, text: telewhiteEntryDescription(self, presentationData: presentationData), value: value, maximumNumberOfLines: 3, sectionId: self.section, style: .blocks, updated: { value in
                 arguments.updateSettings { current in
                     var updated = current
                     updated.showMessageIds = value
@@ -704,12 +729,122 @@ private struct TelewhiteModsStrings {
     }
 }
 
+private func telewhiteMenuIcon(_ icon: TelewhiteModsMenuIcon) -> UIImage? {
+    switch icon {
+    case .privacy:
+        return PresentationResourcesSettings.security
+    case .ghost:
+        return PresentationResourcesSettings.faceId
+    case .messages:
+        return PresentationResourcesSettings.privateChats
+    case .groups:
+        return PresentationResourcesSettings.groups
+    case .media:
+        return PresentationResourcesSettings.stories
+    case .calls:
+        return PresentationResourcesSettings.recentCalls
+    case .appearance:
+        return PresentationResourcesSettings.appearance
+    case .developer:
+        return PresentationResourcesSettings.support
+    }
+}
+
+private func telewhiteTabTitle(_ tab: TelewhiteModsTab, strings: TelewhiteModsStrings) -> String {
+    switch tab {
+    case .messenger:
+        return strings.text("Messages", "\u{0421}\u{043e}\u{043e}\u{0431}\u{0449}\u{0435}\u{043d}\u{0438}\u{044f}")
+    case .privacy:
+        return strings.text("Privacy", "\u{041a}\u{043e}\u{043d}\u{0444}\u{0438}\u{0434}\u{0435}\u{043d}\u{0446}\u{0438}\u{0430}\u{043b}\u{044c}\u{043d}\u{043e}\u{0441}\u{0442}\u{044c}")
+    case .stealth:
+        return strings.text("Ghost Mode", "\u{0420}\u{0435}\u{0436}\u{0438}\u{043c} \u{043d}\u{0435}\u{0432}\u{0438}\u{0434}\u{0438}\u{043c}\u{043a}\u{0438}")
+    case .channels:
+        return strings.text("Channels and Groups", "\u{041a}\u{0430}\u{043d}\u{0430}\u{043b}\u{044b} \u{0438} \u{0433}\u{0440}\u{0443}\u{043f}\u{043f}\u{044b}")
+    case .media:
+        return strings.text("Media and Stories", "\u{041c}\u{0435}\u{0434}\u{0438}\u{0430} \u{0438} \u{0438}\u{0441}\u{0442}\u{043e}\u{0440}\u{0438}\u{0438}")
+    case .calls:
+        return strings.text("Calls", "\u{0417}\u{0432}\u{043e}\u{043d}\u{043a}\u{0438}")
+    case .appearance:
+        return strings.text("Look", "\u{0412}\u{043d}\u{0435}\u{0448}\u{043d}\u{0438}\u{0439} \u{0432}\u{0438}\u{0434}")
+    case .developer:
+        return strings.text("Developer", "\u{0420}\u{0430}\u{0437}\u{0440}\u{0430}\u{0431}\u{043e}\u{0442}\u{0447}\u{0438}\u{043a}")
+    }
+}
+
+private func telewhiteMenuEntries(strings: TelewhiteModsStrings) -> [TelewhiteModsEntry] {
+    return [
+        .menuItem(0, .privacy, telewhiteTabTitle(.privacy, strings: strings), strings.text("Online, screenshots, restrictions, phone and profile ID.", "\u{041e}\u{043d}\u{043b}\u{0430}\u{0439}\u{043d}, \u{0441}\u{043a}\u{0440}\u{0438}\u{043d}\u{0448}\u{043e}\u{0442}\u{044b}, \u{043e}\u{0433}\u{0440}\u{0430}\u{043d}\u{0438}\u{0447}\u{0435}\u{043d}\u{0438}\u{044f}, \u{043d}\u{043e}\u{043c}\u{0435}\u{0440} \u{0438} ID."), .privacy),
+        .menuItem(1, .ghost, telewhiteTabTitle(.stealth, strings: strings), strings.text("Messages, stories, per-chat ghost and typing status.", "\u{0421}\u{043e}\u{043e}\u{0431}\u{0449}\u{0435}\u{043d}\u{0438}\u{044f}, \u{0438}\u{0441}\u{0442}\u{043e}\u{0440}\u{0438}\u{0438}, \u{043f}\u{0440}\u{0438}\u{0437}\u{0440}\u{0430}\u{043a} \u{0434}\u{043b}\u{044f} \u{0447}\u{0430}\u{0442}\u{0430} \u{0438} \u{043d}\u{0430}\u{0431}\u{043e}\u{0440}."), .stealth),
+        .menuItem(2, .messages, telewhiteTabTitle(.messenger, strings: strings), strings.text("Deleted messages, one-time media, uploads and translation.", "\u{0423}\u{0434}\u{0430}\u{043b}\u{0451}\u{043d}\u{043d}\u{044b}\u{0435} \u{0441}\u{043e}\u{043e}\u{0431}\u{0449}\u{0435}\u{043d}\u{0438}\u{044f}, \u{043e}\u{0434}\u{043d}\u{043e}\u{0440}\u{0430}\u{0437}\u{043e}\u{0432}\u{044b}\u{0435} \u{043c}\u{0435}\u{0434}\u{0438}\u{0430}, \u{0437}\u{0430}\u{0433}\u{0440}\u{0443}\u{0437}\u{043a}\u{0438} \u{0438} \u{043f}\u{0435}\u{0440}\u{0435}\u{0432}\u{043e}\u{0434}."), .messenger),
+        .menuItem(3, .groups, telewhiteTabTitle(.channels, strings: strings), strings.text("Channel and group content controls.", "\u{0424}\u{0443}\u{043d}\u{043a}\u{0446}\u{0438}\u{0438} \u{0434}\u{043b}\u{044f} \u{043a}\u{0430}\u{043d}\u{0430}\u{043b}\u{043e}\u{0432} \u{0438} \u{0433}\u{0440}\u{0443}\u{043f}\u{043f}."), .channels),
+        .menuItem(4, .media, telewhiteTabTitle(.media, strings: strings), strings.text("Stories, downloads and media actions.", "\u{0418}\u{0441}\u{0442}\u{043e}\u{0440}\u{0438}\u{0438}, \u{0441}\u{043a}\u{0430}\u{0447}\u{0438}\u{0432}\u{0430}\u{043d}\u{0438}\u{0435} \u{0438} \u{043c}\u{0435}\u{0434}\u{0438}\u{0430}-\u{0434}\u{0435}\u{0439}\u{0441}\u{0442}\u{0432}\u{0438}\u{044f}."), .media),
+        .menuItem(5, .calls, telewhiteTabTitle(.calls, strings: strings), strings.text("Call recording preferences and controls.", "\u{0417}\u{0430}\u{043f}\u{0438}\u{0441}\u{044c} \u{0437}\u{0432}\u{043e}\u{043d}\u{043a}\u{043e}\u{0432} \u{0438} \u{0443}\u{043f}\u{0440}\u{0430}\u{0432}\u{043b}\u{0435}\u{043d}\u{0438}\u{0435}."), .calls),
+        .menuItem(6, .appearance, telewhiteTabTitle(.appearance, strings: strings), strings.text("Chat list density and visual mode.", "\u{041f}\u{043b}\u{043e}\u{0442}\u{043d}\u{043e}\u{0441}\u{0442}\u{044c} \u{0441}\u{043f}\u{0438}\u{0441}\u{043a}\u{0430} \u{0447}\u{0430}\u{0442}\u{043e}\u{0432} \u{0438} \u{0432}\u{0438}\u{0434}."), .appearance),
+        .menuItem(7, .developer, telewhiteTabTitle(.developer, strings: strings), strings.text("User, chat and message IDs.", "ID \u{043f}\u{043e}\u{043b}\u{044c}\u{0437}\u{043e}\u{0432}\u{0430}\u{0442}\u{0435}\u{043b}\u{0435}\u{0439}, \u{0447}\u{0430}\u{0442}\u{043e}\u{0432} \u{0438} \u{0441}\u{043e}\u{043e}\u{0431}\u{0449}\u{0435}\u{043d}\u{0438}\u{0439}."), .developer)
+    ]
+}
+
+private func telewhiteEntryDescription(_ entry: TelewhiteModsEntry, presentationData: ItemListPresentationData) -> String? {
+    let isRussian = presentationData.strings.baseLanguageCode.lowercased().hasPrefix("ru")
+    func text(_ en: String, _ ru: String) -> String {
+        return isRussian ? ru : en
+    }
+    switch entry {
+    case .preserveDeletedMessages:
+        return text("Keeps deleted cloud messages visible locally; deleting the marked copy again removes it from this device.", "\u{0423}\u{0434}\u{0430}\u{043b}\u{0451}\u{043d}\u{043d}\u{044b}\u{0435} \u{043e}\u{0431}\u{043b}\u{0430}\u{0447}\u{043d}\u{044b}\u{0435} \u{0441}\u{043e}\u{043e}\u{0431}\u{0449}\u{0435}\u{043d}\u{0438}\u{044f} \u{043e}\u{0441}\u{0442}\u{0430}\u{044e}\u{0442}\u{0441}\u{044f} \u{043b}\u{043e}\u{043a}\u{0430}\u{043b}\u{044c}\u{043d}\u{043e}; \u{043f}\u{043e}\u{0432}\u{0442}\u{043e}\u{0440}\u{043d}\u{043e}\u{0435} \u{0443}\u{0434}\u{0430}\u{043b}\u{0435}\u{043d}\u{0438}\u{0435} \u{0443}\u{0431}\u{0438}\u{0440}\u{0430}\u{0435}\u{0442} \u{043a}\u{043e}\u{043f}\u{0438}\u{044e}.")
+    case .translateMessages:
+        return text("Shows the manual translate action in message menus.", "Показывает ручную кнопку перевода в меню сообщений.")
+    case .translateChats:
+        return text("Enables full chat translation when Telegram exposes the translation pipeline.", "Включает перевод чата, когда в клиенте доступна система перевода.")
+    case .autoTranslateEnglish:
+        return text("Prepares outgoing messages for automatic translation to the selected language.", "Готовит исходящие сообщения к автопереводу на выбранный язык.")
+    case .oneTimeMediaUnlimited, .downloadOneTimeMedia:
+        return text("Loosens local view-once media limits and screenshot blocking where the client controls the UI.", "\u{041e}\u{0441}\u{043b}\u{0430}\u{0431}\u{043b}\u{044f}\u{0435}\u{0442} \u{043b}\u{043e}\u{043a}\u{0430}\u{043b}\u{044c}\u{043d}\u{044b}\u{0435} \u{043b}\u{0438}\u{043c}\u{0438}\u{0442}\u{044b} \u{043e}\u{0434}\u{043d}\u{043e}\u{0440}\u{0430}\u{0437}\u{043e}\u{0432}\u{044b}\u{0445} \u{043c}\u{0435}\u{0434}\u{0438}\u{0430} \u{0438} \u{0431}\u{043b}\u{043e}\u{043a} \u{0441}\u{043a}\u{0440}\u{0438}\u{043d}\u{0448}\u{043e}\u{0442}\u{043e}\u{0432}.")
+    case .uploadVoice:
+        return text("Keeps the upload preference for sending local audio/video as voice messages.", "Сохраняет настройку отправки локальных аудио/видео как голосовых.")
+    case .uploadVideoMessage:
+        return text("Keeps the upload preference for sending gallery video as a round video message.", "Сохраняет настройку отправки видео из галереи как круглого видеосообщения.")
+    case .vpnEnabled:
+        return text("Stores whether the Telegram-only VPN profile should be active.", "Сохраняет, должен ли Telegram-only VPN быть активен.")
+    case .hideOnlineStatus:
+        return text("Stops the app from keeping your account online while enabled.", "\u{041d}\u{0435} \u{0434}\u{0430}\u{0451}\u{0442} \u{043f}\u{0440}\u{0438}\u{043b}\u{043e}\u{0436}\u{0435}\u{043d}\u{0438}\u{044e} \u{0434}\u{0435}\u{0440}\u{0436}\u{0430}\u{0442}\u{044c} \u{0430}\u{043a}\u{043a}\u{0430}\u{0443}\u{043d}\u{0442} \u{043e}\u{043d}\u{043b}\u{0430}\u{0439}\u{043d}.")
+    case .ghostMode:
+        return text("Global stealth combines hidden reads, typing and online presence.", "\u{0413}\u{043b}\u{043e}\u{0431}\u{0430}\u{043b}\u{044c}\u{043d}\u{0430}\u{044f} \u{043d}\u{0435}\u{0432}\u{0438}\u{0434}\u{0438}\u{043c}\u{043a}\u{0430}: \u{0447}\u{0442}\u{0435}\u{043d}\u{0438}\u{0435}, \u{043d}\u{0430}\u{0431}\u{043e}\u{0440} \u{0438} \u{043e}\u{043d}\u{043b}\u{0430}\u{0439}\u{043d}.")
+    case .ghostChatButtonEnabled:
+        return text("Shows the ghost button in private chats for per-peer stealth.", "\u{041f}\u{043e}\u{043a}\u{0430}\u{0437}\u{044b}\u{0432}\u{0430}\u{0435}\u{0442} \u{043a}\u{043d}\u{043e}\u{043f}\u{043a}\u{0443} \u{043f}\u{0440}\u{0438}\u{0437}\u{0440}\u{0430}\u{043a}\u{0430} \u{0432} \u{043b}\u{0438}\u{0447}\u{043d}\u{044b}\u{0445} \u{0447}\u{0430}\u{0442}\u{0430}\u{0445}.")
+    case .hideTypingStatus:
+        return text("Blocks outgoing typing and recording activity updates.", "\u{0411}\u{043b}\u{043e}\u{043a}\u{0438}\u{0440}\u{0443}\u{0435}\u{0442} \u{043d}\u{0430}\u{0431}\u{043e}\u{0440} \u{0442}\u{0435}\u{043a}\u{0441}\u{0442}\u{0430} \u{0438} \u{0441}\u{0442}\u{0430}\u{0442}\u{0443}\u{0441} \u{0437}\u{0430}\u{043f}\u{0438}\u{0441}\u{0438}.")
+    case .hideReadReceipts, .ghostMessages:
+        return text("Prevents automatic read-state sync for messages.", "\u{041d}\u{0435} \u{043e}\u{0442}\u{043f}\u{0440}\u{0430}\u{0432}\u{043b}\u{044f}\u{0435}\u{0442} \u{0430}\u{0432}\u{0442}\u{043e}\u{043f}\u{0440}\u{043e}\u{0447}\u{0442}\u{0435}\u{043d}\u{0438}\u{0435} \u{0441}\u{043e}\u{043e}\u{0431}\u{0449}\u{0435}\u{043d}\u{0438}\u{0439}.")
+    case .ghostStories:
+        return text("Skips story view sync so authors do not receive your view.", "\u{041d}\u{0435} \u{043e}\u{0442}\u{043f}\u{0440}\u{0430}\u{0432}\u{043b}\u{044f}\u{0435}\u{0442} \u{043f}\u{0440}\u{043e}\u{0441}\u{043c}\u{043e}\u{0442}\u{0440} \u{0438}\u{0441}\u{0442}\u{043e}\u{0440}\u{0438}\u{0439} \u{0430}\u{0432}\u{0442}\u{043e}\u{0440}\u{0443}.")
+    case .screenshotProtectionBypass:
+        return text("Disables local screenshot warnings and screen-recording blocks where possible.", "\u{041e}\u{0442}\u{043a}\u{043b}\u{044e}\u{0447}\u{0430}\u{0435}\u{0442} \u{043b}\u{043e}\u{043a}\u{0430}\u{043b}\u{044c}\u{043d}\u{044b}\u{0435} \u{0431}\u{043b}\u{043e}\u{043a}\u{0438} \u{0438} \u{0443}\u{0432}\u{0435}\u{0434}\u{043e}\u{043c}\u{043b}\u{0435}\u{043d}\u{0438}\u{044f} \u{0441}\u{043a}\u{0440}\u{0438}\u{043d}\u{0448}\u{043e}\u{0442}\u{043e}\u{0432}.")
+    case .contentRestrictionBypass, .channelContentRestrictionBypass:
+        return text("Restores local forward/share/reply actions when copy protection hides them.", "\u{0412}\u{043e}\u{0437}\u{0432}\u{0440}\u{0430}\u{0449}\u{0430}\u{0435}\u{0442} \u{043f}\u{0435}\u{0440}\u{0435}\u{0441}\u{044b}\u{043b}\u{043a}\u{0443}, \u{0448}\u{0430}\u{0440}\u{0438}\u{043d}\u{0433} \u{0438} \u{043e}\u{0442}\u{0432}\u{0435}\u{0442}, \u{0435}\u{0441}\u{043b}\u{0438} copy protection \u{0438}\u{0445} \u{0441}\u{043a}\u{0440}\u{044b}\u{0432}\u{0430}\u{0435}\u{0442}.")
+    case .hidePhoneInSettings:
+        return text("Hides your phone number from settings/profile header.", "\u{0421}\u{043a}\u{0440}\u{044b}\u{0432}\u{0430}\u{0435}\u{0442} \u{043d}\u{043e}\u{043c}\u{0435}\u{0440} \u{0432} \u{043d}\u{0430}\u{0441}\u{0442}\u{0440}\u{043e}\u{0439}\u{043a}\u{0430}\u{0445} \u{0438} \u{0448}\u{0430}\u{043f}\u{043a}\u{0435} \u{043f}\u{0440}\u{043e}\u{0444}\u{0438}\u{043b}\u{044f}.")
+    case .showProfileIds, .showUserIds, .showChatIds, .showMessageIds:
+        return text("Shows IDs and lets you copy them from profile/context surfaces.", "\u{041f}\u{043e}\u{043a}\u{0430}\u{0437}\u{044b}\u{0432}\u{0430}\u{0435}\u{0442} ID \u{0438} \u{0434}\u{0430}\u{0451}\u{0442} \u{043a}\u{043e}\u{043f}\u{0438}\u{0440}\u{043e}\u{0432}\u{0430}\u{0442}\u{044c} \u{0438}\u{0445} \u{0438}\u{0437} \u{043f}\u{0440}\u{043e}\u{0444}\u{0438}\u{043b}\u{044f} \u{0438} \u{043c}\u{0435}\u{043d}\u{044e}.")
+    case .downloadStories, .hideStories:
+        return text("Controls story visibility/download surfaces in the client.", "\u{0423}\u{043f}\u{0440}\u{0430}\u{0432}\u{043b}\u{044f}\u{0435}\u{0442} \u{0438}\u{0441}\u{0442}\u{043e}\u{0440}\u{0438}\u{044f}\u{043c}\u{0438}, \u{0438}\u{0445} \u{043f}\u{043e}\u{043a}\u{0430}\u{0437}\u{043e}\u{043c} \u{0438} \u{0441}\u{043a}\u{0430}\u{0447}\u{0438}\u{0432}\u{0430}\u{043d}\u{0438}\u{0435}\u{043c}.")
+    case .autoRecordCalls, .callRecordButton:
+        return text("Stores call recording preferences; full recording needs the call audio pipeline hook.", "\u{0421}\u{043e}\u{0445}\u{0440}\u{0430}\u{043d}\u{044f}\u{0435}\u{0442} \u{043d}\u{0430}\u{0441}\u{0442}\u{0440}\u{043e}\u{0439}\u{043a}\u{0438} \u{0437}\u{0432}\u{043e}\u{043d}\u{043a}\u{043e}\u{0432}; \u{0434}\u{043b}\u{044f} \u{0437}\u{0430}\u{043f}\u{0438}\u{0441}\u{0438} \u{043d}\u{0443}\u{0436}\u{0435}\u{043d} \u{0445}\u{0443}\u{043a} \u{0430}\u{0443}\u{0434}\u{0438}\u{043e}.")
+    case .compactChatList:
+        return text("Reduces visual spacing in the chat list for a denser Telegram layout.", "\u{0423}\u{043c}\u{0435}\u{043d}\u{044c}\u{0448}\u{0430}\u{0435}\u{0442} \u{043e}\u{0442}\u{0441}\u{0442}\u{0443}\u{043f}\u{044b} \u{0432} \u{0441}\u{043f}\u{0438}\u{0441}\u{043a}\u{0435} \u{0447}\u{0430}\u{0442}\u{043e}\u{0432}.")
+    case .amoledMode:
+        return text("Keeps the AMOLED visual preference for darker surfaces.", "\u{0421}\u{043e}\u{0445}\u{0440}\u{0430}\u{043d}\u{044f}\u{0435}\u{0442} AMOLED-\u{0440}\u{0435}\u{0436}\u{0438}\u{043c} \u{0434}\u{043b}\u{044f} \u{0431}\u{043e}\u{043b}\u{0435}\u{0435} \u{0442}\u{0451}\u{043c}\u{043d}\u{044b}\u{0445} \u{044d}\u{043a}\u{0440}\u{0430}\u{043d}\u{043e}\u{0432}.")
+    default:
+        return nil
+    }
+}
+
 private func telewhiteModsEntries(tab: TelewhiteModsTab, settings: TelewhiteModsSettings, translationSettings: TranslationSettings, strings: TelewhiteModsStrings) -> [TelewhiteModsEntry] {
     var entries: [TelewhiteModsEntry] = []
 
     switch tab {
     case .messenger:
-        entries.append(.messengerHeader(strings.text("Messages", "Сообщения")))
+        entries.append(.messengerHeader(telewhiteTabTitle(.messenger, strings: strings)))
         entries.append(.preserveDeletedMessages(strings.text("Keep Deleted Messages", "Сохранять удалённые сообщения"), settings.preserveDeletedMessages))
         entries.append(.oneTimeMediaUnlimited(strings.text("Unlimited One-Time View", "Одноразовый просмотр без ограничений"), settings.oneTimeMediaUnlimited))
         entries.append(.downloadOneTimeMedia(strings.text("Download One-Time Media", "Скачать одноразовые медиа"), settings.downloadOneTimeMedia))
@@ -720,54 +855,54 @@ private func telewhiteModsEntries(tab: TelewhiteModsTab, settings: TelewhiteMods
         entries.append(.translateChats(strings.text("Translate Entire Chats", "Перевод чатов"), translationSettings.translateChats))
         entries.append(.autoTranslateEnglish(strings.text("Translate Before Sending", "Перевод перед отправкой"), settings.autoTranslateEnglish))
         entries.append(.translationTargetLanguage(strings.text("Translation Language", "Язык перевода"), settings.translationTargetLanguage))
-        entries.append(.messengerInfo(strings.text("Deleted cloud messages stay visible and dimmed locally. Translation settings use Telegram's existing translation engine.", "Удалённые сообщения остаются видимыми и отмечаются локально. Перевод использует уже существующий движок Telegram.")))
+        entries.append(.messengerInfo(strings.text("Message features are split here: deleted messages, one-time media, uploads and translation.", "Здесь собраны функции сообщений: удалённые сообщения, одноразовые медиа, загрузка и перевод.")))
 
     case .privacy:
-        entries.append(.privacyHeader(strings.text("Privacy", "Конфиденциальность")))
+        entries.append(.privacyHeader(telewhiteTabTitle(.privacy, strings: strings)))
         entries.append(.hideOnlineStatus(strings.text("Hide Online Status", "Скрыть статус онлайн"), settings.hideOnlineStatus))
         entries.append(.screenshotProtectionBypass(strings.text("Screenshot Protection Bypass", "Обход защиты скриншотов"), settings.screenshotProtectionBypass))
         entries.append(.contentRestrictionBypass(strings.text("Content Restriction Bypass", "Обход ограничений контента"), settings.contentRestrictionBypass))
-        entries.append(.hidePhoneInSettings(strings.text("Hide Phone in Settings", "Скрыть номер телефона в настр."), settings.hidePhoneInSettings))
+        entries.append(.hidePhoneInSettings(strings.text("Hide Phone in Settings", "Скрыть номер в настройках"), settings.hidePhoneInSettings))
         entries.append(.showProfileIds(strings.text("Show Profile ID", "Показать ID профиля"), settings.showUserIds && settings.showChatIds))
         entries.append(.ghostChatButtonEnabled(strings.text("Per-Chat Ghost Button", "Кнопка невидимки в чатах"), settings.ghostChatButtonEnabled))
-        entries.append(.privacyInfo(strings.text("The online switch is separate from read receipts. Profile IDs can be tapped or long-pressed to copy.", "Скрытие онлайна работает отдельно от прочтения. ID профиля можно скопировать обычным или долгим нажатием.")))
+        entries.append(.privacyInfo(strings.text("Online, screenshot and content controls live here.", "Здесь находятся настройки онлайна, скриншотов и ограничений контента.")))
 
     case .stealth:
-        entries.append(.stealthHeader(strings.text("Ghost Mode", "Режим невидимки")))
+        entries.append(.stealthHeader(telewhiteTabTitle(.stealth, strings: strings)))
         entries.append(.ghostMessages(strings.text("Ghost Mode (Messages)", "Режим невидимки (сообщения)"), settings.hideReadReceipts))
         entries.append(.ghostStories(strings.text("Ghost Mode (Stories)", "Режим невидимки (истории)"), settings.ghostStories))
         entries.append(.ghostMode(strings.text("Global Ghost Mode", "Глобальный режим невидимки"), settings.ghostMode))
         entries.append(.hideTypingStatus(strings.text("Hide Typing Status", "Скрыть набор текста"), settings.hideTypingStatus))
-        entries.append(.stealthInfo(strings.text("The chat ghost button still toggles Ghost Mode only for one selected private chat.", "Кнопка призрака в чате включает невидимку только для выбранного личного чата.")))
+        entries.append(.stealthInfo(strings.text("The chat ghost button toggles stealth for one selected private chat.", "Кнопка призрака в чате включает невидимку только для выбранного личного чата.")))
 
     case .channels:
-        entries.append(.channelsHeader(strings.text("Channels and Groups", "Каналы и группы")))
+        entries.append(.channelsHeader(telewhiteTabTitle(.channels, strings: strings)))
         entries.append(.channelContentRestrictionBypass(strings.text("Content Restriction Bypass", "Обход ограничений контента"), settings.contentRestrictionBypass))
-        entries.append(.channelsInfo(strings.text("This prepares the settings surface for channel and group content controls.", "Этот раздел подготавливает настройки для функций каналов и групп.")))
+        entries.append(.channelsInfo(strings.text("Channel and group restrictions are controlled here.", "Здесь управляются ограничения каналов и групп.")))
 
     case .media:
-        entries.append(.mediaHeader(strings.text("Media and Stories", "Медиа и истории")))
+        entries.append(.mediaHeader(telewhiteTabTitle(.media, strings: strings)))
         entries.append(.downloadStories(strings.text("Download Stories", "Скачать истории"), settings.downloadStories))
         entries.append(.hideStories(strings.text("Hide Stories Row", "Скрыть блок историй"), settings.hideStories))
-        entries.append(.mediaInfo(strings.text("Story download controls are separated from general chat appearance.", "Скачивание историй вынесено отдельно от общего внешнего вида чатов.")))
+        entries.append(.mediaInfo(strings.text("Story controls are separated from message controls.", "Настройки историй вынесены отдельно от сообщений.")))
 
     case .calls:
-        entries.append(.callsHeader(strings.text("Calls", "Звонки")))
+        entries.append(.callsHeader(telewhiteTabTitle(.calls, strings: strings)))
         entries.append(.autoRecordCalls(strings.text("Auto-Record Calls", "Авто-запись звонков"), settings.autoRecordCalls))
         entries.append(.callRecordButton(strings.text("Call Record Button", "Кнопка записи звонка"), settings.callRecordButton))
-        entries.append(.callsInfo(strings.text("Recording controls are shown here; call recording needs an explicit call UI/audio pipeline implementation.", "Здесь находятся настройки записи. Для самой записи нужен отдельный UI и аудио-пайплайн звонка.")))
+        entries.append(.callsInfo(strings.text("Call recording still needs the call UI and audio pipeline hook.", "Для записи звонков ещё нужен хук UI и аудио-пайплайна звонка.")))
 
     case .appearance:
-        entries.append(.appearanceHeader(strings.text("Look", "Внешний вид")))
+        entries.append(.appearanceHeader(telewhiteTabTitle(.appearance, strings: strings)))
         entries.append(.compactChatList(strings.text("Compact Chat List", "Компактный список чатов"), settings.compactChatList))
         entries.append(.amoledMode(strings.text("AMOLED Mode", "AMOLED режим"), settings.amoledMode))
 
     case .developer:
-        entries.append(.developerHeader(strings.text("Developer", "Разработчик")))
+        entries.append(.developerHeader(telewhiteTabTitle(.developer, strings: strings)))
         entries.append(.showUserIds(strings.text("Show User IDs", "Показывать ID пользователей"), settings.showUserIds))
         entries.append(.showChatIds(strings.text("Show Chat IDs", "Показывать ID чатов"), settings.showChatIds))
         entries.append(.showMessageIds(strings.text("Show Message IDs", "Показывать ID сообщений"), settings.showMessageIds))
-        entries.append(.developerInfo(strings.text("IDs are shown in profile/context surfaces when enabled. Message IDs are available from the message context menu.", "ID отображаются в профилях и контекстных меню. ID сообщений доступны из меню сообщения.")))
+        entries.append(.developerInfo(strings.text("IDs are shown in profile/context surfaces when enabled.", "ID отображаются в профилях и контекстных меню.")))
     }
 
     return entries
@@ -797,8 +932,7 @@ public func telewhiteModsController(context: AccountContext) -> ViewController {
     let initialSettings = TelewhiteModsSettings.current
     let stateValue = Atomic(value: initialSettings)
     let statePromise = ValuePromise(initialSettings, ignoreRepeated: true)
-    let selectedTab = ValuePromise<TelewhiteModsTab>(.messenger, ignoreRepeated: true)
-    
+
     let updateSettings: ((TelewhiteModsSettings) -> TelewhiteModsSettings) -> Void = { f in
         let updated = stateValue.modify { current in
             let updated = f(current)
@@ -810,9 +944,35 @@ public func telewhiteModsController(context: AccountContext) -> ViewController {
         }
         statePromise.set(updated)
     }
-    
+
+    var pushControllerImpl: ((ViewController) -> Void)?
+
+    let arguments = TelewhiteModsControllerArguments(updateSettings: updateSettings, updateTranslationSettings: { _ in
+    }, startVpn: {
+    }, openTab: { tab in
+        pushControllerImpl?(telewhiteModsSectionController(context: context, tab: tab, statePromise: statePromise, stateValue: stateValue, updateSettings: updateSettings))
+    })
+
+    let signal = context.sharedContext.presentationData
+    |> deliverOnMainQueue
+    |> map { presentationData -> (ItemListControllerState, (ItemListNodeState, Any)) in
+        let strings = TelewhiteModsStrings(presentationData: presentationData)
+        let title = strings.text("Telewhite Settings", "\u{041d}\u{0430}\u{0441}\u{0442}\u{0440}\u{043e}\u{0439}\u{043a}\u{0438} Telewhite")
+        let controllerState = ItemListControllerState(presentationData: ItemListPresentationData(presentationData), title: .text(title), leftNavigationButton: nil, rightNavigationButton: nil, backNavigationButton: ItemListBackButton(title: presentationData.strings.Common_Back), animateChanges: false)
+        let listState = ItemListNodeState(presentationData: ItemListPresentationData(presentationData), entries: telewhiteMenuEntries(strings: strings), style: .blocks, animateChanges: false)
+        return (controllerState, (listState, arguments as Any))
+    }
+
+    let controller = ItemListController(context: context, state: signal)
+    pushControllerImpl = { [weak controller] c in
+        controller?.push(c)
+    }
+    return controller
+}
+
+private func telewhiteModsSectionController(context: AccountContext, tab: TelewhiteModsTab, statePromise: ValuePromise<TelewhiteModsSettings>, stateValue: Atomic<TelewhiteModsSettings>, updateSettings: @escaping ((TelewhiteModsSettings) -> TelewhiteModsSettings) -> Void) -> ViewController {
     var presentControllerImpl: ((ViewController) -> Void)?
-    
+
     let arguments = TelewhiteModsControllerArguments(updateSettings: updateSettings, updateTranslationSettings: { f in
         let _ = updateTranslationSettingsInteractively(accountManager: context.sharedContext.accountManager, f).start()
     }, startVpn: {
@@ -828,52 +988,22 @@ public func telewhiteModsController(context: AccountContext) -> ViewController {
             TextAlertAction(type: .defaultAction, title: presentationData.strings.Common_OK, action: {})
         ]))
     })
-    
+
     let translationSettings = context.sharedContext.accountManager.sharedData(keys: [ApplicationSpecificSharedDataKeys.translationSettings])
     |> map { sharedData -> TranslationSettings in
         return sharedData.entries[ApplicationSpecificSharedDataKeys.translationSettings]?.get(TranslationSettings.self) ?? TranslationSettings.defaultSettings
     }
 
-    let signal = combineLatest(context.sharedContext.presentationData, statePromise.get(), translationSettings, selectedTab.get())
+    let signal = combineLatest(context.sharedContext.presentationData, statePromise.get(), translationSettings)
     |> deliverOnMainQueue
-    |> map { presentationData, settings, translationSettings, tab -> (ItemListControllerState, (ItemListNodeState, Any)) in
+    |> map { presentationData, settings, translationSettings -> (ItemListControllerState, (ItemListNodeState, Any)) in
         let strings = TelewhiteModsStrings(presentationData: presentationData)
-        let segments = [
-            strings.text("Messages", "Сообщения"),
-            strings.text("Privacy", "Приватность"),
-            strings.text("Ghost", "Невидимка"),
-            strings.text("Groups", "Группы"),
-            strings.text("Media", "Медиа"),
-            strings.text("Calls", "Звонки"),
-            strings.text("Look", "Вид"),
-            strings.text("Dev", "Dev")
-        ]
-        let controllerState = ItemListControllerState(presentationData: ItemListPresentationData(presentationData), title: .sectionControl(segments, Int(tab.rawValue)), leftNavigationButton: nil, rightNavigationButton: nil, backNavigationButton: ItemListBackButton(title: presentationData.strings.Common_Back), animateChanges: false)
+        let controllerState = ItemListControllerState(presentationData: ItemListPresentationData(presentationData), title: .text(telewhiteTabTitle(tab, strings: strings)), leftNavigationButton: nil, rightNavigationButton: nil, backNavigationButton: ItemListBackButton(title: presentationData.strings.Common_Back), animateChanges: false)
         let listState = ItemListNodeState(presentationData: ItemListPresentationData(presentationData), entries: telewhiteModsEntries(tab: tab, settings: settings, translationSettings: translationSettings, strings: strings), style: .blocks, animateChanges: false)
         return (controllerState, (listState, arguments as Any))
     }
 
     let controller = ItemListController(context: context, state: signal)
-    controller.titleControlValueChanged = { index in
-        switch index {
-        case 0:
-            selectedTab.set(.messenger)
-        case 1:
-            selectedTab.set(.privacy)
-        case 2:
-            selectedTab.set(.stealth)
-        case 3:
-            selectedTab.set(.channels)
-        case 4:
-            selectedTab.set(.media)
-        case 5:
-            selectedTab.set(.calls)
-        case 6:
-            selectedTab.set(.appearance)
-        default:
-            selectedTab.set(.developer)
-        }
-    }
     presentControllerImpl = { [weak controller] c in
         controller?.present(c, in: .window(.root))
     }

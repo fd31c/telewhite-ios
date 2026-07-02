@@ -15,6 +15,11 @@ import MultilineTextComponent
 import TelegramPresentationData
 import TelegramCallsUI
 
+private func telewhiteAllowsStoryCaptureProtectionBypass() -> Bool {
+    let defaults = UserDefaults.standard
+    return defaults.bool(forKey: "telewhite.mods.screenshotProtectionBypass") || defaults.bool(forKey: "telewhite.mods.contentRestrictionBypass") || defaults.bool(forKey: "telewhite.mods.downloadStories")
+}
+
 final class StoryItemContentComponent: Component {
     typealias EnvironmentType = StoryContentItem.Environment
     
@@ -356,7 +361,7 @@ final class StoryItemContentComponent: Component {
                             useLargeThumbnail: false,
                             autoFetchFullSizeThumbnail: false,
                             tempFilePath: nil,
-                            captureProtected: component.item.isForwardingDisabled,
+                            captureProtected: component.item.isForwardingDisabled && !telewhiteAllowsStoryCaptureProtectionBypass(),
                             hintDimensions: file.dimensions?.cgSize,
                             storeAfterDownload: nil,
                             displayImage: false,
@@ -776,7 +781,7 @@ final class StoryItemContentComponent: Component {
                 availableReactions: component.availableReactions,
                 entityFiles: component.entityFiles,
                 size: size,
-                isCaptureProtected: component.item.isForwardingDisabled,
+                isCaptureProtected: component.item.isForwardingDisabled && !telewhiteAllowsStoryCaptureProtectionBypass(),
                 attemptSynchronous: synchronousLoad,
                 isActive: self.progressMode.mode == .play,
                 transition: transition
@@ -972,7 +977,7 @@ final class StoryItemContentComponent: Component {
                         storyId: component.item.id,
                         media: messageMedia,
                         size: availableSize,
-                        isCaptureProtected: component.item.isForwardingDisabled,
+                        isCaptureProtected: component.item.isForwardingDisabled && !telewhiteAllowsStoryCaptureProtectionBypass(),
                         attemptSynchronous: synchronousLoad,
                         transition: transition
                     )
@@ -1151,7 +1156,7 @@ final class StoryItemContentComponent: Component {
                         storyId: component.item.id,
                         media: messageMedia,
                         size: availableSize,
-                        isCaptureProtected: component.item.isForwardingDisabled,
+                        isCaptureProtected: component.item.isForwardingDisabled && !telewhiteAllowsStoryCaptureProtectionBypass(),
                         attemptSynchronous: synchronousLoad,
                         transition: transition
                     )

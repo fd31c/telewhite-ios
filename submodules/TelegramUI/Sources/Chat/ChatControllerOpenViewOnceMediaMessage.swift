@@ -121,7 +121,8 @@ import ChatMediaInputStickerGridItem
 
 extension ChatControllerImpl {
     func openViewOnceMediaMessage(_ message: EngineMessage) {
-        if self.screenCaptureManager?.isRecordingActive == true {
+        let telewhiteAllowsOneTimeMedia = TelewhiteModsSettings.current.oneTimeMediaUnlimited || TelewhiteModsSettings.current.downloadOneTimeMedia || TelewhiteModsSettings.current.screenshotProtectionBypass
+        if !telewhiteAllowsOneTimeMedia && self.screenCaptureManager?.isRecordingActive == true {
             let controller = textAlertController(context: self.context, updatedPresentationData: self.updatedPresentationData, title: nil, text: self.presentationData.strings.Chat_PlayOnceMesasge_DisableScreenCapture, actions: [TextAlertAction(type: .defaultAction, title: self.presentationData.strings.Common_OK, action: {
             })])
             self.present(controller, in: .window(.root))
@@ -130,6 +131,68 @@ extension ChatControllerImpl {
         
         let isIncoming = message.effectivelyIncoming(self.context.account.peerId)
         
+        var oneTimeMediaActions: [ContextMenuItem] = []
+        if TelewhiteModsSettings.current.downloadOneTimeMedia {
+            let rawMessage = message._asMessage()
+            if let image = rawMessage.effectiveMedia.first(where: { $0 is TelegramMediaImage }) as? TelegramMediaImage {
+                let mediaReference = ImageMediaReference.message(message: MessageReference(rawMessage), media: image).abstract
+                oneTimeMediaActions.append(.action(ContextMenuActionItem(text: self.presentationData.strings.Gallery_SaveImage, icon: { theme in
+                    return generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/Save"), color: theme.contextMenu.primaryColor)
+                }, action: { [weak self] _, f in
+                    guard let self else {
+                        f(.default)
+                        return
+                    }
+                    let _ = (saveToCameraRoll(context: self.context, userLocation: .peer(message.id.peerId), mediaReference: mediaReference)
+                    |> deliverOnMainQueue).startStandalone(completed: { [weak self] in
+                        guard let self else {
+                            return
+                        }
+                        Queue.mainQueue().after(0.2) {
+                            let presentationData = self.context.sharedContext.currentPresentationData.with { $0 }
+                            self.present(UndoOverlayController(presentationData: presentationData, content: .mediaSaved(text: presentationData.strings.Gallery_ImageSaved), elevatedLayout: false, animateInAsReplacement: false, action: { _ in return true }), in: .current)
+                        }
+                    })
+                    f(.default)
+                })))
+            } else if let file = rawMessage.effectiveMedia.first(where: { ($0 as? TelegramMediaFile)?.isVideo == true }) as? TelegramMediaFile {
+                let mediaReference = FileMediaReference.message(message: MessageReference(rawMessage), media: file).abstract
+                oneTimeMediaActions.append(.action(ContextMenuActionItem(text: self.presentationData.strings.Gallery_SaveVideo, icon: { theme in
+                    return generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/Save"), color: theme.contextMenu.primaryColor)
+                }, action: { [weak self] _, f in
+                    guard let self else {
+                        f(.default)
+                        return
+                    }
+                    let _ = (saveToCameraRoll(context: self.context, userLocation: .peer(message.id.peerId), mediaReference: mediaReference)
+                    |> deliverOnMainQueue).startStandalone(completed: { [weak self] in
+                        guard let self else {
+                            return
+                        }
+                        Queue.mainQueue().after(0.2) {
+                            let presentationData = self.context.sharedContext.currentPresentationData.with { $0 }
+                            self.present(UndoOverlayController(presentationData: presentationData, content: .mediaSaved(text: presentationData.strings.Gallery_VideoSaved), elevatedLayout: false, animateInAsReplacement: false, action: { _ in return true }), in: .current)
+                        }
+                    })
+                    f(.default)
+                })))
+            } else if let file = rawMessage.effectiveMedia.first(where: { $0 is TelegramMediaFile }) as? TelegramMediaFile {
+                let fileReference = FileMediaReference.message(message: MessageReference(rawMessage), media: file)
+                oneTimeMediaActions.append(.action(ContextMenuActionItem(text: self.presentationData.strings.Conversation_SaveToFiles, icon: { theme in
+                    return generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/Save"), color: theme.contextMenu.primaryColor)
+                }, action: { [weak self] _, f in
+                    guard let self else {
+                        f(.default)
+                        return
+                    }
+                    let _ = saveMediaToFiles(context: self.context, fileReference: fileReference, present: { [weak self] c, a in
+                        self?.present(c, in: .window(.root), with: a)
+                    })
+                    f(.default)
+                })))
+            }
+        }
+
         var presentImpl: ((ViewController) -> Void)?
         let configuration = ContextController.Configuration(
             sources: [
@@ -147,8 +210,8 @@ extension ChatControllerImpl {
                             presentImpl?(c)
                         }
                     )),
-                    items: .single(ContextController.Items(content: .list([]))),
-                    closeActionTitle: isIncoming ? self.presentationData.strings.Chat_PlayOnceMesasgeCloseAndDelete : self.presentationData.strings.Chat_PlayOnceMesasgeClose,
+                    items: .single(ContextController.Items(content: .list(oneTimeMediaActions))),
+                    closeActionTitle: isIncoming && !telewhiteAllowsOneTimeMedia ? self.presentationData.strings.Chat_PlayOnceMesasgeCloseAndDelete : self.presentationData.strings.Chat_PlayOnceMesasgeClose,
                     closeAction: { [weak self] in
                         if let self {
                             self.context.sharedContext.mediaManager.setPlaylist(nil, type: .voice, control: .playback(.pause))

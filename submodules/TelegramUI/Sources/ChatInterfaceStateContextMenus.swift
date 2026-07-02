@@ -2462,6 +2462,7 @@ private func canPerformDeleteActions(limits: LimitsConfiguration, accountPeerId:
 }
 
 func chatAvailableMessageActionsImpl(engine: TelegramEngine, accountPeerId: EnginePeer.Id, messageIds: Set<EngineMessage.Id>, messages: [EngineMessage.Id: EngineRawMessage] = [:], peers: [EnginePeer.Id: EngineRawPeer] = [:], keepUpdated: Bool) -> Signal<ChatAvailableMessageActions, NoError> {
+    let telewhiteBypassContentRestrictions = TelewhiteModsSettings.current.contentRestrictionBypass
     return engine.data.subscribe(
         TelegramEngine.EngineData.Item.Configuration.Limits(),
         EngineDataMap(Set(messageIds.map(\.peerId)).map(TelegramEngine.EngineData.Item.Peer.Peer.init)),
@@ -2547,11 +2548,11 @@ func chatAvailableMessageActionsImpl(engine: TelegramEngine, accountPeerId: Engi
                     }
                 }
                 
-                if message.isCopyProtected() || message.containsSecretMedia {
+                if !telewhiteBypassContentRestrictions && (message.isCopyProtected() || message.containsSecretMedia) {
                     isCopyProtected = true
                 }
                 
-                if isPeerCopyProtected(message.id.peerId) == true {
+                if !telewhiteBypassContentRestrictions && isPeerCopyProtected(message.id.peerId) == true {
                     isCopyProtected = true
                 }
                 
@@ -2657,8 +2658,8 @@ func chatAvailableMessageActionsImpl(engine: TelegramEngine, accountPeerId: Engi
                                 banPeer = nil
                             }
                         }
-                        if !message.containsSecretMedia && !isAction && !isShareProtected {
-                            if message.id.peerId.namespace != Namespaces.Peer.SecretChat && !message.isCopyProtected() {
+                        if (!message.containsSecretMedia || telewhiteBypassContentRestrictions) && !isAction && !isShareProtected {
+                            if message.id.peerId.namespace != Namespaces.Peer.SecretChat && (!message.isCopyProtected() || telewhiteBypassContentRestrictions) {
                                 if !(message.flags.isSending || message.flags.contains(.Failed)) {
                                     optionsMap[id]!.insert(.forward)
                                 }
@@ -2673,8 +2674,8 @@ func chatAvailableMessageActionsImpl(engine: TelegramEngine, accountPeerId: Engi
                             }
                         }
                     } else if let group = peer as? TelegramGroup {
-                        if message.id.peerId.namespace != Namespaces.Peer.SecretChat && !message.containsSecretMedia {
-                            if !isAction && !message.isCopyProtected() && !isShareProtected {
+                        if message.id.peerId.namespace != Namespaces.Peer.SecretChat && (!message.containsSecretMedia || telewhiteBypassContentRestrictions) {
+                            if !isAction && (!message.isCopyProtected() || telewhiteBypassContentRestrictions) && !isShareProtected {
                                 if !(message.flags.isSending || message.flags.contains(.Failed)) {
                                     optionsMap[id]!.insert(.forward)
                                 }
@@ -2693,7 +2694,7 @@ func chatAvailableMessageActionsImpl(engine: TelegramEngine, accountPeerId: Engi
                             optionsMap[id]!.insert(.report)
                         }
                     } else if let user = peer as? TelegramUser {
-                        if !isScheduled && message.id.peerId.namespace != Namespaces.Peer.SecretChat && !message.containsSecretMedia && !isAction && !message.id.peerId.isReplies && !message.isCopyProtected() && !isShareProtected {
+                        if !isScheduled && message.id.peerId.namespace != Namespaces.Peer.SecretChat && (!message.containsSecretMedia || telewhiteBypassContentRestrictions) && !isAction && !message.id.peerId.isReplies && (!message.isCopyProtected() || telewhiteBypassContentRestrictions) && !isShareProtected {
                             if !(message.flags.isSending || message.flags.contains(.Failed)) {
                                 optionsMap[id]!.insert(.forward)
                             }

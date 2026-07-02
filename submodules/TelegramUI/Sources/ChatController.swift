@@ -7662,6 +7662,9 @@ public final class ChatControllerImpl: TelegramBaseController, ChatController, G
             if case let .peer(peerId) = self.chatLocation, self.screenCaptureManager == nil {
                 if peerId.namespace == Namespaces.Peer.SecretChat {
                     self.screenCaptureManager = ScreenCaptureDetectionManager(check: { [weak self] in
+                        if TelewhiteModsSettings.current.screenshotProtectionBypass {
+                            return true
+                        }
                         if let strongSelf = self, strongSelf.traceVisibility() {
                             if strongSelf.canReadHistoryValue {
                                 let _ = strongSelf.context.engine.messages.addSecretChatMessageScreenshot(peerId: peerId).startStandalone()
@@ -7691,6 +7694,9 @@ public final class ChatControllerImpl: TelegramBaseController, ChatController, G
                     })
                 } else if peerId.namespace == Namespaces.Peer.CloudUser {
                     self.screenCaptureManager = ScreenCaptureDetectionManager(check: { [weak self] in
+                        if TelewhiteModsSettings.current.screenshotProtectionBypass {
+                            return true
+                        }
                         guard let self else {
                             return false
                         }

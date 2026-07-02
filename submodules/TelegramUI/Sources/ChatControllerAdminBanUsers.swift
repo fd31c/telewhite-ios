@@ -415,6 +415,10 @@ extension ChatControllerImpl {
             deleteImmediately = true
         } else if case .peer(self.context.account.peerId) = self.chatLocation {
             deleteImmediately = true
+        } else if messageIds.contains(where: { id in
+            return self.chatDisplayNode.historyNode.messageInCurrentHistoryView(id)?._asMessage().attributes.contains(where: { $0 is TelewhiteDeletedMessageAttribute }) == true
+        }) {
+            deleteImmediately = true
         }
         
         if deleteImmediately {
