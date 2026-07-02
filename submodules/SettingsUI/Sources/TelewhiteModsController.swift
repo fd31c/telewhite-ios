@@ -146,6 +146,13 @@ private enum TelewhiteModsSection: Int32 {
     case developer
 }
 
+private enum TelewhiteModsTab: Int32, Equatable {
+    case messenger
+    case privacy
+    case appearance
+    case developer
+}
+
 private enum TelewhiteModsEntry: ItemListNodeEntry, Equatable {
     case messengerHeader(String)
     case preserveDeletedMessages(String, Bool)
@@ -407,8 +414,44 @@ private enum TelewhiteModsEntry: ItemListNodeEntry, Equatable {
     }
 }
 
-private func telewhiteModsEntries(settings: TelewhiteModsSettings, translationSettings: TranslationSettings) -> [TelewhiteModsEntry] {
+private func telewhiteModsEntries(tab: TelewhiteModsTab, settings: TelewhiteModsSettings, translationSettings: TranslationSettings) -> [TelewhiteModsEntry] {
     var entries: [TelewhiteModsEntry] = []
+
+    switch tab {
+    case .messenger:
+    entries.append(.messengerHeader("Messenger"))
+    entries.append(.preserveDeletedMessages("Keep Deleted Messages", settings.preserveDeletedMessages))
+    entries.append(.translateMessages("Show Translate Button", translationSettings.showTranslate))
+    entries.append(.translateChats("Translate Entire Chats", translationSettings.translateChats))
+    entries.append(.autoTranslateEnglish("Auto-translate English", settings.autoTranslateEnglish))
+    entries.append(.translationTargetLanguage("Translation Language", settings.translationTargetLanguage))
+    entries.append(.messengerInfo("Deleted cloud messages stay in chat and are dimmed locally. English auto-translate targets Russian by default and does not touch Russian messages."))
+
+    case .privacy:
+    entries.append(.privacyHeader("Privacy"))
+    entries.append(.ghostMode("Ghost Mode", settings.ghostMode))
+    entries.append(.hideTypingStatus("Hide Typing Status", settings.hideTypingStatus))
+    entries.append(.hideReadReceipts("Hide Read Receipts", settings.hideReadReceipts))
+    entries.append(.privacyInfo("Ghost Mode blocks read receipts and typing activity. The chat button toggles it for one private chat."))
+
+    case .appearance:
+    entries.append(.appearanceHeader("Appearance"))
+    entries.append(.hideStories("Hide Stories", settings.hideStories))
+    entries.append(.compactChatList("Compact Chat List", settings.compactChatList))
+    entries.append(.amoledMode("AMOLED Mode", settings.amoledMode))
+
+    case .developer:
+    entries.append(.developerHeader("Developer"))
+    entries.append(.showUserIds("Show User IDs", settings.showUserIds))
+    entries.append(.showChatIds("Show Chat IDs", settings.showChatIds))
+    entries.append(.showMessageIds("Show Message IDs", settings.showMessageIds))
+    entries.append(.developerInfo("IDs are shown in profile/context surfaces when enabled. Message IDs are available from the message context menu."))
+    }
+
+    return entries
+}
+
+private func telewhiteVpnEntries(settings: TelewhiteModsSettings) -> [TelewhiteModsEntry] {
     let vpnStatus: String
     if settings.vpnSubscription.isEmpty {
         vpnStatus = "No subscription"
@@ -417,39 +460,14 @@ private func telewhiteModsEntries(settings: TelewhiteModsSettings, translationSe
     } else {
         vpnStatus = "Configured"
     }
-    
-    entries.append(.messengerHeader("Messenger"))
-    entries.append(.preserveDeletedMessages("Keep Deleted Messages", settings.preserveDeletedMessages))
-    entries.append(.translateMessages("Show Translate Button", translationSettings.showTranslate))
-    entries.append(.translateChats("Translate Entire Chats", translationSettings.translateChats))
-    entries.append(.autoTranslateEnglish("Auto-translate English", settings.autoTranslateEnglish))
-    entries.append(.translationTargetLanguage("Translation Language", settings.translationTargetLanguage))
-    entries.append(.messengerInfo("Deleted cloud messages stay in chat and are dimmed locally. English auto-translate targets Russian by default and does not touch Russian messages."))
-    
-    entries.append(.privacyHeader("Privacy"))
-    entries.append(.ghostMode("Ghost Mode", settings.ghostMode))
-    entries.append(.hideTypingStatus("Hide Typing Status", settings.hideTypingStatus))
-    entries.append(.hideReadReceipts("Hide Read Receipts", settings.hideReadReceipts))
-    entries.append(.privacyInfo("Ghost Mode blocks read receipts and typing activity. The chat button toggles it for one private chat."))
 
-    entries.append(.vpnHeader("VPN"))
+    var entries: [TelewhiteModsEntry] = []
+    entries.append(.vpnHeader("Telegram-only VPN"))
     entries.append(.vpnEnabled("Enable VPN Profile", settings.vpnEnabled))
     entries.append(.vpnSubscription("Subscription URL", settings.vpnSubscription))
     entries.append(.vpnStatus("Status", vpnStatus))
     entries.append(.vpnStart("Start VPN"))
-    entries.append(.vpnInfo("Subscription storage is ready. A real Telegram-only VPN requires an iOS Packet Tunnel extension and the matching entitlement."))
-    
-    entries.append(.appearanceHeader("Appearance"))
-    entries.append(.hideStories("Hide Stories", settings.hideStories))
-    entries.append(.compactChatList("Compact Chat List", settings.compactChatList))
-    entries.append(.amoledMode("AMOLED Mode", settings.amoledMode))
-    
-    entries.append(.developerHeader("Developer"))
-    entries.append(.showUserIds("Show User IDs", settings.showUserIds))
-    entries.append(.showChatIds("Show Chat IDs", settings.showChatIds))
-    entries.append(.showMessageIds("Show Message IDs", settings.showMessageIds))
-    entries.append(.developerInfo("IDs are shown in profile/context surfaces when enabled. Message IDs are available from the message context menu."))
-    
+    entries.append(.vpnInfo("Subscription storage is ready. Actual Telegram-only tunneling requires an iOS Packet Tunnel extension plus Network Extension entitlement; this screen is the configuration surface."))
     return entries
 }
 
@@ -457,6 +475,7 @@ public func telewhiteModsController(context: AccountContext) -> ViewController {
     let initialSettings = TelewhiteModsSettings.current
     let stateValue = Atomic(value: initialSettings)
     let statePromise = ValuePromise(initialSettings, ignoreRepeated: true)
+    let selectedTab = ValuePromise<TelewhiteModsTab>(.messenger, ignoreRepeated: true)
     
     let updateSettings: ((TelewhiteModsSettings) -> TelewhiteModsSettings) -> Void = { f in
         let updated = stateValue.modify { current in
@@ -493,14 +512,73 @@ public func telewhiteModsController(context: AccountContext) -> ViewController {
         return sharedData.entries[ApplicationSpecificSharedDataKeys.translationSettings]?.get(TranslationSettings.self) ?? TranslationSettings.defaultSettings
     }
 
-    let signal = combineLatest(context.sharedContext.presentationData, statePromise.get(), translationSettings)
+    let signal = combineLatest(context.sharedContext.presentationData, statePromise.get(), translationSettings, selectedTab.get())
     |> deliverOnMainQueue
-    |> map { presentationData, settings, translationSettings -> (ItemListControllerState, (ItemListNodeState, Any)) in
-        let controllerState = ItemListControllerState(presentationData: ItemListPresentationData(presentationData), title: .text("Telewhite Mods"), leftNavigationButton: nil, rightNavigationButton: nil, backNavigationButton: ItemListBackButton(title: presentationData.strings.Common_Back), animateChanges: false)
-        let listState = ItemListNodeState(presentationData: ItemListPresentationData(presentationData), entries: telewhiteModsEntries(settings: settings, translationSettings: translationSettings), style: .blocks, animateChanges: false)
+    |> map { presentationData, settings, translationSettings, tab -> (ItemListControllerState, (ItemListNodeState, Any)) in
+        let segments = ["Messenger", "Privacy", "Look", "Dev"]
+        let controllerState = ItemListControllerState(presentationData: ItemListPresentationData(presentationData), title: .sectionControl(segments, Int(tab.rawValue)), leftNavigationButton: nil, rightNavigationButton: nil, backNavigationButton: ItemListBackButton(title: presentationData.strings.Common_Back), animateChanges: false)
+        let listState = ItemListNodeState(presentationData: ItemListPresentationData(presentationData), entries: telewhiteModsEntries(tab: tab, settings: settings, translationSettings: translationSettings), style: .blocks, animateChanges: false)
         return (controllerState, (listState, arguments as Any))
     }
-    
+
+    let controller = ItemListController(context: context, state: signal)
+    controller.titleControlValueChanged = { index in
+        switch index {
+        case 0:
+            selectedTab.set(.messenger)
+        case 1:
+            selectedTab.set(.privacy)
+        case 2:
+            selectedTab.set(.appearance)
+        default:
+            selectedTab.set(.developer)
+        }
+    }
+    presentControllerImpl = { [weak controller] c in
+        controller?.present(c, in: .window(.root))
+    }
+    return controller
+}
+
+public func telewhiteVpnController(context: AccountContext) -> ViewController {
+    let initialSettings = TelewhiteModsSettings.current
+    let stateValue = Atomic(value: initialSettings)
+    let statePromise = ValuePromise(initialSettings, ignoreRepeated: true)
+
+    let updateSettings: ((TelewhiteModsSettings) -> TelewhiteModsSettings) -> Void = { f in
+        let updated = stateValue.modify { current in
+            let updated = f(current)
+            updated.save()
+            return updated
+        }
+        statePromise.set(updated)
+    }
+
+    var presentControllerImpl: ((ViewController) -> Void)?
+
+    let arguments = TelewhiteModsControllerArguments(updateSettings: updateSettings, updateTranslationSettings: { _ in
+    }, startVpn: {
+        let presentationData = context.sharedContext.currentPresentationData.with { $0 }
+        let settings = stateValue.with { $0 }
+        let text: String
+        if settings.vpnSubscription.isEmpty {
+            text = "Paste a VPN subscription first."
+        } else {
+            text = "Telewhite saved the VPN profile. Starting a real Telegram-only tunnel needs a Packet Tunnel extension and Network Extension entitlement in the app bundle."
+        }
+        presentControllerImpl?(textAlertController(context: context, title: "Telewhite VPN", text: text, actions: [
+            TextAlertAction(type: .defaultAction, title: presentationData.strings.Common_OK, action: {})
+        ]))
+    })
+
+    let signal = combineLatest(context.sharedContext.presentationData, statePromise.get())
+    |> deliverOnMainQueue
+    |> map { presentationData, settings -> (ItemListControllerState, (ItemListNodeState, Any)) in
+        let controllerState = ItemListControllerState(presentationData: ItemListPresentationData(presentationData), title: .text("Telewhite VPN"), leftNavigationButton: nil, rightNavigationButton: nil, backNavigationButton: ItemListBackButton(title: presentationData.strings.Common_Back), animateChanges: false)
+        let listState = ItemListNodeState(presentationData: ItemListPresentationData(presentationData), entries: telewhiteVpnEntries(settings: settings), style: .blocks, animateChanges: false)
+        return (controllerState, (listState, arguments as Any))
+    }
+
     let controller = ItemListController(context: context, state: signal)
     presentControllerImpl = { [weak controller] c in
         controller?.present(c, in: .window(.root))

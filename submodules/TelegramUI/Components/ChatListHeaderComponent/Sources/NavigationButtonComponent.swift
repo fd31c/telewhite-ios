@@ -11,18 +11,28 @@ private func generateVpnIcon(color: UIColor) -> UIImage? {
         context.clear(CGRect(origin: CGPoint(), size: size))
 
         context.setStrokeColor(color.cgColor)
-        context.setLineWidth(1.8)
-        context.strokeEllipse(in: CGRect(x: 4.5, y: 4.5, width: 21.0, height: 21.0))
-
-        context.setLineWidth(1.6)
+        context.setLineWidth(2.0)
         context.setLineCap(.round)
-        context.move(to: CGPoint(x: 10.0, y: 19.5))
-        context.addCurve(to: CGPoint(x: 20.0, y: 10.5), control1: CGPoint(x: 12.8, y: 15.8), control2: CGPoint(x: 16.0, y: 13.0))
+        context.setLineJoin(.round)
+
+        let shieldRect = CGRect(x: 6.0, y: 3.8, width: 18.0, height: 22.0)
+        context.beginPath()
+        context.move(to: CGPoint(x: shieldRect.midX, y: shieldRect.minY))
+        context.addCurve(to: CGPoint(x: shieldRect.maxX, y: shieldRect.minY + 4.8), control1: CGPoint(x: shieldRect.midX + 4.2, y: shieldRect.minY + 1.5), control2: CGPoint(x: shieldRect.maxX - 0.8, y: shieldRect.minY + 1.8))
+        context.addLine(to: CGPoint(x: shieldRect.maxX, y: shieldRect.minY + 11.2))
+        context.addCurve(to: CGPoint(x: shieldRect.midX, y: shieldRect.maxY), control1: CGPoint(x: shieldRect.maxX, y: shieldRect.minY + 17.0), control2: CGPoint(x: shieldRect.midX + 3.2, y: shieldRect.maxY - 1.2))
+        context.addCurve(to: CGPoint(x: shieldRect.minX, y: shieldRect.minY + 11.2), control1: CGPoint(x: shieldRect.midX - 3.2, y: shieldRect.maxY - 1.2), control2: CGPoint(x: shieldRect.minX, y: shieldRect.minY + 17.0))
+        context.addLine(to: CGPoint(x: shieldRect.minX, y: shieldRect.minY + 4.8))
+        context.addCurve(to: CGPoint(x: shieldRect.midX, y: shieldRect.minY), control1: CGPoint(x: shieldRect.minX + 0.8, y: shieldRect.minY + 1.8), control2: CGPoint(x: shieldRect.midX - 4.2, y: shieldRect.minY + 1.5))
+        context.closePath()
         context.strokePath()
 
-        context.setFillColor(color.cgColor)
-        context.fillEllipse(in: CGRect(x: 7.5, y: 17.0, width: 5.0, height: 5.0))
-        context.fillEllipse(in: CGRect(x: 17.5, y: 8.0, width: 5.0, height: 5.0))
+        context.setLineWidth(1.9)
+        context.beginPath()
+        context.move(to: CGPoint(x: 10.0, y: 15.4))
+        context.addLine(to: CGPoint(x: 13.6, y: 19.0))
+        context.addLine(to: CGPoint(x: 20.2, y: 11.4))
+        context.strokePath()
     })
 }
 

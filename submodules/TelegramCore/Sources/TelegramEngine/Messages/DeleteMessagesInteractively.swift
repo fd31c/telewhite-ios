@@ -21,6 +21,21 @@ func telewhiteMarkMessagesDeleted(transaction: Transaction, ids: [MessageId], ti
     }
 }
 
+private func telewhiteSplitInteractivelyDeletedMessages(transaction: Transaction, ids: [MessageId]) -> (freshIds: [MessageId], alreadyDeletedIds: [MessageId]) {
+    var freshIds: [MessageId] = []
+    var alreadyDeletedIds: [MessageId] = []
+
+    for id in ids {
+        if let message = transaction.getMessage(id), message.attributes.contains(where: { $0 is TelewhiteDeletedMessageAttribute }) {
+            alreadyDeletedIds.append(id)
+        } else {
+            freshIds.append(id)
+        }
+    }
+
+    return (freshIds, alreadyDeletedIds)
+}
+
 func _internal_deleteMessagesInteractively(account: Account, messageIds: [MessageId], type: InteractiveMessagesDeletionType, deleteAllInGroup: Bool = false) -> Signal<Void, NoError> {
     return account.postbox.transaction { transaction -> Void in
         deleteMessagesInteractively(transaction: transaction, stateManager: account.stateManager, postbox: account.postbox, messageIds: messageIds, type: type, removeIfPossiblyDelivered: true)
@@ -125,11 +140,13 @@ func deleteMessagesInteractively(transaction: Transaction, stateManager: Account
         let preservableIds = localDeleteIds.filter { id in
             return id.namespace == Namespaces.Message.Cloud || id.namespace == Namespaces.Message.QuickReplyCloud
         }
-        let removableIds = localDeleteIds.filter { id in
+        let splitPreservableIds = telewhiteSplitInteractivelyDeletedMessages(transaction: transaction, ids: preservableIds)
+        var removableIds = localDeleteIds.filter { id in
             return !preservableIds.contains(id)
         }
+        removableIds.append(contentsOf: splitPreservableIds.alreadyDeletedIds)
         notifyDeletedIds = removableIds
-        telewhiteMarkMessagesDeleted(transaction: transaction, ids: preservableIds)
+        telewhiteMarkMessagesDeleted(transaction: transaction, ids: splitPreservableIds.freshIds)
         if !removableIds.isEmpty {
             _internal_deleteMessages(transaction: transaction, mediaBox: postbox.mediaBox, ids: removableIds)
         }

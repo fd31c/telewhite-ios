@@ -9,8 +9,37 @@ import Display
 import SettingsUI
 
 private func telewhiteGhostModeIcon(theme: PresentationTheme, isEnabled: Bool) -> UIImage? {
-    let foregroundColor = isEnabled ? theme.list.itemAccentColor : theme.rootController.navigationBar.buttonColor
-    return generateTintedImage(image: UIImage(bundleImageName: "Avatar/DeletedIcon"), color: foregroundColor)
+    let color = theme.rootController.navigationBar.buttonColor
+    let fillColor = isEnabled ? color : color.withAlphaComponent(0.0)
+
+    return generateImage(CGSize(width: 30.0, height: 30.0), contextGenerator: { size, context in
+        context.clear(CGRect(origin: CGPoint(), size: size))
+
+        let ghostRect = CGRect(x: 5.5, y: 4.5, width: 19.0, height: 21.0)
+        context.setLineWidth(2.1)
+        context.setLineJoin(.round)
+        context.setLineCap(.round)
+        context.setStrokeColor(color.cgColor)
+        context.setFillColor(fillColor.cgColor)
+
+        context.beginPath()
+        context.move(to: CGPoint(x: ghostRect.minX, y: ghostRect.maxY - 1.5))
+        context.addLine(to: CGPoint(x: ghostRect.minX, y: ghostRect.minY + 9.5))
+        context.addCurve(to: CGPoint(x: ghostRect.midX, y: ghostRect.minY), control1: CGPoint(x: ghostRect.minX, y: ghostRect.minY + 4.0), control2: CGPoint(x: ghostRect.minX + 4.0, y: ghostRect.minY))
+        context.addCurve(to: CGPoint(x: ghostRect.maxX, y: ghostRect.minY + 9.5), control1: CGPoint(x: ghostRect.maxX - 4.0, y: ghostRect.minY), control2: CGPoint(x: ghostRect.maxX, y: ghostRect.minY + 4.0))
+        context.addLine(to: CGPoint(x: ghostRect.maxX, y: ghostRect.maxY - 1.5))
+        context.addLine(to: CGPoint(x: ghostRect.maxX - 4.3, y: ghostRect.maxY - 4.8))
+        context.addLine(to: CGPoint(x: ghostRect.maxX - 8.6, y: ghostRect.maxY - 1.5))
+        context.addLine(to: CGPoint(x: ghostRect.maxX - 13.0, y: ghostRect.maxY - 4.8))
+        context.addLine(to: CGPoint(x: ghostRect.minX + 4.3, y: ghostRect.maxY - 1.5))
+        context.closePath()
+        context.drawPath(using: .fillStroke)
+
+        let eyeColor = isEnabled ? theme.rootController.navigationBar.opaqueBackgroundColor : color
+        context.setFillColor(eyeColor.cgColor)
+        context.fillEllipse(in: CGRect(x: 11.0, y: 12.1, width: 2.9, height: 4.3))
+        context.fillEllipse(in: CGRect(x: 16.1, y: 12.1, width: 2.9, height: 4.3))
+    })
 }
 
 private func telewhiteTranslateIcon(theme: PresentationTheme, isEnabled: Bool) -> UIImage? {

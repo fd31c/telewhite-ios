@@ -7221,7 +7221,7 @@ private final class ChatListLocationContext {
                         guard let self, let parentController = self.parentController else {
                             return
                         }
-                        (parentController.navigationController as? NavigationController)?.pushViewController(self.context.sharedContext.makeTelewhiteModsController(context: self.context))
+                        (parentController.navigationController as? NavigationController)?.pushViewController(self.context.sharedContext.makeTelewhiteVpnController(context: self.context))
                     }
                 )))
             } else {

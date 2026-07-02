@@ -51,6 +51,11 @@ private struct AccountTasks {
 
 private let backgroundTaskSubmissionDelay: Double = 10.0
 
+private func telewhiteBlocksOnlinePresence() -> Bool {
+    let defaults = UserDefaults.standard
+    return defaults.bool(forKey: "telewhite.mods.ghostMode") || defaults.bool(forKey: "telewhite.mods.hideReadReceipts")
+}
+
 private struct PendingMediaUploadKey: Hashable {
     let accountId: AccountRecordId
     let messageId: EngineMessage.Id
@@ -84,6 +89,7 @@ public final class SharedWakeupManager {
     private var tasksDisposable: Disposable?
     private var pendingMediaUploadsDisposable: Disposable?
     private var pendingStoryUploadsDisposable: Disposable?
+    private var telewhiteSettingsObserver: NSObjectProtocol?
     private var currentTask: (UIBackgroundTaskIdentifier, Double, SwiftSignalKit.Timer)?
     private var currentExternalCompletion: (() -> Void, SwiftSignalKit.Timer)?
     private var currentExternalCompletionValidationTimer: SwiftSignalKit.Timer?
@@ -352,6 +358,10 @@ public final class SharedWakeupManager {
             strongSelf.pendingStoryUploadsByKey = pendingStoryUploadsByKey
             strongSelf.updateBackgroundProcessingTaskStateFromPendingStoryUploads()
         })
+
+        self.telewhiteSettingsObserver = NotificationCenter.default.addObserver(forName: Notification.Name("TelewhiteModsSettingsDidChange"), object: nil, queue: .main, using: { [weak self] _ in
+            self?.checkTasks()
+        })
     }
     
     deinit {
@@ -361,6 +371,9 @@ public final class SharedWakeupManager {
         self.tasksDisposable?.dispose()
         self.pendingMediaUploadsDisposable?.dispose()
         self.pendingStoryUploadsDisposable?.dispose()
+        if let telewhiteSettingsObserver = self.telewhiteSettingsObserver {
+            NotificationCenter.default.removeObserver(telewhiteSettingsObserver)
+        }
         self.managedPausedInBackgroundPlayer?.dispose()
         self.keepIdleDisposable?.dispose()
         self.pendingBackgroundProcessingTaskTimer?.invalidate()
@@ -1147,7 +1160,7 @@ public final class SharedWakeupManager {
                     account.shouldBeServiceTaskMaster.set(.single(.never))
                 }
                 account.shouldExplicitelyKeepWorkerConnections.set(.single(tasks.backgroundAudio || tasks.backgroundLocation || tasks.importantTasks.pendingStoryCount != 0 || tasks.importantTasks.pendingMessageCount != 0))
-                account.shouldKeepOnlinePresence.set(.single(primary && self.inForeground))
+                account.shouldKeepOnlinePresence.set(.single(primary && self.inForeground && !telewhiteBlocksOnlinePresence()))
                 account.shouldKeepBackgroundDownloadConnections.set(.single(tasks.backgroundDownloads))
             }
             
