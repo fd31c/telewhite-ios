@@ -815,7 +815,10 @@ private func telewhiteModsEntries(tab: TelewhiteModsTab, settings: TelewhiteMods
         entries.append(.showMessageIds(strings.text("Show Message IDs", "Показывать ID сообщений"), settings.showMessageIds))
 
         let defaults = UserDefaults.standard
-        let pushStatus = defaults.string(forKey: "telewhite.push.status") ?? strings.text("Not requested yet", "Ещё не запрошено")
+        var pushStatus = defaults.string(forKey: "telewhite.push.status") ?? strings.text("Not requested yet", "Ещё не запрошено")
+        if let pushEnv = defaults.string(forKey: "telewhite.push.env") {
+            pushStatus += " (\(pushEnv))"
+        }
         entries.append(.pushStatus(strings.text("Push status", "Статус пушей"), pushStatus))
         let pushToken = defaults.string(forKey: "telewhite.push.token") ?? ""
         let shortToken: String

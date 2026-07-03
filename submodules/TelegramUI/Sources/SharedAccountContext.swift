@@ -106,6 +106,41 @@ import CreateBotScreen
 import EmojiStatusSelectionComponent
 import EntityKeyboard
 
+private var cachedApnsSandboxEnvironment: Bool?
+
+func apnsSandboxEnvironment() -> Bool {
+    if let cached = cachedApnsSandboxEnvironment {
+        return cached
+    }
+
+    var result: Bool
+    #if targetEnvironment(simulator)
+    result = true
+    #else
+    #if DEBUG
+    result = true
+    #else
+    result = false
+    #endif
+
+    if let profilePath = Bundle.main.path(forResource: "embedded", ofType: "mobileprovision"), let profileData = try? Data(contentsOf: URL(fileURLWithPath: profilePath)) {
+        // The provisioning profile is a CMS/PKCS#7 envelope containing a plist; search for the aps-environment entry in the raw bytes.
+        if let keyRange = profileData.range(of: Data("<key>aps-environment</key>".utf8)) {
+            let searchUpperBound = min(profileData.count, keyRange.upperBound + 128)
+            let valueSlice = profileData.subdata(in: keyRange.upperBound ..< searchUpperBound)
+            if valueSlice.range(of: Data("<string>production</string>".utf8)) != nil {
+                result = false
+            } else if valueSlice.range(of: Data("<string>development</string>".utf8)) != nil {
+                result = true
+            }
+        }
+    }
+    #endif
+
+    cachedApnsSandboxEnvironment = result
+    return result
+}
+
 private final class AccountUserInterfaceInUseContext {
     let subscribers = Bag<(Bool) -> Void>()
     let tokens = Bag<Void>()
@@ -326,12 +361,7 @@ public final class SharedAccountContextImpl: SharedAccountContext {
             guard let data else {
                 return nil
             }
-            let sandbox: Bool
-            #if DEBUG
-            sandbox = true
-            #else
-            sandbox = false
-            #endif
+            let sandbox = apnsSandboxEnvironment()
             return AuthorizationCodePushNotificationConfiguration(
                 token: hexString(data),
                 isSandbox: sandbox
@@ -1617,12 +1647,8 @@ public final class SharedAccountContextImpl: SharedAccountContext {
     }
 
     public func updateNotificationTokensRegistration() {
-        let sandbox: Bool
-        #if DEBUG
-        sandbox = true
-        #else
-        sandbox = false
-        #endif
+        let sandbox = apnsSandboxEnvironment()
+        UserDefaults.standard.set(sandbox ? "sandbox" : "production", forKey: "telewhite.push.env")
 
         let settings = self.accountManager.sharedData(keys: [ApplicationSpecificSharedDataKeys.inAppNotificationSettings])
         |> map { sharedData -> (allAccounts: Bool, includeMuted: Bool) in
