@@ -2,6 +2,7 @@ import Foundation
 import UIKit
 import SwiftSignalKit
 import TelegramCore
+import TelegramUIPreferences
 
 // Telewhite mod: AMOLED mode.
 // Transforms a dark presentation theme so that all large background surfaces
