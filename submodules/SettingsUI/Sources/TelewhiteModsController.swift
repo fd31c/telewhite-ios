@@ -429,6 +429,16 @@ private enum TelewhiteModsEntry: ItemListNodeEntry, Equatable {
         return lhs.stableId < rhs.stableId
     }
     
+    private func switchItem(presentationData: ItemListPresentationData, arguments: TelewhiteModsControllerArguments, text: String, value: Bool, apply: @escaping (inout TelewhiteModsSettings, Bool) -> Void) -> ListViewItem {
+        return ItemListSwitchItem(presentationData: presentationData, systemStyle: .glass, title: text, text: telewhiteEntryDescription(self, presentationData: presentationData), value: value, maximumNumberOfLines: 3, sectionId: self.section, style: .blocks, updated: { newValue in
+            arguments.updateSettings { current in
+                var updated = current
+                apply(&updated, newValue)
+                return updated
+            }
+        })
+    }
+
     func item(presentationData: ItemListPresentationData, arguments: Any) -> ListViewItem {
         let arguments = arguments as! TelewhiteModsControllerArguments
         switch self {
@@ -439,13 +449,9 @@ private enum TelewhiteModsEntry: ItemListNodeEntry, Equatable {
         case let .messengerHeader(text), let .vpnHeader(text), let .privacyHeader(text), let .stealthHeader(text), let .channelsHeader(text), let .mediaHeader(text), let .callsHeader(text), let .appearanceHeader(text), let .developerHeader(text):
             return ItemListSectionHeaderItem(presentationData: presentationData, text: text, sectionId: self.section)
         case let .preserveDeletedMessages(text, value):
-            return ItemListSwitchItem(presentationData: presentationData, systemStyle: .glass, title: text, text: telewhiteEntryDescription(self, presentationData: presentationData), value: value, maximumNumberOfLines: 3, sectionId: self.section, style: .blocks, updated: { value in
-                arguments.updateSettings { current in
-                    var updated = current
-                    updated.preserveDeletedMessages = value
-                    return updated
-                }
-            })
+            return self.switchItem(presentationData: presentationData, arguments: arguments, text: text, value: value) { settings, value in
+                settings.preserveDeletedMessages = value
+            }
         case let .translateMessages(text, value):
             return ItemListSwitchItem(presentationData: presentationData, systemStyle: .glass, title: text, text: telewhiteEntryDescription(self, presentationData: presentationData), value: value, maximumNumberOfLines: 3, sectionId: self.section, style: .blocks, updated: { value in
                 arguments.updateTranslationSettings { current in
@@ -484,47 +490,27 @@ private enum TelewhiteModsEntry: ItemListNodeEntry, Equatable {
         case let .translationTargetLanguage(text, value):
             return ItemListDisclosureItem(presentationData: presentationData, systemStyle: .glass, title: text, label: value.uppercased(), labelStyle: .text, sectionId: self.section, style: .blocks, disclosureStyle: .none, action: nil)
         case let .oneTimeMediaUnlimited(text, value):
-            return ItemListSwitchItem(presentationData: presentationData, systemStyle: .glass, title: text, text: telewhiteEntryDescription(self, presentationData: presentationData), value: value, maximumNumberOfLines: 3, sectionId: self.section, style: .blocks, updated: { value in
-                arguments.updateSettings { current in
-                    var updated = current
-                    updated.oneTimeMediaUnlimited = value
-                    return updated
-                }
-            })
+            return self.switchItem(presentationData: presentationData, arguments: arguments, text: text, value: value) { settings, value in
+                settings.oneTimeMediaUnlimited = value
+            }
         case let .downloadOneTimeMedia(text, value):
-            return ItemListSwitchItem(presentationData: presentationData, systemStyle: .glass, title: text, text: telewhiteEntryDescription(self, presentationData: presentationData), value: value, maximumNumberOfLines: 3, sectionId: self.section, style: .blocks, updated: { value in
-                arguments.updateSettings { current in
-                    var updated = current
-                    updated.downloadOneTimeMedia = value
-                    return updated
-                }
-            })
+            return self.switchItem(presentationData: presentationData, arguments: arguments, text: text, value: value) { settings, value in
+                settings.downloadOneTimeMedia = value
+            }
         case let .uploadVoice(text, value):
-            return ItemListSwitchItem(presentationData: presentationData, systemStyle: .glass, title: text, text: telewhiteEntryDescription(self, presentationData: presentationData), value: value, maximumNumberOfLines: 3, sectionId: self.section, style: .blocks, updated: { value in
-                arguments.updateSettings { current in
-                    var updated = current
-                    updated.uploadVoice = value
-                    return updated
-                }
-            })
+            return self.switchItem(presentationData: presentationData, arguments: arguments, text: text, value: value) { settings, value in
+                settings.uploadVoice = value
+            }
         case let .voiceChangeSettings(text):
             return ItemListDisclosureItem(presentationData: presentationData, systemStyle: .glass, title: text, label: "", labelStyle: .text, sectionId: self.section, style: .blocks, disclosureStyle: .arrow, action: nil)
         case let .uploadVideoMessage(text, value):
-            return ItemListSwitchItem(presentationData: presentationData, systemStyle: .glass, title: text, text: telewhiteEntryDescription(self, presentationData: presentationData), value: value, maximumNumberOfLines: 3, sectionId: self.section, style: .blocks, updated: { value in
-                arguments.updateSettings { current in
-                    var updated = current
-                    updated.uploadVideoMessage = value
-                    return updated
-                }
-            })
+            return self.switchItem(presentationData: presentationData, arguments: arguments, text: text, value: value) { settings, value in
+                settings.uploadVideoMessage = value
+            }
         case let .vpnEnabled(text, value):
-            return ItemListSwitchItem(presentationData: presentationData, systemStyle: .glass, title: text, text: telewhiteEntryDescription(self, presentationData: presentationData), value: value, maximumNumberOfLines: 3, sectionId: self.section, style: .blocks, updated: { value in
-                arguments.updateSettings { current in
-                    var updated = current
-                    updated.vpnEnabled = value
-                    return updated
-                }
-            })
+            return self.switchItem(presentationData: presentationData, arguments: arguments, text: text, value: value) { settings, value in
+                settings.vpnEnabled = value
+            }
         case let .vpnSubscription(placeholder, text):
             return ItemListSingleLineInputItem(presentationData: presentationData, systemStyle: .glass, title: NSAttributedString(), text: text, placeholder: placeholder, type: .regular(capitalization: false, autocorrection: false), returnKeyType: .done, clearType: .onFocus, maxLength: 4096, sectionId: self.section, textUpdated: { text in
                 arguments.updateSettings { current in
@@ -542,174 +528,90 @@ private enum TelewhiteModsEntry: ItemListNodeEntry, Equatable {
         case let .messengerInfo(text), let .vpnInfo(text), let .privacyInfo(text), let .stealthInfo(text), let .channelsInfo(text), let .mediaInfo(text), let .callsInfo(text), let .developerInfo(text):
             return ItemListTextItem(presentationData: presentationData, text: .plain(text), sectionId: self.section)
         case let .hideOnlineStatus(text, value):
-            return ItemListSwitchItem(presentationData: presentationData, systemStyle: .glass, title: text, text: telewhiteEntryDescription(self, presentationData: presentationData), value: value, maximumNumberOfLines: 3, sectionId: self.section, style: .blocks, updated: { value in
-                arguments.updateSettings { current in
-                    var updated = current
-                    updated.hideOnlineStatus = value
-                    return updated
-                }
-            })
+            return self.switchItem(presentationData: presentationData, arguments: arguments, text: text, value: value) { settings, value in
+                settings.hideOnlineStatus = value
+            }
         case let .ghostMode(text, value):
-            return ItemListSwitchItem(presentationData: presentationData, systemStyle: .glass, title: text, text: telewhiteEntryDescription(self, presentationData: presentationData), value: value, maximumNumberOfLines: 3, sectionId: self.section, style: .blocks, updated: { value in
-                arguments.updateSettings { current in
-                    var updated = current
-                    updated.ghostMode = value
-                    return updated
-                }
-            })
+            return self.switchItem(presentationData: presentationData, arguments: arguments, text: text, value: value) { settings, value in
+                settings.ghostMode = value
+            }
         case let .ghostChatButtonEnabled(text, value):
-            return ItemListSwitchItem(presentationData: presentationData, systemStyle: .glass, title: text, text: telewhiteEntryDescription(self, presentationData: presentationData), value: value, maximumNumberOfLines: 3, sectionId: self.section, style: .blocks, updated: { value in
-                arguments.updateSettings { current in
-                    var updated = current
-                    updated.ghostChatButtonEnabled = value
-                    return updated
-                }
-            })
+            return self.switchItem(presentationData: presentationData, arguments: arguments, text: text, value: value) { settings, value in
+                settings.ghostChatButtonEnabled = value
+            }
         case let .hideTypingStatus(text, value):
-            return ItemListSwitchItem(presentationData: presentationData, systemStyle: .glass, title: text, text: telewhiteEntryDescription(self, presentationData: presentationData), value: value, maximumNumberOfLines: 3, sectionId: self.section, style: .blocks, updated: { value in
-                arguments.updateSettings { current in
-                    var updated = current
-                    updated.hideTypingStatus = value
-                    return updated
-                }
-            })
+            return self.switchItem(presentationData: presentationData, arguments: arguments, text: text, value: value) { settings, value in
+                settings.hideTypingStatus = value
+            }
         case let .hideReadReceipts(text, value):
-            return ItemListSwitchItem(presentationData: presentationData, systemStyle: .glass, title: text, text: telewhiteEntryDescription(self, presentationData: presentationData), value: value, maximumNumberOfLines: 3, sectionId: self.section, style: .blocks, updated: { value in
-                arguments.updateSettings { current in
-                    var updated = current
-                    updated.hideReadReceipts = value
-                    return updated
-                }
-            })
+            return self.switchItem(presentationData: presentationData, arguments: arguments, text: text, value: value) { settings, value in
+                settings.hideReadReceipts = value
+            }
         case let .screenshotProtectionBypass(text, value):
-            return ItemListSwitchItem(presentationData: presentationData, systemStyle: .glass, title: text, text: telewhiteEntryDescription(self, presentationData: presentationData), value: value, maximumNumberOfLines: 3, sectionId: self.section, style: .blocks, updated: { value in
-                arguments.updateSettings { current in
-                    var updated = current
-                    updated.screenshotProtectionBypass = value
-                    return updated
-                }
-            })
+            return self.switchItem(presentationData: presentationData, arguments: arguments, text: text, value: value) { settings, value in
+                settings.screenshotProtectionBypass = value
+            }
         case let .contentRestrictionBypass(text, value):
-            return ItemListSwitchItem(presentationData: presentationData, systemStyle: .glass, title: text, text: telewhiteEntryDescription(self, presentationData: presentationData), value: value, maximumNumberOfLines: 3, sectionId: self.section, style: .blocks, updated: { value in
-                arguments.updateSettings { current in
-                    var updated = current
-                    updated.contentRestrictionBypass = value
-                    return updated
-                }
-            })
+            return self.switchItem(presentationData: presentationData, arguments: arguments, text: text, value: value) { settings, value in
+                settings.contentRestrictionBypass = value
+            }
         case let .hidePhoneInSettings(text, value):
-            return ItemListSwitchItem(presentationData: presentationData, systemStyle: .glass, title: text, text: telewhiteEntryDescription(self, presentationData: presentationData), value: value, maximumNumberOfLines: 3, sectionId: self.section, style: .blocks, updated: { value in
-                arguments.updateSettings { current in
-                    var updated = current
-                    updated.hidePhoneInSettings = value
-                    return updated
-                }
-            })
+            return self.switchItem(presentationData: presentationData, arguments: arguments, text: text, value: value) { settings, value in
+                settings.hidePhoneInSettings = value
+            }
         case let .showProfileIds(text, value):
-            return ItemListSwitchItem(presentationData: presentationData, systemStyle: .glass, title: text, text: telewhiteEntryDescription(self, presentationData: presentationData), value: value, maximumNumberOfLines: 3, sectionId: self.section, style: .blocks, updated: { value in
-                arguments.updateSettings { current in
-                    var updated = current
-                    updated.showUserIds = value
-                    updated.showChatIds = value
-                    return updated
-                }
-            })
+            return self.switchItem(presentationData: presentationData, arguments: arguments, text: text, value: value) { settings, value in
+                settings.showUserIds = value
+                settings.showChatIds = value
+            }
         case let .ghostMessages(text, value):
-            return ItemListSwitchItem(presentationData: presentationData, systemStyle: .glass, title: text, text: telewhiteEntryDescription(self, presentationData: presentationData), value: value, maximumNumberOfLines: 3, sectionId: self.section, style: .blocks, updated: { value in
-                arguments.updateSettings { current in
-                    var updated = current
-                    updated.hideReadReceipts = value
-                    return updated
-                }
-            })
+            return self.switchItem(presentationData: presentationData, arguments: arguments, text: text, value: value) { settings, value in
+                settings.hideReadReceipts = value
+            }
         case let .ghostStories(text, value):
-            return ItemListSwitchItem(presentationData: presentationData, systemStyle: .glass, title: text, text: telewhiteEntryDescription(self, presentationData: presentationData), value: value, maximumNumberOfLines: 3, sectionId: self.section, style: .blocks, updated: { value in
-                arguments.updateSettings { current in
-                    var updated = current
-                    updated.ghostStories = value
-                    return updated
-                }
-            })
+            return self.switchItem(presentationData: presentationData, arguments: arguments, text: text, value: value) { settings, value in
+                settings.ghostStories = value
+            }
         case let .channelContentRestrictionBypass(text, value):
-            return ItemListSwitchItem(presentationData: presentationData, systemStyle: .glass, title: text, text: telewhiteEntryDescription(self, presentationData: presentationData), value: value, maximumNumberOfLines: 3, sectionId: self.section, style: .blocks, updated: { value in
-                arguments.updateSettings { current in
-                    var updated = current
-                    updated.contentRestrictionBypass = value
-                    return updated
-                }
-            })
+            return self.switchItem(presentationData: presentationData, arguments: arguments, text: text, value: value) { settings, value in
+                settings.contentRestrictionBypass = value
+            }
         case let .downloadStories(text, value):
-            return ItemListSwitchItem(presentationData: presentationData, systemStyle: .glass, title: text, text: telewhiteEntryDescription(self, presentationData: presentationData), value: value, maximumNumberOfLines: 3, sectionId: self.section, style: .blocks, updated: { value in
-                arguments.updateSettings { current in
-                    var updated = current
-                    updated.downloadStories = value
-                    return updated
-                }
-            })
+            return self.switchItem(presentationData: presentationData, arguments: arguments, text: text, value: value) { settings, value in
+                settings.downloadStories = value
+            }
         case let .autoRecordCalls(text, value):
-            return ItemListSwitchItem(presentationData: presentationData, systemStyle: .glass, title: text, text: telewhiteEntryDescription(self, presentationData: presentationData), value: value, maximumNumberOfLines: 3, sectionId: self.section, style: .blocks, updated: { value in
-                arguments.updateSettings { current in
-                    var updated = current
-                    updated.autoRecordCalls = value
-                    return updated
-                }
-            })
+            return self.switchItem(presentationData: presentationData, arguments: arguments, text: text, value: value) { settings, value in
+                settings.autoRecordCalls = value
+            }
         case let .callRecordButton(text, value):
-            return ItemListSwitchItem(presentationData: presentationData, systemStyle: .glass, title: text, text: telewhiteEntryDescription(self, presentationData: presentationData), value: value, maximumNumberOfLines: 3, sectionId: self.section, style: .blocks, updated: { value in
-                arguments.updateSettings { current in
-                    var updated = current
-                    updated.callRecordButton = value
-                    return updated
-                }
-            })
+            return self.switchItem(presentationData: presentationData, arguments: arguments, text: text, value: value) { settings, value in
+                settings.callRecordButton = value
+            }
         case let .hideStories(text, value):
-            return ItemListSwitchItem(presentationData: presentationData, systemStyle: .glass, title: text, text: telewhiteEntryDescription(self, presentationData: presentationData), value: value, maximumNumberOfLines: 3, sectionId: self.section, style: .blocks, updated: { value in
-                arguments.updateSettings { current in
-                    var updated = current
-                    updated.hideStories = value
-                    return updated
-                }
-            })
+            return self.switchItem(presentationData: presentationData, arguments: arguments, text: text, value: value) { settings, value in
+                settings.hideStories = value
+            }
         case let .compactChatList(text, value):
-            return ItemListSwitchItem(presentationData: presentationData, systemStyle: .glass, title: text, text: telewhiteEntryDescription(self, presentationData: presentationData), value: value, maximumNumberOfLines: 3, sectionId: self.section, style: .blocks, updated: { value in
-                arguments.updateSettings { current in
-                    var updated = current
-                    updated.compactChatList = value
-                    return updated
-                }
-            })
+            return self.switchItem(presentationData: presentationData, arguments: arguments, text: text, value: value) { settings, value in
+                settings.compactChatList = value
+            }
         case let .amoledMode(text, value):
-            return ItemListSwitchItem(presentationData: presentationData, systemStyle: .glass, title: text, text: telewhiteEntryDescription(self, presentationData: presentationData), value: value, maximumNumberOfLines: 3, sectionId: self.section, style: .blocks, updated: { value in
-                arguments.updateSettings { current in
-                    var updated = current
-                    updated.amoledMode = value
-                    return updated
-                }
-            })
+            return self.switchItem(presentationData: presentationData, arguments: arguments, text: text, value: value) { settings, value in
+                settings.amoledMode = value
+            }
         case let .showUserIds(text, value):
-            return ItemListSwitchItem(presentationData: presentationData, systemStyle: .glass, title: text, text: telewhiteEntryDescription(self, presentationData: presentationData), value: value, maximumNumberOfLines: 3, sectionId: self.section, style: .blocks, updated: { value in
-                arguments.updateSettings { current in
-                    var updated = current
-                    updated.showUserIds = value
-                    return updated
-                }
-            })
+            return self.switchItem(presentationData: presentationData, arguments: arguments, text: text, value: value) { settings, value in
+                settings.showUserIds = value
+            }
         case let .showChatIds(text, value):
-            return ItemListSwitchItem(presentationData: presentationData, systemStyle: .glass, title: text, text: telewhiteEntryDescription(self, presentationData: presentationData), value: value, maximumNumberOfLines: 3, sectionId: self.section, style: .blocks, updated: { value in
-                arguments.updateSettings { current in
-                    var updated = current
-                    updated.showChatIds = value
-                    return updated
-                }
-            })
+            return self.switchItem(presentationData: presentationData, arguments: arguments, text: text, value: value) { settings, value in
+                settings.showChatIds = value
+            }
         case let .showMessageIds(text, value):
-            return ItemListSwitchItem(presentationData: presentationData, systemStyle: .glass, title: text, text: telewhiteEntryDescription(self, presentationData: presentationData), value: value, maximumNumberOfLines: 3, sectionId: self.section, style: .blocks, updated: { value in
-                arguments.updateSettings { current in
-                    var updated = current
-                    updated.showMessageIds = value
-                    return updated
-                }
-            })
+            return self.switchItem(presentationData: presentationData, arguments: arguments, text: text, value: value) { settings, value in
+                settings.showMessageIds = value
+            }
         }
     }
 }
