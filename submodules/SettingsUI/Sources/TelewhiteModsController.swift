@@ -108,9 +108,6 @@ public struct TelewhiteModsSettings: Equatable {
     }
 
     public func isGhostEnabled(for peerId: EnginePeer.Id?) -> Bool {
-        if self.ghostMode {
-            return true
-        }
         guard let peerId else {
             return false
         }
@@ -871,7 +868,6 @@ private func telewhiteModsEntries(tab: TelewhiteModsTab, settings: TelewhiteMods
         entries.append(.stealthHeader(telewhiteTabTitle(.stealth, strings: strings)))
         entries.append(.ghostMessages(strings.text("Ghost Mode (Messages)", "Режим невидимки (сообщения)"), settings.hideReadReceipts))
         entries.append(.ghostStories(strings.text("Ghost Mode (Stories)", "Режим невидимки (истории)"), settings.ghostStories))
-        entries.append(.ghostMode(strings.text("Global Ghost Mode", "Глобальный режим невидимки"), settings.ghostMode))
         entries.append(.hideTypingStatus(strings.text("Hide Typing Status", "Скрыть набор текста"), settings.hideTypingStatus))
         entries.append(.stealthInfo(strings.text("The chat ghost button toggles stealth for one selected private chat.", "Кнопка призрака в чате включает невидимку только для выбранного личного чата.")))
 
@@ -939,9 +935,8 @@ public func telewhiteModsController(context: AccountContext) -> ViewController {
             updated.save()
             return updated
         }
-        if updated.hideOnlineStatus || updated.ghostMode || !updated.ghostPeerIds.isEmpty {
-            context.account.shouldKeepOnlinePresence.set(.single(false))
-        }
+        let shouldHidePresence = updated.hideOnlineStatus || !updated.ghostPeerIds.isEmpty
+        context.account.shouldKeepOnlinePresence.set(.single(!shouldHidePresence))
         statePromise.set(updated)
     }
 
