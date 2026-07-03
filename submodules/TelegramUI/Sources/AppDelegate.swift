@@ -1607,6 +1607,11 @@ private func extractAccountManagerState(records: AccountRecordsView<TelegramAcco
         }
         
         if #available(iOS 12.0, *) {
+            // Telewhite: mark that registration was requested. If the status never
+            // advances past this, Apple never returned a token nor an error.
+            if UserDefaults.standard.string(forKey: "telewhite.push.status") == nil {
+                UserDefaults.standard.set("Requested (waiting for Apple)", forKey: "telewhite.push.status")
+            }
             UIApplication.shared.registerForRemoteNotifications()
         }
         
@@ -2048,11 +2053,22 @@ private func extractAccountManagerState(records: AccountRecordsView<TelegramAcco
     
     func application(_ application: UIApplication, didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {
         Logger.shared.log("App \(self.episodeId)", "register for notifications: didRegisterForRemoteNotificationsWithDeviceToken (deviceToken: \(hexString(deviceToken)))")
+        // Telewhite: persist push diagnostics so they can be inspected from the
+        // Telewhite Mods > Developer screen on a sideloaded build without Xcode.
+        let defaults = UserDefaults.standard
+        defaults.set("Registered", forKey: "telewhite.push.status")
+        defaults.set(hexString(deviceToken), forKey: "telewhite.push.token")
+        defaults.set(Date().timeIntervalSince1970 as NSNumber, forKey: "telewhite.push.date")
         self.notificationTokenPromise.set(.single(deviceToken))
     }
     
     func application(_ application: UIApplication, didFailToRegisterForRemoteNotificationsWithError error: Error) {
         Logger.shared.log("App \(self.episodeId)", "register for notifications: didFailToRegisterForRemoteNotificationsWithError (error: \(error))")
+        // Telewhite: persist the failure so it is visible in the Developer screen.
+        let defaults = UserDefaults.standard
+        defaults.set("Failed: \(error.localizedDescription)", forKey: "telewhite.push.status")
+        defaults.removeObject(forKey: "telewhite.push.token")
+        defaults.set(Date().timeIntervalSince1970 as NSNumber, forKey: "telewhite.push.date")
     }
     
     func application(_ application: UIApplication, didReceiveRemoteNotification userInfo: [AnyHashable : Any], fetchCompletionHandler completionHandler: @escaping (UIBackgroundFetchResult) -> Void) {

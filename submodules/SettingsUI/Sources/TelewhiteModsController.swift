@@ -287,6 +287,8 @@ private enum TelewhiteModsEntry: ItemListNodeEntry, Equatable {
     case showUserIds(String, Bool)
     case showChatIds(String, Bool)
     case showMessageIds(String, Bool)
+    case pushStatus(String, String)
+    case pushToken(String, String)
     case developerInfo(String)
     
     var section: ItemListSectionId {
@@ -309,7 +311,7 @@ private enum TelewhiteModsEntry: ItemListNodeEntry, Equatable {
             return TelewhiteModsSection.calls.rawValue
         case .appearanceHeader, .compactChatList, .amoledMode:
             return TelewhiteModsSection.appearance.rawValue
-        case .developerHeader, .showUserIds, .showChatIds, .showMessageIds, .developerInfo:
+        case .developerHeader, .showUserIds, .showChatIds, .showMessageIds, .pushStatus, .pushToken, .developerInfo:
             return TelewhiteModsSection.developer.rawValue
         }
     }
@@ -420,8 +422,12 @@ private enum TelewhiteModsEntry: ItemListNodeEntry, Equatable {
             return 802
         case .showMessageIds:
             return 803
-        case .developerInfo:
+        case .pushStatus:
             return 804
+        case .pushToken:
+            return 805
+        case .developerInfo:
+            return 806
         }
     }
     
@@ -612,6 +618,13 @@ private enum TelewhiteModsEntry: ItemListNodeEntry, Equatable {
             return self.switchItem(presentationData: presentationData, arguments: arguments, text: text, value: value) { settings, value in
                 settings.showMessageIds = value
             }
+        case let .pushStatus(text, value):
+            return ItemListDisclosureItem(presentationData: presentationData, systemStyle: .glass, title: text, label: value, labelStyle: .text, sectionId: self.section, style: .blocks, disclosureStyle: .none, action: nil)
+        case let .pushToken(text, value):
+            let fullToken = UserDefaults.standard.string(forKey: "telewhite.push.token") ?? ""
+            return ItemListDisclosureItem(presentationData: presentationData, systemStyle: .glass, title: text, label: value, labelStyle: .text, sectionId: self.section, style: .blocks, disclosureStyle: fullToken.isEmpty ? .none : .arrow, action: fullToken.isEmpty ? nil : {
+                UIPasteboard.general.string = fullToken
+            })
         }
     }
 }
@@ -702,7 +715,7 @@ private func telewhiteEntryDescription(_ entry: TelewhiteModsEntry, presentation
     case .uploadVoice:
         return text("Keeps the upload preference for sending local audio/video as voice messages.", "Сохраняет настройку отправки локальных аудио/видео как голосовых.")
     case .uploadVideoMessage:
-        return text("Keeps the upload preference for sending gallery video as a round video message.", "Сохраняет настройку отправки видео из галереи как круглого видеосообщения.")
+        return text("Keeps the upload preference for sending gallery video as a round video message.", "Сохраняет настро��ку отправки видео из галереи как круглого видеосообщения.")
     case .vpnEnabled:
         return text("Stores whether the Telegram-only VPN profile should be active.", "Сохраняет, должен ли Telegram-only VPN быть активен.")
     case .hideOnlineStatus:
@@ -800,7 +813,21 @@ private func telewhiteModsEntries(tab: TelewhiteModsTab, settings: TelewhiteMods
         entries.append(.showUserIds(strings.text("Show User IDs", "Показывать ID пользователей"), settings.showUserIds))
         entries.append(.showChatIds(strings.text("Show Chat IDs", "Показывать ID чатов"), settings.showChatIds))
         entries.append(.showMessageIds(strings.text("Show Message IDs", "Показывать ID сообщений"), settings.showMessageIds))
-        entries.append(.developerInfo(strings.text("IDs are shown in profile/context surfaces when enabled.", "ID отображаются в профилях и контекстных меню.")))
+
+        let defaults = UserDefaults.standard
+        let pushStatus = defaults.string(forKey: "telewhite.push.status") ?? strings.text("Not requested yet", "Ещё не запрошено")
+        entries.append(.pushStatus(strings.text("Push status", "Статус пушей"), pushStatus))
+        let pushToken = defaults.string(forKey: "telewhite.push.token") ?? ""
+        let shortToken: String
+        if pushToken.isEmpty {
+            shortToken = strings.text("None", "Нет")
+        } else if pushToken.count > 16 {
+            shortToken = "\(pushToken.prefix(8))…\(pushToken.suffix(8))"
+        } else {
+            shortToken = pushToken
+        }
+        entries.append(.pushToken(strings.text("APNs token", "APNs токен"), pushToken.isEmpty ? shortToken : "\(shortToken) — \(strings.text("tap to copy", "нажмите чтобы скопировать"))"))
+        entries.append(.developerInfo(strings.text("If push status is not \"Registered\", Apple did not issue a token for this signing profile — messages will not push. IDs are shown in profile/context surfaces when enabled.", "Если статус пушей не \"Registered\", Apple не выдал токен для этого профиля подписи — пуши работать не будут. ID отображаются в профилях и контекстных меню.")))
     }
 
     return entries

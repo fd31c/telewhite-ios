@@ -9,6 +9,13 @@
 
 ## 2026-07-03
 
+- **[Добавлено]** Диагностика push-уведомлений. В `Telewhite Mods → Developer` добавлены строки
+  «Push status» и «APNs token»: приложение сохраняет результат регистрации в APNs
+  (`didRegisterForRemoteNotificationsWithDeviceToken` / `didFailToRegister...`) в `UserDefaults`
+  и показывает его прямо в настройках. Токен можно скопировать по тапу. Это позволяет на сайдлоад-сборке
+  без Xcode понять, выдал ли Apple токен для текущего профиля подписи — если статус не «Registered»,
+  пуши работать не будут (причина в подписи/профиле, а не в коде). Файлы: `AppDelegate.swift`,
+  `TelewhiteModsController.swift`.
 - **[Добавлено]** AMOLED-режим теперь реально работает. Раньше тумблер `amoledMode` сохранялся, но нигде не читался.
   Добавлен `submodules/TelegramPresentationData/Sources/TelewhiteAmoledTheme.swift`, который превращает
   тёмную тему в true-black: фон чатов, списка чатов, панелей и меню становится чистым чёрным (`0x000000`),
