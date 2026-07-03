@@ -2,7 +2,7 @@ name: iOS IPA
 
 on:
   push:
-    branches: [master]
+    branches: [master, push-notification-debug]
   workflow_dispatch:
     inputs:
       app_name:
@@ -26,6 +26,15 @@ jobs:
         with:
           submodules: recursive
           fetch-depth: 0
+
+      - name: Restore Bazel disk cache
+        uses: actions/cache@v4
+        with:
+          path: /Users/Shared/telegram-bazel-cache
+          key: bazel-disk-${{ hashFiles('versions.json') }}-${{ github.sha }}
+          restore-keys: |
+            bazel-disk-${{ hashFiles('versions.json') }}-
+            bazel-disk-
 
       - name: Select Telegram Xcode version
         run: |
@@ -104,9 +113,12 @@ jobs:
           BUILD_NUMBER="${GITHUB_RUN_NUMBER}"
           BAZEL_USER_ROOT="/private/var/tmp/_bazel_telegram_ios"
 
+          mkdir -p /Users/Shared/telegram-bazel-cache
+
           python3 build-system/Make/ImportCertificates.py --path build-input/generated-codesigning/certs
           python3 -u build-system/Make/Make.py \
             --bazelUserRoot="$BAZEL_USER_ROOT" \
+            --cacheDir=/Users/Shared/telegram-bazel-cache \
             build \
             --configurationPath=build-input/fork-configuration.json \
             --codesigningInformationPath=build-input/generated-codesigning \
