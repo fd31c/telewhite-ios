@@ -152,8 +152,7 @@ func settingsItems(data: PeerInfoScreenData?, context: AccountContext, presentat
         items[.myProfile]!.append(PeerInfoScreenDisclosureItem(id: 0, text: presentationData.strings.Settings_MyProfile, icon: PresentationResourcesSettings.myProfile, action: {
             interaction.openSettings(.profile)
         }))
-        let telewhiteModsIcon = generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/Telegram"), color: presentationData.theme.list.itemAccentColor)
-        items[.telewhite]!.append(PeerInfoScreenDisclosureItem(id: 0, label: .titleBadge("MOD", presentationData.theme.list.itemAccentColor), text: "Telewhite Mods", icon: telewhiteModsIcon, action: {
+        items[.telewhite]!.append(PeerInfoScreenDisclosureItem(id: 0, label: .titleBadge("MOD", presentationData.theme.list.itemAccentColor), text: "Telewhite Mods", icon: PresentationResourcesSettings.appearance, action: {
             interaction.openSettings(.telewhiteMods)
         }))
         
