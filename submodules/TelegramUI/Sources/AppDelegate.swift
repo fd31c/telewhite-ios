@@ -50,6 +50,52 @@ import ProxyServerPreviewScreen
 #if canImport(AppCenter)
 import AppCenter
 import AppCenterCrashes
+
+// Telewhite: resolve the app group dynamically. Re-signing services replace the
+// app group entitlement with certificate-specific identifiers (e.g. group.<id>.1),
+// so the hardcoded "group.<bundle id>" container may be unavailable. Fall back to
+// the first (alphabetically) accessible app group from the embedded provisioning
+// profile, so the app and all extensions deterministically pick the same container.
+private var telewhiteResolvedAppGroupNameValue: String?
+func telewhiteResolvedAppGroupName(baseAppBundleId: String) -> String {
+    if let cached = telewhiteResolvedAppGroupNameValue {
+        return cached
+    }
+    let defaultName = "group.\(baseAppBundleId)"
+    var result = defaultName
+    if FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: defaultName) == nil {
+        var profileGroups: [String] = []
+        if let profilePath = Bundle.main.path(forResource: "embedded", ofType: "mobileprovision"), let profileData = try? Data(contentsOf: URL(fileURLWithPath: profilePath)) {
+            if let keyRange = profileData.range(of: Data("<key>com.apple.security.application-groups</key>".utf8)) {
+                let searchUpperBound = min(profileData.count, keyRange.upperBound + 2048)
+                let valueSlice = profileData.subdata(in: keyRange.upperBound ..< searchUpperBound)
+                if let arrayEndRange = valueSlice.range(of: Data("</array>".utf8)) {
+                    let arraySlice = valueSlice.subdata(in: 0 ..< arrayEndRange.lowerBound)
+                    if let arrayText = String(data: arraySlice, encoding: .utf8) {
+                        var remainder = arrayText[...]
+                        while let startRange = remainder.range(of: "<string>"), let endRange = remainder.range(of: "</string>") {
+                            if startRange.upperBound <= endRange.lowerBound {
+                                profileGroups.append(String(remainder[startRange.upperBound ..< endRange.lowerBound]))
+                            }
+                            remainder = remainder[endRange.upperBound...]
+                        }
+                    }
+                }
+            }
+        }
+        for group in profileGroups.sorted() {
+            if group.contains("*") {
+                continue
+            }
+            if FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: group) != nil {
+                result = group
+                break
+            }
+        }
+    }
+    telewhiteResolvedAppGroupNameValue = result
+    return result
+}
 #endif
 
 private let handleVoipNotifications = false
@@ -287,7 +333,7 @@ private func extractAccountManagerState(records: AccountRecordsView<TelegramAcco
         }
         
         let baseAppBundleId = Bundle.main.bundleIdentifier!
-        let appGroupName = "group.\(baseAppBundleId)"
+        let appGroupName = telewhiteResolvedAppGroupName(baseAppBundleId: baseAppBundleId)
 
         let configuration = URLSessionConfiguration.background(withIdentifier: identifier)
         configuration.sharedContainerIdentifier = appGroupName
@@ -528,7 +574,7 @@ private func extractAccountManagerState(records: AccountRecordsView<TelegramAcco
         let appVersion = (Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String) ?? "unknown"
         
         let baseAppBundleId = Bundle.main.bundleIdentifier!
-        let appGroupName = "group.\(baseAppBundleId)"
+        let appGroupName = telewhiteResolvedAppGroupName(baseAppBundleId: baseAppBundleId)
         #if TELEGRAM_SIDELOAD
         let maybeAppGroupUrl = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: appGroupName) ??
             FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first?.appendingPathComponent("TelegramSideloadGroup", isDirectory: true)
@@ -2075,7 +2121,7 @@ private func extractAccountManagerState(records: AccountRecordsView<TelegramAcco
         }
         defaults.set(appexStatus, forKey: "telewhite.push.appex")
 
-        let diagAppGroupName = "group.\(Bundle.main.bundleIdentifier ?? "ph.telegra.Telegraph")"
+        let diagAppGroupName = telewhiteResolvedAppGroupName(baseAppBundleId: Bundle.main.bundleIdentifier ?? "ph.telegra.Telegraph")
         if FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: diagAppGroupName) != nil {
             defaults.set("OK (\(diagAppGroupName))", forKey: "telewhite.push.appgroup")
         } else {

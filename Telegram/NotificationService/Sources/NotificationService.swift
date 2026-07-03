@@ -21,6 +21,52 @@ import CoreServices
 import ImageIO
 import UniformTypeIdentifiers
 
+// Telewhite: resolve the app group dynamically. Re-signing services replace the
+// app group entitlement with certificate-specific identifiers (e.g. group.<id>.1),
+// so the hardcoded "group.<bundle id>" container may be unavailable. Fall back to
+// the first (alphabetically) accessible app group from the embedded provisioning
+// profile, so the app and all extensions deterministically pick the same container.
+private var telewhiteResolvedAppGroupNameValue: String?
+private func telewhiteResolvedAppGroupName(baseAppBundleId: String) -> String {
+    if let cached = telewhiteResolvedAppGroupNameValue {
+        return cached
+    }
+    let defaultName = "group.\(baseAppBundleId)"
+    var result = defaultName
+    if FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: defaultName) == nil {
+        var profileGroups: [String] = []
+        if let profilePath = Bundle.main.path(forResource: "embedded", ofType: "mobileprovision"), let profileData = try? Data(contentsOf: URL(fileURLWithPath: profilePath)) {
+            if let keyRange = profileData.range(of: Data("<key>com.apple.security.application-groups</key>".utf8)) {
+                let searchUpperBound = min(profileData.count, keyRange.upperBound + 2048)
+                let valueSlice = profileData.subdata(in: keyRange.upperBound ..< searchUpperBound)
+                if let arrayEndRange = valueSlice.range(of: Data("</array>".utf8)) {
+                    let arraySlice = valueSlice.subdata(in: 0 ..< arrayEndRange.lowerBound)
+                    if let arrayText = String(data: arraySlice, encoding: .utf8) {
+                        var remainder = arrayText[...]
+                        while let startRange = remainder.range(of: "<string>"), let endRange = remainder.range(of: "</string>") {
+                            if startRange.upperBound <= endRange.lowerBound {
+                                profileGroups.append(String(remainder[startRange.upperBound ..< endRange.lowerBound]))
+                            }
+                            remainder = remainder[endRange.upperBound...]
+                        }
+                    }
+                }
+            }
+        }
+        for group in profileGroups.sorted() {
+            if group.contains("*") {
+                continue
+            }
+            if FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: group) != nil {
+                result = group
+                break
+            }
+        }
+    }
+    telewhiteResolvedAppGroupNameValue = result
+    return result
+}
+
 private let queue = Queue()
 
 private var installedSharedLogger = false
@@ -754,7 +800,7 @@ private final class NotificationServiceHandler {
         let apiHash: String = buildConfig.apiHash
         let languagesCategory = "ios"
 
-        let appGroupName = "group.\(baseAppBundleId)"
+        let appGroupName = telewhiteResolvedAppGroupName(baseAppBundleId: baseAppBundleId)
         let maybeAppGroupUrl = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: appGroupName)
 
         guard let appGroupUrl = maybeAppGroupUrl else {
