@@ -836,6 +836,8 @@ private func telewhiteModsEntries(tab: TelewhiteModsTab, settings: TelewhiteMods
         developerInfoText += "\n\n"
         developerInfoText += strings.text("NotificationService extension: ", "Расширение NotificationService: ") + appexStatus
         developerInfoText += "\n" + strings.text("App Group: ", "App Group: ") + appGroupStatus
+        let profileGroups = defaults.string(forKey: "telewhite.push.profilegroups") ?? strings.text("Unknown", "Неизвестно")
+        developerInfoText += "\n" + strings.text("Profile app groups: ", "App groups в профиле: ") + profileGroups
         developerInfoText += "\n\n" + strings.text("If the extension is \"Missing\", the signing service stripped PlugIns — encrypted pushes cannot be displayed. If App Group is \"Unavailable\", the signing profile lacks the app group entitlement.", "Если расширение \"Missing\" — сервис подписи вырезал PlugIns, зашифрованные пуши не смогут отображаться. Если App Group \"Unavailable\" — в профиле подписи нет entitlement на app group.")
         entries.append(.developerInfo(developerInfoText))
     }

@@ -2082,6 +2082,35 @@ private func extractAccountManagerState(records: AccountRecordsView<TelegramAcco
             defaults.set("Unavailable (\(diagAppGroupName))", forKey: "telewhite.push.appgroup")
         }
 
+        // Telewhite: report which app groups the embedded provisioning profile actually allows.
+        var profileGroups = "No profile"
+        if let profilePath = Bundle.main.path(forResource: "embedded", ofType: "mobileprovision"), let profileData = try? Data(contentsOf: URL(fileURLWithPath: profilePath)) {
+            profileGroups = "None in profile"
+            if let keyRange = profileData.range(of: Data("<key>com.apple.security.application-groups</key>".utf8)) {
+                let searchUpperBound = min(profileData.count, keyRange.upperBound + 2048)
+                let valueSlice = profileData.subdata(in: keyRange.upperBound ..< searchUpperBound)
+                if let arrayEndRange = valueSlice.range(of: Data("</array>".utf8)) {
+                    let arraySlice = valueSlice.subdata(in: 0 ..< arrayEndRange.lowerBound)
+                    if let arrayText = String(data: arraySlice, encoding: .utf8) {
+                        var groups: [String] = []
+                        var remainder = arrayText[...]
+                        while let startRange = remainder.range(of: "<string>"), let endRange = remainder.range(of: "</string>") {
+                            if startRange.upperBound <= endRange.lowerBound {
+                                groups.append(String(remainder[startRange.upperBound ..< endRange.lowerBound]))
+                            }
+                            remainder = remainder[endRange.upperBound...]
+                        }
+                        if !groups.isEmpty {
+                            profileGroups = groups.joined(separator: ", ")
+                        } else {
+                            profileGroups = "Empty array in profile"
+                        }
+                    }
+                }
+            }
+        }
+        defaults.set(profileGroups, forKey: "telewhite.push.profilegroups")
+
         self.notificationTokenPromise.set(.single(deviceToken))
     }
     
