@@ -118,6 +118,10 @@ def process_provisioning_profile(source, destination, certificate_data, signing_
     # Remove the DER-Encoded-Profile (signature)
     run_executable_with_output('plutil', arguments=['-remove', 'DER-Encoded-Profile', parsed_plist_file])
 
+    # Telewhite: force the production APNs environment so re-signed sideload builds can
+    # register for and receive push notifications (Telegram delivers pushes via production APNs).
+    run_executable_with_output('plutil', arguments=['-replace', 'Entitlements.aps-environment', '-string', 'production', parsed_plist_file], check_result=False)
+
     # Sign with the certificate from the temporary keychain
     run_executable_with_output('security', arguments=[
         'cms', '-S', '-k', keychain_name, '-N', signing_identity, '-i', parsed_plist_file, '-o', destination
