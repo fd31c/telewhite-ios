@@ -289,6 +289,8 @@ private enum TelewhiteModsEntry: ItemListNodeEntry, Equatable {
     case showMessageIds(String, Bool)
     case pushStatus(String, String)
     case pushToken(String, String)
+    case appBundleId(String, String)
+    case appGroupStatus(String, String)
     case developerInfo(String)
     
     var section: ItemListSectionId {
