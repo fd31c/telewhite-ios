@@ -50,6 +50,7 @@ final class ChatListContainerItemNode: ASDisplayNode {
     private var pollFilterUpdatesDisposable: Disposable?
     private var chatFilterUpdatesDisposable: Disposable?
     private var peerDataDisposable: Disposable?
+    private var telewhiteModsSettingsObserver: NSObjectProtocol?
     
     private var chatFolderUpdates: ChatFolderUpdates?
     
@@ -250,12 +251,26 @@ final class ChatListContainerItemNode: ASDisplayNode {
                 }
             })
         }
+        
+        self.telewhiteModsSettingsObserver = NotificationCenter.default.addObserver(forName: Notification.Name("TelewhiteModsSettingsDidChange"), object: nil, queue: .main) { [weak self] _ in
+            guard let strongSelf = self else {
+                return
+            }
+            strongSelf.listNode.updateState { state in
+                var state = state
+                state.presentationData = ChatListPresentationData(theme: state.presentationData.theme, fontSize: state.presentationData.fontSize, strings: state.presentationData.strings, dateTimeFormat: state.presentationData.dateTimeFormat, nameSortOrder: state.presentationData.nameSortOrder, nameDisplayOrder: state.presentationData.nameDisplayOrder, disableAnimations: state.presentationData.disableAnimations)
+                return state
+            }
+        }
     }
     
     deinit {
         self.pollFilterUpdatesDisposable?.dispose()
         self.chatFilterUpdatesDisposable?.dispose()
         self.peerDataDisposable?.dispose()
+        if let telewhiteModsSettingsObserver = self.telewhiteModsSettingsObserver {
+            NotificationCenter.default.removeObserver(telewhiteModsSettingsObserver)
+        }
     }
     
     private func layoutEmptyShimmerEffectNode(node: ChatListShimmerNode, size: CGSize, insets: UIEdgeInsets, verticalOffset: CGFloat, transition: ContainedViewLayoutTransition) {
