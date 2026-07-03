@@ -15,6 +15,9 @@ private func telewhiteGhostModeIcon(theme: PresentationTheme, isEnabled: Bool) -
     return generateImage(CGSize(width: 30.0, height: 30.0), contextGenerator: { size, context in
         context.clear(CGRect(origin: CGPoint(), size: size))
 
+        context.translateBy(x: 0.0, y: size.height)
+        context.scaleBy(x: 1.0, y: -1.0)
+
         let ghostRect = CGRect(x: 5.0, y: 4.5, width: 20.0, height: 21.0)
         context.setLineWidth(2.4)
         context.setLineJoin(.round)
