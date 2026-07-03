@@ -50,6 +50,7 @@ import ProxyServerPreviewScreen
 #if canImport(AppCenter)
 import AppCenter
 import AppCenterCrashes
+#endif
 
 // Telewhite: resolve the app group dynamically. Re-signing services replace the
 // app group entitlement with certificate-specific identifiers (e.g. group.<id>.1),
@@ -96,7 +97,6 @@ func telewhiteResolvedAppGroupName(baseAppBundleId: String) -> String {
     telewhiteResolvedAppGroupNameValue = result
     return result
 }
-#endif
 
 private let handleVoipNotifications = false
 
