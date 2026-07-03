@@ -710,9 +710,13 @@ def build(bazel, arguments):
     bazel_command_line.set_show_actions(arguments.showActions)
     bazel_command_line.set_enable_sandbox(arguments.sandbox)
     bazel_command_line.set_profile_swift(arguments.profileSwift)
-    if arguments.disableExtensions or arguments.sideload:
+    if arguments.disableExtensions:
         bazel_command_line.set_disable_extensions()
     if arguments.sideload:
+        # Telewhite: keep app extensions (NotificationService etc.) in sideload builds.
+        # Telegram pushes are encrypted with mutable-content and are decrypted by
+        # NotificationService.appex; without it, pushes are never displayed when
+        # the app is closed.
         bazel_command_line.set_sideload()
 
     bazel_command_line.set_split_swiftmodules(arguments.enableParallelSwiftmoduleGeneration)
