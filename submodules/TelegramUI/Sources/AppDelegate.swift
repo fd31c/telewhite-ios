@@ -2059,6 +2059,29 @@ private func extractAccountManagerState(records: AccountRecordsView<TelegramAcco
         defaults.set("Registered", forKey: "telewhite.push.status")
         defaults.set(hexString(deviceToken), forKey: "telewhite.push.token")
         defaults.set(Date().timeIntervalSince1970 as NSNumber, forKey: "telewhite.push.date")
+
+        // Telewhite: verify that the NotificationService extension survived re-signing
+        // and that the shared App Group container is accessible. Re-signing services
+        // often strip PlugIns or break App Groups, which silently kills push display.
+        var appexStatus = "Missing"
+        let pluginsPath = Bundle.main.bundleURL.appendingPathComponent("PlugIns")
+        if let pluginItems = try? FileManager.default.contentsOfDirectory(at: pluginsPath, includingPropertiesForKeys: nil) {
+            let appexNames = pluginItems.filter({ $0.pathExtension == "appex" }).map({ $0.deletingPathExtension().lastPathComponent })
+            if appexNames.contains(where: { $0.contains("NotificationService") }) {
+                appexStatus = "OK (\(appexNames.joined(separator: ", ")))"
+            } else if !appexNames.isEmpty {
+                appexStatus = "No NotificationService (\(appexNames.joined(separator: ", ")))"
+            }
+        }
+        defaults.set(appexStatus, forKey: "telewhite.push.appex")
+
+        let diagAppGroupName = "group.\(Bundle.main.bundleIdentifier ?? "ph.telegra.Telegraph")"
+        if FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: diagAppGroupName) != nil {
+            defaults.set("OK (\(diagAppGroupName))", forKey: "telewhite.push.appgroup")
+        } else {
+            defaults.set("Unavailable (\(diagAppGroupName))", forKey: "telewhite.push.appgroup")
+        }
+
         self.notificationTokenPromise.set(.single(deviceToken))
     }
     

@@ -830,7 +830,14 @@ private func telewhiteModsEntries(tab: TelewhiteModsTab, settings: TelewhiteMods
             shortToken = pushToken
         }
         entries.append(.pushToken(strings.text("APNs token", "APNs токен"), pushToken.isEmpty ? shortToken : "\(shortToken) — \(strings.text("tap to copy", "нажмите чтобы скопировать"))"))
-        entries.append(.developerInfo(strings.text("If push status is not \"Registered\", Apple did not issue a token for this signing profile — messages will not push. IDs are shown in profile/context surfaces when enabled.", "Если статус пушей не \"Registered\", Apple не выдал токен для этого профиля подписи — пуши работать не будут. ID отображаются в профилях и контекстных меню.")))
+        let appexStatus = defaults.string(forKey: "telewhite.push.appex") ?? strings.text("Unknown", "Неизвестно")
+        let appGroupStatus = defaults.string(forKey: "telewhite.push.appgroup") ?? strings.text("Unknown", "Неизвестно")
+        var developerInfoText = strings.text("If push status is not \"Registered\", Apple did not issue a token for this signing profile — messages will not push. IDs are shown in profile/context surfaces when enabled.", "Если статус пушей не \"Registered\", Apple не выдал токен для этого профиля подписи — пуши работать не будут. ID отображаются в профилях и контекстных меню.")
+        developerInfoText += "\n\n"
+        developerInfoText += strings.text("NotificationService extension: ", "Расширение NotificationService: ") + appexStatus
+        developerInfoText += "\n" + strings.text("App Group: ", "App Group: ") + appGroupStatus
+        developerInfoText += "\n\n" + strings.text("If the extension is \"Missing\", the signing service stripped PlugIns — encrypted pushes cannot be displayed. If App Group is \"Unavailable\", the signing profile lacks the app group entitlement.", "Если расширение \"Missing\" — сервис подписи вырезал PlugIns, зашифрованные пуши не смогут отображаться. Если App Group \"Unavailable\" — в профиле подписи нет entitlement на app group.")
+        entries.append(.developerInfo(developerInfoText))
     }
 
     return entries
