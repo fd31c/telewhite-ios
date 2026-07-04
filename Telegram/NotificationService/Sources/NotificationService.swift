@@ -67,6 +67,21 @@ private func telewhiteResolvedAppGroupName(baseAppBundleId: String) -> String {
     return result
 }
 
+// Telewhite: record the outcome of the most recent push so the Developer screen
+// can show exactly where the pipeline breaks (key match, state manager, decryption).
+private func telewhiteRecordPushResult(_ result: String) {
+    guard let appBundleIdentifier = Bundle.main.bundleIdentifier, let lastDotRange = appBundleIdentifier.range(of: ".", options: [.backwards]) else {
+        return
+    }
+    let baseAppBundleId = String(appBundleIdentifier[..<lastDotRange.lowerBound])
+    let appGroupName = telewhiteResolvedAppGroupName(baseAppBundleId: baseAppBundleId)
+    if let sharedDefaults = UserDefaults(suiteName: appGroupName) {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "HH:mm:ss"
+        sharedDefaults.set("\(result) @ \(formatter.string(from: Date()))", forKey: "telewhite.push.lastResult")
+    }
+}
+
 private let queue = Queue()
 
 private var installedSharedLogger = false
@@ -876,6 +891,7 @@ private final class NotificationServiceHandler {
 
         guard var encryptedPayload = payload["p"] as? String else {
             Logger.shared.log("NotificationService \(episode)", "Invalid payload 1")
+            telewhiteRecordPushResult("FAIL: payload has no 'p'")
             return nil
         }
         encryptedPayload = encryptedPayload.replacingOccurrences(of: "-", with: "+")
@@ -937,6 +953,7 @@ private final class NotificationServiceHandler {
 
             guard let strongSelf = self, let recordId = recordId else {
                 Logger.shared.log("NotificationService \(episode)", "Couldn't find a matching decryption key")
+                telewhiteRecordPushResult("FAIL: no matching account key")
 
                 let content = NotificationContent(isLockedMessage: nil)
                 updateCurrentContent(content)
@@ -959,6 +976,7 @@ private final class NotificationServiceHandler {
                 }
                 guard let stateManager = stateManager else {
                     Logger.shared.log("NotificationService \(episode)", "Didn't receive stateManager")
+                    telewhiteRecordPushResult("FAIL: no state manager")
 
                     let content = NotificationContent(isLockedMessage: nil)
                     updateCurrentContent(content)
@@ -986,6 +1004,7 @@ private final class NotificationServiceHandler {
                     }
                     guard let notificationsKey = notificationsKey else {
                         Logger.shared.log("NotificationService \(episode)", "Didn't receive decryption key")
+                        telewhiteRecordPushResult("FAIL: no decryption key")
 
                         let content = NotificationContent(isLockedMessage: nil)
                         updateCurrentContent(content)
@@ -995,6 +1014,7 @@ private final class NotificationServiceHandler {
                     }
                     guard let decryptedPayload = decryptedNotificationPayload(key: notificationsKey, data: payloadData) else {
                         Logger.shared.log("NotificationService \(episode)", "Couldn't decrypt payload")
+                        telewhiteRecordPushResult("FAIL: decrypt failed")
 
                         let content = NotificationContent(isLockedMessage: nil)
                         updateCurrentContent(content)
@@ -1004,6 +1024,7 @@ private final class NotificationServiceHandler {
                     }
                     guard let payloadJson = try? JSONSerialization.jsonObject(with: decryptedPayload, options: []) as? [String: Any] else {
                         Logger.shared.log("NotificationService \(episode)", "Couldn't process payload as JSON")
+                        telewhiteRecordPushResult("FAIL: invalid JSON")
 
                         let content = NotificationContent(isLockedMessage: nil)
                         updateCurrentContent(content)
@@ -1013,6 +1034,7 @@ private final class NotificationServiceHandler {
                     }
 
                     Logger.shared.log("NotificationService \(episode)", "Decrypted payload: \(payloadJson)")
+                    telewhiteRecordPushResult("OK: decrypted")
 
                     var peerId: PeerId?
                     var messageId: MessageId.Id?

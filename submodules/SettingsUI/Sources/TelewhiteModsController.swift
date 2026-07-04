@@ -955,14 +955,17 @@ private func telewhiteModsEntries(tab: TelewhiteModsTab, settings: TelewhiteMods
         let profileGroups = defaults.string(forKey: "telewhite.push.profilegroups") ?? strings.text("Unknown", "Неизвестно")
         developerInfoText += "\n" + strings.text("Profile app groups: ", "App groups в профиле: ") + profileGroups
         var deliveryStatus = strings.text("None received yet", "Ещё не приходили")
+        var lastResultStatus: String? = nil
         if let appGroupName = defaults.string(forKey: "telewhite.push.appgroupname"), let sharedDefaults = UserDefaults(suiteName: appGroupName) {
             let receivedCount = sharedDefaults.integer(forKey: "telewhite.push.receivedCount")
             if receivedCount > 0 {
                 let lastReceived = sharedDefaults.string(forKey: "telewhite.push.lastReceived") ?? "?"
                 deliveryStatus = strings.text("\(receivedCount) received, last: \(lastReceived)", "\(receivedCount) получено, последний: \(lastReceived)")
             }
+            lastResultStatus = sharedDefaults.string(forKey: "telewhite.push.lastResult")
         }
         developerInfoText += "\n" + strings.text("Pushes delivered to device: ", "Пуши доставлены на устройство: ") + deliveryStatus
+        developerInfoText += "\n" + strings.text("Last push processing result: ", "Результат обработки последнего пуша: ") + (lastResultStatus ?? strings.text("Unknown (update pending)", "Неизвестно (нужен новый пуш)"))
         developerInfoText += "\n\n" + strings.text("If the extension is \"Missing\", the signing service stripped PlugIns — encrypted pushes cannot be displayed. If App Group is \"Unavailable\", the signing profile lacks the app group entitlement.", "Если расширение \"Missing\" — сервис подписи вырезал PlugIns, зашифрованные пуши не смогут отображаться. Если App Group \"Unavailable\" — в профиле подписи нет entitlement на app group.")
         entries.append(.developerInfo(developerInfoText))
     }
