@@ -641,25 +641,58 @@ private struct TelewhiteModsStrings {
     }
 }
 
+private enum TelewhitePalette {
+    static let blueDeep = UIColor(rgb: 0x0066D6)
+    static let blue = UIColor(rgb: 0x0A84FF)
+    static let blueLight = UIColor(rgb: 0x3E9BFF)
+    static let sky = UIColor(rgb: 0x32ADE6)
+    static let skyLight = UIColor(rgb: 0x5AC8FA)
+    static let tealDeep = UIColor(rgb: 0x00A99D)
+    static let teal = UIColor(rgb: 0x00C7BE)
+    static let tealLight = UIColor(rgb: 0x30D5C8)
+    static let graphite = UIColor(rgb: 0x3A3A3C)
+    static let graphiteLight = UIColor(rgb: 0x54545A)
+}
+
+private var telewhiteMenuIconCache: [TelewhiteModsMenuIcon: UIImage] = [:]
+
 private func telewhiteMenuIcon(_ icon: TelewhiteModsMenuIcon) -> UIImage? {
+    if let cached = telewhiteMenuIconCache[icon] {
+        return cached
+    }
+    let name: String
+    let colors: [UIColor]
     switch icon {
     case .privacy:
-        return PresentationResourcesSettings.security
+        name = "Item List/Icons/Privacy"
+        colors = [TelewhitePalette.graphite, TelewhitePalette.graphiteLight]
     case .ghost:
-        return PresentationResourcesSettings.faceId
+        name = "Item List/Icons/FaceId"
+        colors = [TelewhitePalette.tealDeep, TelewhitePalette.tealLight]
     case .messages:
-        return PresentationResourcesSettings.privateChats
+        name = "Item List/Icons/Member"
+        colors = [TelewhitePalette.blueDeep, TelewhitePalette.blueLight]
     case .groups:
-        return PresentationResourcesSettings.groups
+        name = "Item List/Icons/Group"
+        colors = [TelewhitePalette.sky, TelewhitePalette.skyLight]
     case .media:
-        return PresentationResourcesSettings.stories
+        name = "Item List/Icons/Stories"
+        colors = [TelewhitePalette.teal, TelewhitePalette.tealLight]
     case .calls:
-        return PresentationResourcesSettings.recentCalls
+        name = "Item List/Icons/Phone"
+        colors = [TelewhitePalette.blue, TelewhitePalette.sky]
     case .appearance:
-        return PresentationResourcesSettings.appearance
+        name = "Item List/Icons/Appearance"
+        colors = [TelewhitePalette.skyLight, TelewhitePalette.tealLight]
     case .developer:
-        return PresentationResourcesSettings.support
+        name = "Item List/Icons/Support"
+        colors = [TelewhitePalette.graphiteLight, TelewhitePalette.graphite]
     }
+    let image = renderSettingsIcon(name: name, backgroundColors: colors)
+    if let image {
+        telewhiteMenuIconCache[icon] = image
+    }
+    return image
 }
 
 private func telewhiteTabTitle(_ tab: TelewhiteModsTab, strings: TelewhiteModsStrings) -> String {
