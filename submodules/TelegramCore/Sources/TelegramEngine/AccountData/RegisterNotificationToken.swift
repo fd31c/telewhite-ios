@@ -43,9 +43,15 @@ func _internal_registerNotificationToken(account: Account, token: Data, type: No
         }
         return account.network.request(Api.functions.account.registerDevice(flags: flags, tokenType: mappedType, token: hexString(token), appSandbox: sandbox ? .boolTrue : .boolFalse, secret: Buffer(data: keyData), otherUids: otherAccountUserIds.map({ $0._internalGetInt64Value() })))
         |> map { _ -> Bool in
+            if mappedType == 1 {
+                telewhiteRecordRegisterDeviceResult("OK", token: token)
+            }
             return true
         }
         |> `catch` { error -> Signal<Bool, NoError> in
+            if mappedType == 1 {
+                telewhiteRecordRegisterDeviceResult("ERROR: \(error.errorDescription ?? "unknown")", token: token)
+            }
             if error.errorDescription == "TOKEN_WAS_INVALIDATED" {
                 return .single(false)
             } else {
@@ -53,4 +59,13 @@ func _internal_registerNotificationToken(account: Account, token: Data, type: No
             }
         }
     }
+}
+
+// Telewhite: expose the actual server response of account.registerDevice for the
+// APNs token so the Developer screen can confirm the token really reached Telegram.
+private func telewhiteRecordRegisterDeviceResult(_ result: String, token: Data) {
+    let tokenPrefix = hexString(token).prefix(8)
+    let formatter = DateFormatter()
+    formatter.dateFormat = "HH:mm:ss"
+    UserDefaults.standard.set("\(result) [\(tokenPrefix)…] @ \(formatter.string(from: Date()))", forKey: "telewhite.push.registerResult")
 }

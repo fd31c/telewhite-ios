@@ -178,6 +178,7 @@ private final class TelewhiteModsControllerArguments {
     let openTab: (TelewhiteModsTab) -> Void
     let pokeRefresh: () -> Void
     let selectAccentColor: (UInt32?) -> Void
+    let reregisterPushToken: () -> Void
     
     init(
         updateSettings: @escaping ((TelewhiteModsSettings) -> TelewhiteModsSettings) -> Void,
@@ -185,7 +186,8 @@ private final class TelewhiteModsControllerArguments {
         startVpn: @escaping () -> Void,
         openTab: @escaping (TelewhiteModsTab) -> Void = { _ in },
         pokeRefresh: @escaping () -> Void = {},
-        selectAccentColor: @escaping (UInt32?) -> Void = { _ in }
+        selectAccentColor: @escaping (UInt32?) -> Void = { _ in },
+        reregisterPushToken: @escaping () -> Void = {}
     ) {
         self.updateSettings = updateSettings
         self.updateTranslationSettings = updateTranslationSettings
@@ -193,6 +195,7 @@ private final class TelewhiteModsControllerArguments {
         self.openTab = openTab
         self.pokeRefresh = pokeRefresh
         self.selectAccentColor = selectAccentColor
+        self.reregisterPushToken = reregisterPushToken
     }
 }
 
@@ -301,6 +304,7 @@ private enum TelewhiteModsEntry: ItemListNodeEntry, Equatable {
     case showMessageIds(String, Bool)
     case pushStatus(String, String)
     case pushToken(String, String)
+    case pushReregister(String)
     case developerInfo(String)
     
     var section: ItemListSectionId {
@@ -323,7 +327,7 @@ private enum TelewhiteModsEntry: ItemListNodeEntry, Equatable {
             return TelewhiteModsSection.calls.rawValue
         case .appearanceHeader, .compactChatList, .amoledMode, .accentColorHeader, .accentColorPreset:
             return TelewhiteModsSection.appearance.rawValue
-        case .developerHeader, .showUserIds, .showChatIds, .showMessageIds, .pushStatus, .pushToken, .developerInfo:
+        case .developerHeader, .showUserIds, .showChatIds, .showMessageIds, .pushStatus, .pushToken, .pushReregister, .developerInfo:
             return TelewhiteModsSection.developer.rawValue
         }
     }
@@ -450,8 +454,10 @@ private enum TelewhiteModsEntry: ItemListNodeEntry, Equatable {
             return 804
         case .pushToken:
             return 805
-        case .developerInfo:
+        case .pushReregister:
             return 806
+        case .developerInfo:
+            return 807
         }
     }
     
@@ -679,6 +685,10 @@ private enum TelewhiteModsEntry: ItemListNodeEntry, Equatable {
             let fullToken = UserDefaults.standard.string(forKey: "telewhite.push.token") ?? ""
             return ItemListDisclosureItem(presentationData: presentationData, systemStyle: .glass, title: text, label: value, labelStyle: .text, sectionId: self.section, style: .blocks, disclosureStyle: fullToken.isEmpty ? .none : .arrow, action: fullToken.isEmpty ? nil : {
                 UIPasteboard.general.string = fullToken
+            })
+        case let .pushReregister(text):
+            return ItemListActionItem(presentationData: presentationData, systemStyle: .glass, title: text, kind: .generic, alignment: .natural, sectionId: self.section, style: .blocks, action: {
+                arguments.reregisterPushToken()
             })
         }
     }
@@ -946,6 +956,9 @@ private func telewhiteModsEntries(tab: TelewhiteModsTab, settings: TelewhiteMods
             shortToken = pushToken
         }
         entries.append(.pushToken(strings.text("APNs token", "APNs токен"), pushToken.isEmpty ? shortToken : "\(shortToken) — \(strings.text("tap to copy", "нажмите чтобы скопировать"))"))
+        if !pushToken.isEmpty {
+            entries.append(.pushReregister(strings.text("Re-register Push Token", "Перерегистрировать push-токен")))
+        }
         let appexStatus = defaults.string(forKey: "telewhite.push.appex") ?? strings.text("Unknown", "Неизвестно")
         let appGroupStatus = defaults.string(forKey: "telewhite.push.appgroup") ?? strings.text("Unknown", "Неизвестно")
         var developerInfoText = strings.text("If push status is not \"Registered\", Apple did not issue a token for this signing profile — messages will not push. IDs are shown in profile/context surfaces when enabled.", "Если статус пушей не \"Registered\", Apple не выдал токен для этого профиля подписи — пуши работать не будут. ID отображаются в профилях и контекстных меню.")
@@ -966,6 +979,8 @@ private func telewhiteModsEntries(tab: TelewhiteModsTab, settings: TelewhiteMods
         }
         developerInfoText += "\n" + strings.text("Pushes delivered to device: ", "Пуши доставлены на устройство: ") + deliveryStatus
         developerInfoText += "\n" + strings.text("Last push processing result: ", "Результат обработки последнего пуша: ") + (lastResultStatus ?? strings.text("Unknown (update pending)", "Неизвестно (нужен новый пуш)"))
+        let registerResult = defaults.string(forKey: "telewhite.push.registerResult") ?? strings.text("Not sent yet", "Ещё не отправлялся")
+        developerInfoText += "\n" + strings.text("Telegram server registration: ", "Регистрация на сервере Telegram: ") + registerResult
         developerInfoText += "\n\n" + strings.text("If the extension is \"Missing\", the signing service stripped PlugIns — encrypted pushes cannot be displayed. If App Group is \"Unavailable\", the signing profile lacks the app group entitlement.", "Если расширение \"Missing\" — сервис подписи вырезал PlugIns, зашифрованные пуши не смогут отображаться. Если App Group \"Unavailable\" — в профиле подписи нет entitlement на app group.")
         entries.append(.developerInfo(developerInfoText))
     }
@@ -1077,6 +1092,24 @@ private func telewhiteModsSectionController(context: AccountContext, tab: Telewh
             }
             return current.withUpdatedThemeSpecificAccentColors(themeSpecificAccentColors)
         }).start()
+    }, reregisterPushToken: {
+        guard let tokenHex = UserDefaults.standard.string(forKey: "telewhite.push.token"), !tokenHex.isEmpty else {
+            return
+        }
+        var tokenData = Data(capacity: tokenHex.count / 2)
+        var index = tokenHex.startIndex
+        while index < tokenHex.endIndex {
+            guard let nextIndex = tokenHex.index(index, offsetBy: 2, limitedBy: tokenHex.endIndex), let byte = UInt8(tokenHex[index..<nextIndex], radix: 16) else {
+                return
+            }
+            tokenData.append(byte)
+            index = nextIndex
+        }
+        UserDefaults.standard.set("Sending…", forKey: "telewhite.push.registerResult")
+        let _ = (context.engine.accountData.registerNotificationToken(token: tokenData, type: .aps(encrypt: true), sandbox: false, otherAccountUserIds: [], excludeMutedChats: false)
+        |> deliverOnMainQueue).start(next: { _ in
+            refreshTick.set(refreshTickValue.modify { $0 &+ 1 })
+        })
     })
 
     let translationSettings = context.sharedContext.accountManager.sharedData(keys: [ApplicationSpecificSharedDataKeys.translationSettings])
