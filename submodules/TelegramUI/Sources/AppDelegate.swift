@@ -2127,6 +2127,7 @@ private func extractAccountManagerState(records: AccountRecordsView<TelegramAcco
         } else {
             defaults.set("Unavailable (\(diagAppGroupName))", forKey: "telewhite.push.appgroup")
         }
+        defaults.set(diagAppGroupName, forKey: "telewhite.push.appgroupname")
 
         // Telewhite: report which app groups the embedded provisioning profile actually allows.
         var profileGroups = "No profile"

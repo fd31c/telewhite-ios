@@ -2599,6 +2599,20 @@ final class NotificationService: UNNotificationServiceExtension {
     override func didReceive(_ request: UNNotificationRequest, withContentHandler contentHandler: @escaping (UNNotificationContent) -> Void) {
         let episode = String(UInt32.random(in: 0 ..< UInt32.max), radix: 16)
         self.episode = episode
+
+        // Telewhite: record that APNs actually delivered a push to this device, so the
+        // Developer screen can distinguish "push never arrives" from "decryption fails".
+        if let appBundleIdentifier = Bundle.main.bundleIdentifier, let lastDotRange = appBundleIdentifier.range(of: ".", options: [.backwards]) {
+            let baseAppBundleId = String(appBundleIdentifier[..<lastDotRange.lowerBound])
+            let appGroupName = telewhiteResolvedAppGroupName(baseAppBundleId: baseAppBundleId)
+            if let sharedDefaults = UserDefaults(suiteName: appGroupName) {
+                let formatter = DateFormatter()
+                formatter.dateFormat = "yyyy-MM-dd HH:mm:ss"
+                sharedDefaults.set(formatter.string(from: Date()), forKey: "telewhite.push.lastReceived")
+                let count = sharedDefaults.integer(forKey: "telewhite.push.receivedCount") + 1
+                sharedDefaults.set(count, forKey: "telewhite.push.receivedCount")
+            }
+        }
         
         self.initialContent = request.content
         self.contentHandler = contentHandler
