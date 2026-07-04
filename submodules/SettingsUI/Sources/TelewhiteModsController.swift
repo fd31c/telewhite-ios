@@ -177,19 +177,22 @@ private final class TelewhiteModsControllerArguments {
     let startVpn: () -> Void
     let openTab: (TelewhiteModsTab) -> Void
     let pokeRefresh: () -> Void
+    let selectAccentColor: (UInt32?) -> Void
     
     init(
         updateSettings: @escaping ((TelewhiteModsSettings) -> TelewhiteModsSettings) -> Void,
         updateTranslationSettings: @escaping (@escaping (TranslationSettings) -> TranslationSettings) -> Void,
         startVpn: @escaping () -> Void,
         openTab: @escaping (TelewhiteModsTab) -> Void = { _ in },
-        pokeRefresh: @escaping () -> Void = {}
+        pokeRefresh: @escaping () -> Void = {},
+        selectAccentColor: @escaping (UInt32?) -> Void = { _ in }
     ) {
         self.updateSettings = updateSettings
         self.updateTranslationSettings = updateTranslationSettings
         self.startVpn = startVpn
         self.openTab = openTab
         self.pokeRefresh = pokeRefresh
+        self.selectAccentColor = selectAccentColor
     }
 }
 
@@ -289,6 +292,8 @@ private enum TelewhiteModsEntry: ItemListNodeEntry, Equatable {
     case hideStories(String, Bool)
     case compactChatList(String, Bool)
     case amoledMode(String, Bool)
+    case accentColorHeader(String)
+    case accentColorPreset(Int32, String, UInt32, Bool)
     
     case developerHeader(String)
     case showUserIds(String, Bool)
@@ -316,7 +321,7 @@ private enum TelewhiteModsEntry: ItemListNodeEntry, Equatable {
             return TelewhiteModsSection.media.rawValue
         case .callsHeader, .autoRecordCalls, .callRecordButton, .callsInfo:
             return TelewhiteModsSection.calls.rawValue
-        case .appearanceHeader, .compactChatList, .amoledMode:
+        case .appearanceHeader, .compactChatList, .amoledMode, .accentColorHeader, .accentColorPreset:
             return TelewhiteModsSection.appearance.rawValue
         case .developerHeader, .showUserIds, .showChatIds, .showMessageIds, .pushStatus, .pushToken, .developerInfo:
             return TelewhiteModsSection.developer.rawValue
@@ -429,6 +434,10 @@ private enum TelewhiteModsEntry: ItemListNodeEntry, Equatable {
             return 702
         case .amoledMode:
             return 703
+        case .accentColorHeader:
+            return 704
+        case let .accentColorPreset(index, _, _, _):
+            return 705 + index
         case .developerHeader:
             return 800
         case .showUserIds:
@@ -467,7 +476,7 @@ private enum TelewhiteModsEntry: ItemListNodeEntry, Equatable {
             return ItemListDisclosureItem(presentationData: presentationData, systemStyle: .glass, icon: telewhiteMenuIcon(icon), title: title, titleFont: .bold, label: subtitle, labelStyle: .multilineDetailText, sectionId: self.section, style: .blocks, disclosureStyle: .arrow, action: {
                 arguments.openTab(tab)
             })
-        case let .messengerHeader(text), let .vpnHeader(text), let .privacyHeader(text), let .stealthHeader(text), let .channelsHeader(text), let .mediaHeader(text), let .callsHeader(text), let .appearanceHeader(text), let .developerHeader(text):
+        case let .messengerHeader(text), let .vpnHeader(text), let .privacyHeader(text), let .stealthHeader(text), let .channelsHeader(text), let .mediaHeader(text), let .callsHeader(text), let .appearanceHeader(text), let .accentColorHeader(text), let .developerHeader(text):
             return ItemListSectionHeaderItem(presentationData: presentationData, text: text, sectionId: self.section)
         case let .preserveDeletedMessages(text, value):
             return self.switchItem(presentationData: presentationData, arguments: arguments, text: text, value: value) { settings, value in
@@ -642,6 +651,16 @@ private enum TelewhiteModsEntry: ItemListNodeEntry, Equatable {
             return self.switchItem(presentationData: presentationData, arguments: arguments, text: text, value: value) { settings, value in
                 settings.amoledMode = value
             }
+        case let .accentColorPreset(_, text, color, checked):
+            let icon: UIImage?
+            if color == 0 {
+                icon = generateCircleImage(diameter: 24.0, lineWidth: 2.0, color: presentationData.theme.list.itemSecondaryTextColor)
+            } else {
+                icon = generateFilledCircleImage(diameter: 24.0, color: UIColor(rgb: color))
+            }
+            return ItemListCheckboxItem(presentationData: presentationData, systemStyle: .glass, icon: icon, title: text, style: .right, checked: checked, zeroSeparatorInsets: false, sectionId: self.section, action: {
+                arguments.selectAccentColor(color == 0 ? nil : color)
+            })
         case let .showUserIds(text, value):
             return self.switchItem(presentationData: presentationData, arguments: arguments, text: text, value: value) { settings, value in
                 settings.showUserIds = value
@@ -820,7 +839,17 @@ private func telewhiteEntryDescription(_ entry: TelewhiteModsEntry, presentation
     }
 }
 
-private func telewhiteModsEntries(tab: TelewhiteModsTab, settings: TelewhiteModsSettings, translationSettings: TranslationSettings, strings: TelewhiteModsStrings) -> [TelewhiteModsEntry] {
+private let telewhiteAccentPresets: [(String, String, UInt32)] = [
+    ("Default", "Стандартный", 0),
+    ("Telewhite Blue", "Синий Telewhite", 0x0A84FF),
+    ("Teal", "Бирюзовый", 0x00C7BE),
+    ("Green", "Зелёный", 0x34C759),
+    ("Orange", "Оранжевый", 0xFF9500),
+    ("Red", "Красный", 0xFF3B30),
+    ("Pink", "Розовый", 0xFF2D55),
+]
+
+private func telewhiteModsEntries(tab: TelewhiteModsTab, settings: TelewhiteModsSettings, translationSettings: TranslationSettings, strings: TelewhiteModsStrings, currentAccent: UInt32? = nil) -> [TelewhiteModsEntry] {
     var entries: [TelewhiteModsEntry] = []
 
     switch tab {
@@ -884,6 +913,16 @@ private func telewhiteModsEntries(tab: TelewhiteModsTab, settings: TelewhiteMods
         entries.append(.appearanceHeader(telewhiteTabTitle(.appearance, strings: strings)))
         entries.append(.compactChatList(strings.text("Compact Chat List", "Компактный список чатов"), settings.compactChatList))
         entries.append(.amoledMode(strings.text("AMOLED Mode", "AMOLED режим"), settings.amoledMode))
+        entries.append(.accentColorHeader(strings.text("Accent Color", "Акцентный цвет")))
+        for (index, preset) in telewhiteAccentPresets.enumerated() {
+            let isChecked: Bool
+            if preset.2 == 0 {
+                isChecked = currentAccent == nil
+            } else {
+                isChecked = currentAccent == preset.2
+            }
+            entries.append(.accentColorPreset(Int32(index), strings.text(preset.0, preset.1), preset.2, isChecked))
+        }
 
     case .developer:
         entries.append(.developerHeader(telewhiteTabTitle(.developer, strings: strings)))
@@ -1014,6 +1053,27 @@ private func telewhiteModsSectionController(context: AccountContext, tab: Telewh
         ]))
     }, pokeRefresh: {
         refreshTick.set(refreshTickValue.modify { $0 &+ 1 })
+    }, selectAccentColor: { color in
+        let _ = updatePresentationThemeSettingsInteractively(accountManager: context.sharedContext.accountManager, { current in
+            let autoNightModeTriggered = context.sharedContext.currentPresentationData.with { $0 }.autoNightModeTriggered
+            var currentTheme = current.theme
+            if autoNightModeTriggered {
+                currentTheme = current.automaticThemeSwitchSetting.theme
+            }
+            let generalThemeReference: PresentationThemeReference
+            if case let .cloud(theme) = currentTheme, let settings = theme.theme.settings?.first {
+                generalThemeReference = .builtin(PresentationBuiltinThemeReference(baseTheme: settings.baseTheme))
+            } else {
+                generalThemeReference = currentTheme
+            }
+            var themeSpecificAccentColors = current.themeSpecificAccentColors
+            if let color {
+                themeSpecificAccentColors[generalThemeReference.index] = PresentationThemeAccentColor(index: -1, baseColor: .custom, accentColor: color)
+            } else {
+                themeSpecificAccentColors.removeValue(forKey: generalThemeReference.index)
+            }
+            return current.withUpdatedThemeSpecificAccentColors(themeSpecificAccentColors)
+        }).start()
     })
 
     let translationSettings = context.sharedContext.accountManager.sharedData(keys: [ApplicationSpecificSharedDataKeys.translationSettings])
@@ -1021,12 +1081,29 @@ private func telewhiteModsSectionController(context: AccountContext, tab: Telewh
         return sharedData.entries[ApplicationSpecificSharedDataKeys.translationSettings]?.get(TranslationSettings.self) ?? TranslationSettings.defaultSettings
     }
 
-    let signal = combineLatest(context.sharedContext.presentationData, statePromise.get(), translationSettings, refreshTick.get())
+    let themeSettings = context.sharedContext.accountManager.sharedData(keys: [ApplicationSpecificSharedDataKeys.presentationThemeSettings])
+    |> map { sharedData -> PresentationThemeSettings in
+        return sharedData.entries[ApplicationSpecificSharedDataKeys.presentationThemeSettings]?.get(PresentationThemeSettings.self) ?? PresentationThemeSettings.defaultSettings
+    }
+
+    let signal = combineLatest(context.sharedContext.presentationData, statePromise.get(), translationSettings, themeSettings, refreshTick.get())
     |> deliverOnMainQueue
-    |> map { presentationData, settings, translationSettings, _ -> (ItemListControllerState, (ItemListNodeState, Any)) in
+    |> map { presentationData, settings, translationSettings, themeSettings, _ -> (ItemListControllerState, (ItemListNodeState, Any)) in
         let strings = TelewhiteModsStrings(presentationData: presentationData)
+        let autoNightModeTriggered = presentationData.autoNightModeTriggered
+        var twCurrentTheme = themeSettings.theme
+        if autoNightModeTriggered {
+            twCurrentTheme = themeSettings.automaticThemeSwitchSetting.theme
+        }
+        let twGeneralThemeReference: PresentationThemeReference
+        if case let .cloud(theme) = twCurrentTheme, let cloudSettings = theme.theme.settings?.first {
+            twGeneralThemeReference = .builtin(PresentationBuiltinThemeReference(baseTheme: cloudSettings.baseTheme))
+        } else {
+            twGeneralThemeReference = twCurrentTheme
+        }
+        let currentAccent = themeSettings.themeSpecificAccentColors[twGeneralThemeReference.index]?.accentColor
         let controllerState = ItemListControllerState(presentationData: ItemListPresentationData(presentationData), title: .text(telewhiteTabTitle(tab, strings: strings)), leftNavigationButton: nil, rightNavigationButton: nil, backNavigationButton: ItemListBackButton(title: presentationData.strings.Common_Back), animateChanges: false)
-        let listState = ItemListNodeState(presentationData: ItemListPresentationData(presentationData), entries: telewhiteModsEntries(tab: tab, settings: settings, translationSettings: translationSettings, strings: strings), style: .blocks, animateChanges: false)
+        let listState = ItemListNodeState(presentationData: ItemListPresentationData(presentationData), entries: telewhiteModsEntries(tab: tab, settings: settings, translationSettings: translationSettings, strings: strings, currentAccent: currentAccent), style: .blocks, animateChanges: false)
         return (controllerState, (listState, arguments as Any))
     }
 
