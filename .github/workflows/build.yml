@@ -65,7 +65,7 @@ jobs:
               raise SystemExit("Missing GitHub secrets: " + ", ".join(missing))
 
           config = {
-              "bundle_id": "app.apricot7651.mango8575",
+              "bundle_id": "ph.telegra.Telegraph",
               "app_name": os.environ["APP_NAME"],
               "api_id": os.environ["TG_API_ID"],
               "api_hash": os.environ["TG_API_HASH"],
