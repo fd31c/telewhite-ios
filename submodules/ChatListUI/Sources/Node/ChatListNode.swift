@@ -1345,6 +1345,7 @@ public final class ChatListNode: ListViewImpl {
     private var pollFilterUpdatesDisposable: Disposable?
     private var chatFilterUpdatesDisposable: Disposable?
     private var updateIsMainTabDisposable: Disposable?
+    private var telewhiteHiddenObserver: NSObjectProtocol?
     
     public var scrollHeightTopInset: CGFloat {
         didSet {
@@ -3128,6 +3129,14 @@ public final class ChatListNode: ListViewImpl {
             return strongSelf.isSelectionGestureEnabled
         }
         self.view.addGestureRecognizer(selectionRecognizer)
+
+        self.telewhiteHiddenObserver = NotificationCenter.default.addObserver(forName: TelewhiteHiddenChats.didChangeNotification, object: nil, queue: .main) { [weak self] _ in
+            self?.updateState { state in
+                var state = state
+                state.telewhiteRefreshToken &+= 1
+                return state
+            }
+        }
     }
     
     deinit {
@@ -3137,6 +3146,9 @@ public final class ChatListNode: ListViewImpl {
         self.pollFilterUpdatesDisposable?.dispose()
         self.chatFilterUpdatesDisposable?.dispose()
         self.updateIsMainTabDisposable?.dispose()
+        if let telewhiteHiddenObserver = self.telewhiteHiddenObserver {
+            NotificationCenter.default.removeObserver(telewhiteHiddenObserver)
+        }
     }
     
     func updateFilter(_ filter: ChatListFilter?) {

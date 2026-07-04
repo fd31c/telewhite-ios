@@ -176,17 +176,20 @@ private final class TelewhiteModsControllerArguments {
     let updateTranslationSettings: (@escaping (TranslationSettings) -> TranslationSettings) -> Void
     let startVpn: () -> Void
     let openTab: (TelewhiteModsTab) -> Void
+    let pokeRefresh: () -> Void
     
     init(
         updateSettings: @escaping ((TelewhiteModsSettings) -> TelewhiteModsSettings) -> Void,
         updateTranslationSettings: @escaping (@escaping (TranslationSettings) -> TranslationSettings) -> Void,
         startVpn: @escaping () -> Void,
-        openTab: @escaping (TelewhiteModsTab) -> Void = { _ in }
+        openTab: @escaping (TelewhiteModsTab) -> Void = { _ in },
+        pokeRefresh: @escaping () -> Void = {}
     ) {
         self.updateSettings = updateSettings
         self.updateTranslationSettings = updateTranslationSettings
         self.startVpn = startVpn
         self.openTab = openTab
+        self.pokeRefresh = pokeRefresh
     }
 }
 
@@ -258,6 +261,9 @@ private enum TelewhiteModsEntry: ItemListNodeEntry, Equatable {
     case contentRestrictionBypass(String, Bool)
     case hidePhoneInSettings(String, Bool)
     case showProfileIds(String, Bool)
+    case revealHiddenChats(String, Bool)
+    case hiddenChatsPasscode(String, String)
+    case hiddenChatsUnlock(String)
     case privacyInfo(String)
     
     case stealthHeader(String)
@@ -299,7 +305,7 @@ private enum TelewhiteModsEntry: ItemListNodeEntry, Equatable {
             return TelewhiteModsSection.messenger.rawValue
         case .vpnHeader, .vpnEnabled, .vpnSubscription, .vpnStatus, .vpnStart, .vpnInfo:
             return TelewhiteModsSection.vpn.rawValue
-        case .privacyHeader, .hideOnlineStatus, .ghostMode, .ghostChatButtonEnabled, .hideTypingStatus, .hideReadReceipts, .screenshotProtectionBypass, .contentRestrictionBypass, .hidePhoneInSettings, .showProfileIds, .privacyInfo:
+        case .privacyHeader, .hideOnlineStatus, .ghostMode, .ghostChatButtonEnabled, .hideTypingStatus, .hideReadReceipts, .screenshotProtectionBypass, .contentRestrictionBypass, .hidePhoneInSettings, .showProfileIds, .revealHiddenChats, .hiddenChatsPasscode, .hiddenChatsUnlock, .privacyInfo:
             return TelewhiteModsSection.privacy.rawValue
         case .stealthHeader, .ghostMessages, .ghostStories, .stealthInfo:
             return TelewhiteModsSection.stealth.rawValue
@@ -364,8 +370,14 @@ private enum TelewhiteModsEntry: ItemListNodeEntry, Equatable {
             return 108
         case .showProfileIds:
             return 109
-        case .privacyInfo:
+        case .revealHiddenChats:
             return 110
+        case .hiddenChatsPasscode:
+            return 111
+        case .hiddenChatsUnlock:
+            return 112
+        case .privacyInfo:
+            return 113
         case .vpnHeader:
             return 200
         case .vpnEnabled:
@@ -570,6 +582,22 @@ private enum TelewhiteModsEntry: ItemListNodeEntry, Equatable {
                 settings.showUserIds = value
                 settings.showChatIds = value
             }
+        case let .revealHiddenChats(text, value):
+            return ItemListSwitchItem(presentationData: presentationData, systemStyle: .glass, title: text, value: value, sectionId: self.section, style: .blocks, updated: { value in
+                TelewhiteHiddenChats.setRevealed(value)
+                arguments.pokeRefresh()
+            })
+        case let .hiddenChatsPasscode(placeholder, text):
+            return ItemListSingleLineInputItem(presentationData: presentationData, systemStyle: .glass, title: NSAttributedString(), text: text, placeholder: placeholder, type: .password, returnKeyType: .done, clearType: .onFocus, maxLength: 64, sectionId: self.section, textUpdated: { text in
+                TelewhiteHiddenChats.passcode = text.trimmingCharacters(in: .whitespacesAndNewlines)
+            }, action: {})
+        case let .hiddenChatsUnlock(placeholder):
+            return ItemListSingleLineInputItem(presentationData: presentationData, systemStyle: .glass, title: NSAttributedString(), text: "", placeholder: placeholder, type: .password, returnKeyType: .done, clearType: .onFocus, maxLength: 64, sectionId: self.section, textUpdated: { text in
+                if let passcode = TelewhiteHiddenChats.passcode, text == passcode {
+                    TelewhiteHiddenChats.setRevealed(true)
+                    arguments.pokeRefresh()
+                }
+            }, action: {})
         case let .ghostMessages(text, value):
             return self.switchItem(presentationData: presentationData, arguments: arguments, text: text, value: value) { settings, value in
                 settings.hideReadReceipts = value
@@ -810,7 +838,14 @@ private func telewhiteModsEntries(tab: TelewhiteModsTab, settings: TelewhiteMods
         entries.append(.hidePhoneInSettings(strings.text("Hide Phone in Settings", "Скрыть номер в настройках"), settings.hidePhoneInSettings))
         entries.append(.showProfileIds(strings.text("Show Profile ID", "Показать ID профиля"), settings.showUserIds && settings.showChatIds))
         entries.append(.ghostChatButtonEnabled(strings.text("Per-Chat Ghost Button", "Кнопка невидимки в чатах"), settings.ghostChatButtonEnabled))
-        entries.append(.privacyInfo(strings.text("Online, screenshot and content controls live here.", "Здесь находятся настройки онлайна, скриншотов и ограничений контента.")))
+        let hiddenLocked = TelewhiteHiddenChats.passcode != nil && !TelewhiteHiddenChats.isRevealed
+        if hiddenLocked {
+            entries.append(.hiddenChatsUnlock(strings.text("Enter passcode to show hidden chats", "Введите пароль для показа скрытых чатов")))
+        } else {
+            entries.append(.revealHiddenChats(strings.text("Show Hidden Chats", "Показать скрытые чаты"), TelewhiteHiddenChats.isRevealed))
+            entries.append(.hiddenChatsPasscode(strings.text("Hidden chats passcode", "Пароль для скрытых чатов"), TelewhiteHiddenChats.passcode ?? ""))
+        }
+        entries.append(.privacyInfo(strings.text("Hide any chat from the list via its context menu. With a passcode set, hidden chats can only be shown after entering it.", "Скрыть чат из списка можно через его контекстное меню. Если задан пароль, показать скрытые чаты можно только после его ввода.")))
 
     case .stealth:
         entries.append(.stealthHeader(telewhiteTabTitle(.stealth, strings: strings)))
@@ -951,6 +986,9 @@ public func telewhiteModsController(context: AccountContext) -> ViewController {
 private func telewhiteModsSectionController(context: AccountContext, tab: TelewhiteModsTab, statePromise: ValuePromise<TelewhiteModsSettings>, stateValue: Atomic<TelewhiteModsSettings>, updateSettings: @escaping ((TelewhiteModsSettings) -> TelewhiteModsSettings) -> Void) -> ViewController {
     var presentControllerImpl: ((ViewController) -> Void)?
 
+    let refreshTick = ValuePromise<Int32>(0)
+    let refreshTickValue = Atomic<Int32>(value: 0)
+
     let arguments = TelewhiteModsControllerArguments(updateSettings: updateSettings, updateTranslationSettings: { f in
         let _ = updateTranslationSettingsInteractively(accountManager: context.sharedContext.accountManager, f).start()
     }, startVpn: {
@@ -965,6 +1003,8 @@ private func telewhiteModsSectionController(context: AccountContext, tab: Telewh
         presentControllerImpl?(textAlertController(context: context, title: "VPN", text: text, actions: [
             TextAlertAction(type: .defaultAction, title: presentationData.strings.Common_OK, action: {})
         ]))
+    }, pokeRefresh: {
+        refreshTick.set(refreshTickValue.modify { $0 &+ 1 })
     })
 
     let translationSettings = context.sharedContext.accountManager.sharedData(keys: [ApplicationSpecificSharedDataKeys.translationSettings])
@@ -972,9 +1012,9 @@ private func telewhiteModsSectionController(context: AccountContext, tab: Telewh
         return sharedData.entries[ApplicationSpecificSharedDataKeys.translationSettings]?.get(TranslationSettings.self) ?? TranslationSettings.defaultSettings
     }
 
-    let signal = combineLatest(context.sharedContext.presentationData, statePromise.get(), translationSettings)
+    let signal = combineLatest(context.sharedContext.presentationData, statePromise.get(), translationSettings, refreshTick.get())
     |> deliverOnMainQueue
-    |> map { presentationData, settings, translationSettings -> (ItemListControllerState, (ItemListNodeState, Any)) in
+    |> map { presentationData, settings, translationSettings, _ -> (ItemListControllerState, (ItemListNodeState, Any)) in
         let strings = TelewhiteModsStrings(presentationData: presentationData)
         let controllerState = ItemListControllerState(presentationData: ItemListPresentationData(presentationData), title: .text(telewhiteTabTitle(tab, strings: strings)), leftNavigationButton: nil, rightNavigationButton: nil, backNavigationButton: ItemListBackButton(title: presentationData.strings.Common_Back), animateChanges: false)
         let listState = ItemListNodeState(presentationData: ItemListPresentationData(presentationData), entries: telewhiteModsEntries(tab: tab, settings: settings, translationSettings: translationSettings, strings: strings), style: .blocks, animateChanges: false)

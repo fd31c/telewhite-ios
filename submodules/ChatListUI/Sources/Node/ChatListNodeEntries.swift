@@ -661,6 +661,8 @@ func chatListNodeEntriesForView(view: EngineChatList, state: ChatListNodeState, 
     
     var hasPinned = false
     
+    let telewhiteHiddenPeerIds: Set<Int64> = TelewhiteHiddenChats.isRevealed ? Set() : TelewhiteHiddenChats.hiddenPeerIds()
+    
     loop: for entry in view.items {
         var peerId: EnginePeer.Id?
         var threadId: Int64?
@@ -678,6 +680,9 @@ func chatListNodeEntriesForView(view: EngineChatList, state: ChatListNodeState, 
             continue loop
         }
         if let peerId = peerId, state.pendingRemovalItemIds.contains(ChatListNodeState.ItemId(peerId: peerId, threadId: threadId)) {
+            continue loop
+        }
+        if !telewhiteHiddenPeerIds.isEmpty, let peerId = peerId, case .chatList = mode, telewhiteHiddenPeerIds.contains(peerId.toInt64()) {
             continue loop
         }
         var updatedMessages = entry.messages

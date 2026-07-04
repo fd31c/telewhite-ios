@@ -362,6 +362,21 @@ func chatContextMenuItems(context: AccountContext, peerId: EnginePeer.Id, promoI
                             }
                         }
                         
+                        if case .chatList = source, !isSavedMessages {
+                            let twIsRussian = strings.baseLanguageCode.lowercased().hasPrefix("ru")
+                            let twIsHidden = TelewhiteHiddenChats.isHidden(peerId.toInt64())
+                            let twTitle: String
+                            if twIsHidden {
+                                twTitle = twIsRussian ? "Показать чат" : "Unhide Chat"
+                            } else {
+                                twTitle = twIsRussian ? "Скрыть чат" : "Hide Chat"
+                            }
+                            items.append(.action(ContextMenuActionItem(text: twTitle, icon: { theme in generateTintedImage(image: UIImage(bundleImageName: twIsHidden ? "Chat/Context Menu/Eye" : "Chat/Context Menu/Restrict"), color: theme.contextMenu.primaryColor) }, action: { _, f in
+                                TelewhiteHiddenChats.setHidden(peerId.toInt64(), hidden: !twIsHidden)
+                                f(.default)
+                            })))
+                        }
+                        
                         let archiveEnabled = !isSavedMessages && peerId != EnginePeer.Id(namespace: Namespaces.Peer.CloudUser, id: EnginePeer.Id.Id._internalFromInt64Value(777000)) && peerId == context.account.peerId
                         if let group = peerGroup {
                             if archiveEnabled {
