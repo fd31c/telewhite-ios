@@ -264,6 +264,7 @@ private enum TelewhiteModsEntry: ItemListNodeEntry, Equatable {
     case revealHiddenChats(String, Bool)
     case hiddenChatsPasscode(String, String)
     case hiddenChatsUnlock(String)
+    case deleteAccountProtection(String, Bool)
     case privacyInfo(String)
     
     case stealthHeader(String)
@@ -305,7 +306,7 @@ private enum TelewhiteModsEntry: ItemListNodeEntry, Equatable {
             return TelewhiteModsSection.messenger.rawValue
         case .vpnHeader, .vpnEnabled, .vpnSubscription, .vpnStatus, .vpnStart, .vpnInfo:
             return TelewhiteModsSection.vpn.rawValue
-        case .privacyHeader, .hideOnlineStatus, .ghostMode, .ghostChatButtonEnabled, .hideTypingStatus, .hideReadReceipts, .screenshotProtectionBypass, .contentRestrictionBypass, .hidePhoneInSettings, .showProfileIds, .revealHiddenChats, .hiddenChatsPasscode, .hiddenChatsUnlock, .privacyInfo:
+        case .privacyHeader, .hideOnlineStatus, .ghostMode, .ghostChatButtonEnabled, .hideTypingStatus, .hideReadReceipts, .screenshotProtectionBypass, .contentRestrictionBypass, .hidePhoneInSettings, .showProfileIds, .revealHiddenChats, .hiddenChatsPasscode, .hiddenChatsUnlock, .deleteAccountProtection, .privacyInfo:
             return TelewhiteModsSection.privacy.rawValue
         case .stealthHeader, .ghostMessages, .ghostStories, .stealthInfo:
             return TelewhiteModsSection.stealth.rawValue
@@ -376,8 +377,10 @@ private enum TelewhiteModsEntry: ItemListNodeEntry, Equatable {
             return 111
         case .hiddenChatsUnlock:
             return 112
-        case .privacyInfo:
+        case .deleteAccountProtection:
             return 113
+        case .privacyInfo:
+            return 114
         case .vpnHeader:
             return 200
         case .vpnEnabled:
@@ -598,6 +601,11 @@ private enum TelewhiteModsEntry: ItemListNodeEntry, Equatable {
                     arguments.pokeRefresh()
                 }
             }, action: {})
+        case let .deleteAccountProtection(text, value):
+            return ItemListSwitchItem(presentationData: presentationData, systemStyle: .glass, title: text, value: value, sectionId: self.section, style: .blocks, updated: { value in
+                TelewhiteAccountProtection.isEnabled = value
+                arguments.pokeRefresh()
+            })
         case let .ghostMessages(text, value):
             return self.switchItem(presentationData: presentationData, arguments: arguments, text: text, value: value) { settings, value in
                 settings.hideReadReceipts = value
@@ -845,7 +853,8 @@ private func telewhiteModsEntries(tab: TelewhiteModsTab, settings: TelewhiteMods
             entries.append(.revealHiddenChats(strings.text("Show Hidden Chats", "Показать скрытые чаты"), TelewhiteHiddenChats.isRevealed))
             entries.append(.hiddenChatsPasscode(strings.text("Hidden chats passcode", "Пароль для скрытых чатов"), TelewhiteHiddenChats.passcode ?? ""))
         }
-        entries.append(.privacyInfo(strings.text("Hide any chat from the list via its context menu. With a passcode set, hidden chats can only be shown after entering it.", "Скрыть чат из списка можно через его контекстное меню. Если задан пароль, показать скрытые чаты можно только после его ввода.")))
+        entries.append(.deleteAccountProtection(strings.text("Account Deletion Protection", "Защита от удаления аккаунта"), TelewhiteAccountProtection.isEnabled))
+        entries.append(.privacyInfo(strings.text("Hide any chat from the list via its context menu. With a passcode set, hidden chats can only be shown after entering it. Deletion protection asks for the same passcode before opening the account deletion flow.", "Скрыть чат из списка можно через его контекстное меню. Если задан пароль, показать скрытые чаты можно только после его ввода. Защита от удаления запрашивает тот же пароль перед открытием удаления аккаунта.")))
 
     case .stealth:
         entries.append(.stealthHeader(telewhiteTabTitle(.stealth, strings: strings)))

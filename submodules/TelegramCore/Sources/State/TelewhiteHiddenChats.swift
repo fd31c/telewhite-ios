@@ -60,3 +60,16 @@ public enum TelewhiteHiddenChats {
         }
     }
 }
+
+public enum TelewhiteAccountProtection {
+    private static let enabledKey = "telewhite.mods.deleteAccountProtection"
+
+    public static var isEnabled: Bool {
+        get {
+            return UserDefaults.standard.bool(forKey: enabledKey)
+        }
+        set {
+            UserDefaults.standard.set(newValue, forKey: enabledKey)
+        }
+    }
+}

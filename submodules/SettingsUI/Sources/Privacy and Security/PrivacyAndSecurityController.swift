@@ -1410,12 +1410,35 @@ public func privacyAndSecurityController(
                         return
                     }
                     
-                    let _ = (combineLatest(twoStepAuth.get(), twoStepAuthDataValue.get())
-                    |> take(1)
-                    |> deliverOnMainQueue).start(next: { hasTwoStepAuth, twoStepAuthData in
-                        let optionsController = deleteAccountOptionsController(context: context, navigationController: navigationController, hasTwoStepAuth: hasTwoStepAuth ?? false, twoStepAuthData: twoStepAuthData)
-                        pushControllerImpl?(optionsController, true)
-                    })
+                    let twProceedToDeletion: () -> Void = {
+                        let _ = (combineLatest(twoStepAuth.get(), twoStepAuthDataValue.get())
+                        |> take(1)
+                        |> deliverOnMainQueue).start(next: { hasTwoStepAuth, twoStepAuthData in
+                            let optionsController = deleteAccountOptionsController(context: context, navigationController: navigationController, hasTwoStepAuth: hasTwoStepAuth ?? false, twoStepAuthData: twoStepAuthData)
+                            pushControllerImpl?(optionsController, true)
+                        })
+                    }
+                    
+                    if TelewhiteAccountProtection.isEnabled, let twPasscode = TelewhiteHiddenChats.passcode {
+                        let twIsRussian = presentationData.strings.baseLanguageCode.lowercased().hasPrefix("ru")
+                        let twAlert = UIAlertController(title: twIsRussian ? "Защита аккаунта" : "Account Protection", message: twIsRussian ? "Введите пароль Telewhite, чтобы продолжить удаление аккаунта." : "Enter your Telewhite passcode to continue with account deletion.", preferredStyle: .alert)
+                        twAlert.addTextField { field in
+                            field.isSecureTextEntry = true
+                        }
+                        twAlert.addAction(UIAlertAction(title: presentationData.strings.Common_Cancel, style: .cancel))
+                        twAlert.addAction(UIAlertAction(title: presentationData.strings.Common_OK, style: .default, handler: { [weak twAlert] _ in
+                            if twAlert?.textFields?.first?.text == twPasscode {
+                                twProceedToDeletion()
+                            }
+                        }))
+                        if let twPresenter = navigationController.view.window?.rootViewController?.presentedViewController {
+                            twPresenter.present(twAlert, animated: true)
+                        } else {
+                            navigationController.view.window?.rootViewController?.present(twAlert, animated: true)
+                        }
+                    } else {
+                        twProceedToDeletion()
+                    }
                 })))
 
                 guard let sourceNode = findAccountTimeoutReferenceNode?() else {
