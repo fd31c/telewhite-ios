@@ -294,6 +294,7 @@ public struct ChatListNodeState: Equatable {
     public var selectedPeerMap: [EnginePeer.Id: EnginePeer]
     public var selectedThreadIds: Set<Int64>
     public var archiveStoryState: StoryState?
+    public var telewhiteRefreshToken: Int = 0
     
     public init(
         presentationData: ChatListPresentationData,
@@ -328,6 +329,9 @@ public struct ChatListNodeState: Equatable {
     }
     
     public static func ==(lhs: ChatListNodeState, rhs: ChatListNodeState) -> Bool {
+        if lhs.telewhiteRefreshToken != rhs.telewhiteRefreshToken {
+            return false
+        }
         if lhs.presentationData !== rhs.presentationData {
             return false
         }
