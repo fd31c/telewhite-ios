@@ -981,7 +981,9 @@ private func telewhiteModsEntries(tab: TelewhiteModsTab, settings: TelewhiteMods
         developerInfoText += "\n" + strings.text("Last push processing result: ", "Результат обработки последнего пуша: ") + (lastResultStatus ?? strings.text("Unknown (update pending)", "Неизвестно (нужен новый пуш)"))
         let registerResult = defaults.string(forKey: "telewhite.push.registerResult") ?? strings.text("Not sent yet", "Ещё не отправлялся")
         developerInfoText += "\n" + strings.text("Telegram server registration: ", "Регистрация на сервере Telegram: ") + registerResult
-        developerInfoText += "\n\n" + strings.text("If the extension is \"Missing\", the signing service stripped PlugIns — encrypted pushes cannot be displayed. If App Group is \"Unavailable\", the signing profile lacks the app group entitlement.", "Если расширение \"Missing\" — сервис подписи вырезал PlugIns, зашифрованные пуши не смогут отображаться. Если App Group \"Unavailable\" — в профиле подписи нет entitlement на app group.")
+        let buildApiId = defaults.string(forKey: "telewhite.push.apiId") ?? strings.text("Unknown (update pending)", "Неизвестно (нужен новый запуск)")
+        developerInfoText += "\n" + strings.text("Build api_id: ", "api_id сборки: ") + buildApiId
+        developerInfoText += "\n\n" + strings.text("If the extension is \"Missing\", the signing service stripped PlugIns — encrypted pushes cannot be displayed. If App Group is \"Unavailable\", the signing profile lacks the app group entitlement.", "Если расширение \"Missing\" — сервис подписи в��резал PlugIns, зашифрованные пуши не смогут отображаться. Если App Group \"Unavailable\" — в профиле подписи нет entitlement на app group.")
         entries.append(.developerInfo(developerInfoText))
     }
 

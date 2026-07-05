@@ -2105,6 +2105,10 @@ private func extractAccountManagerState(records: AccountRecordsView<TelegramAcco
         defaults.set("Registered", forKey: "telewhite.push.status")
         defaults.set(hexString(deviceToken), forKey: "telewhite.push.token")
         defaults.set(Date().timeIntervalSince1970 as NSNumber, forKey: "telewhite.push.date")
+        if let baseAppBundleIdentifier = Bundle.main.bundleIdentifier, let lastDotRange = baseAppBundleIdentifier.range(of: ".", options: [.backwards]) {
+            let buildConfig = BuildConfig(baseAppBundleId: String(baseAppBundleIdentifier[..<lastDotRange.lowerBound]))
+            defaults.set("\(buildConfig.apiId)", forKey: "telewhite.push.apiId")
+        }
 
         // Telewhite: verify that the NotificationService extension survived re-signing
         // and that the shared App Group container is accessible. Re-signing services
