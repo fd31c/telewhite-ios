@@ -2551,6 +2551,21 @@ final class NotificationService: UNNotificationServiceExtension {
     }
     
     override func didReceive(_ request: UNNotificationRequest, withContentHandler contentHandler: @escaping (UNNotificationContent) -> Void) {
+        // Telewhite: when the app is re-signed without a provisioned App Group
+        // (ESign/shared certs), the shared container is unreachable and the full
+        // handler below can never initialize — it would silently swallow the push
+        // (contentHandler is never called, and after the ~30s system timeout the
+        // encrypted payload has no visible text). In that case pass the original
+        // payload straight through so plaintext pushes (registered with
+        // encrypt: false) are displayed immediately by iOS.
+        if let appBundleIdentifier = Bundle.main.bundleIdentifier, let lastDotRange = appBundleIdentifier.range(of: ".", options: [.backwards]) {
+            let baseAppBundleId = String(appBundleIdentifier[..<lastDotRange.lowerBound])
+            if FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: "group.\(baseAppBundleId)") == nil {
+                contentHandler(request.content)
+                return
+            }
+        }
+
         let episode = String(UInt32.random(in: 0 ..< UInt32.max), radix: 16)
         self.episode = episode
         
