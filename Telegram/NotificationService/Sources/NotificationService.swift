@@ -2561,7 +2561,26 @@ final class NotificationService: UNNotificationServiceExtension {
         if let appBundleIdentifier = Bundle.main.bundleIdentifier, let lastDotRange = appBundleIdentifier.range(of: ".", options: [.backwards]) {
             let baseAppBundleId = String(appBundleIdentifier[..<lastDotRange.lowerBound])
             if FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: "group.\(baseAppBundleId)") == nil {
-                contentHandler(request.content)
+                // Diagnostic pass-through: always surface SOMETHING visible so we can
+                // tell whether APNs delivered the push at all. If the payload carries
+                // readable text (plaintext mode), show it as-is; if it is empty or
+                // still encrypted, show a diagnostic placeholder instead of silence.
+                let body = request.content.body
+                let title = request.content.title
+                if !body.isEmpty || !title.isEmpty {
+                    contentHandler(request.content)
+                } else {
+                    let diag = UNMutableNotificationContent()
+                    diag.title = "Telewhite"
+                    let hasEncrypted = request.content.userInfo["p"] != nil
+                    if hasEncrypted {
+                        diag.body = "TW-diag: encrypted push received (server still in encrypted mode)"
+                    } else {
+                        diag.body = "TW-diag: push received with empty payload (keys: \(request.content.userInfo.keys.compactMap { $0 as? String }.sorted().joined(separator: ",")))"
+                    }
+                    diag.sound = UNNotificationSound.default
+                    contentHandler(diag)
+                }
                 return
             }
         }
