@@ -90,13 +90,46 @@ jobs:
           cp build-system/fake-codesigning/certs/* build-input/generated-codesigning/certs/
           cp build-input/generated-profiles/*.mobileprovision build-input/generated-codesigning/profiles/
 
+      - name: Free up disk space
+        run: |
+          set -uo pipefail
+
+          echo "=== Disk before cleanup ==="
+          df -h /
+
+          # Remove Xcode versions we are not using to reclaim tens of GB.
+          SELECTED_DEVELOPER_DIR="$(xcode-select -p)"
+          SELECTED_XCODE_APP="${SELECTED_DEVELOPER_DIR%/Contents/Developer}"
+          echo "Keeping active Xcode: ${SELECTED_XCODE_APP}"
+          for xcode in /Applications/Xcode_*.app /Applications/Xcode.app; do
+            if [ -d "$xcode" ] && [ "$xcode" != "$SELECTED_XCODE_APP" ]; then
+              echo "Removing unused ${xcode}"
+              sudo rm -rf "$xcode" || true
+            fi
+          done
+
+          # iOS/tvOS/watchOS simulator runtimes are not needed for a device build.
+          sudo rm -rf ~/Library/Developer/CoreSimulator/Caches/* || true
+          xcrun simctl delete all || true
+
+          # Misc caches that safely regenerate.
+          sudo rm -rf /Library/Developer/CoreSimulator/Profiles/Runtimes/* || true
+
+          echo "=== Disk after cleanup ==="
+          df -h /
+
       - name: Build release IPA
         run: |
           set -euo pipefail
 
           sudo mkdir -p /Users/Shared
           sudo rm -rf /Users/Shared/telegram-ios
-          sudo cp -R "$GITHUB_WORKSPACE" /Users/Shared/telegram-ios
+          # Copy the workspace to a stable path, but exclude the git history
+          # (fetch-depth: 0 + recursive submodules make .git several GB, which
+          # the Bazel build does not need and which contributed to the runner
+          # running out of disk and failing with I/O errors during linking).
+          sudo mkdir -p /Users/Shared/telegram-ios
+          sudo rsync -a --exclude='.git' --exclude='.git/' "$GITHUB_WORKSPACE"/ /Users/Shared/telegram-ios/
           sudo chown -R "$USER":staff /Users/Shared/telegram-ios
 
           cd /Users/Shared/telegram-ios
