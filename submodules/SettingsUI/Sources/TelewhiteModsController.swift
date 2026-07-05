@@ -289,6 +289,7 @@ private enum TelewhiteModsEntry: ItemListNodeEntry, Equatable {
     case showMessageIds(String, Bool)
     case pushStatus(String, String)
     case pushToken(String, String)
+    case apsEnvironment(String, String)
     case developerInfo(String)
     
     var section: ItemListSectionId {
@@ -311,7 +312,7 @@ private enum TelewhiteModsEntry: ItemListNodeEntry, Equatable {
             return TelewhiteModsSection.calls.rawValue
         case .appearanceHeader, .compactChatList, .amoledMode:
             return TelewhiteModsSection.appearance.rawValue
-        case .developerHeader, .showUserIds, .showChatIds, .showMessageIds, .pushStatus, .pushToken, .developerInfo:
+        case .developerHeader, .showUserIds, .showChatIds, .showMessageIds, .pushStatus, .pushToken, .apsEnvironment, .developerInfo:
             return TelewhiteModsSection.developer.rawValue
         }
     }
@@ -426,8 +427,10 @@ private enum TelewhiteModsEntry: ItemListNodeEntry, Equatable {
             return 804
         case .pushToken:
             return 805
-        case .developerInfo:
+        case .apsEnvironment:
             return 806
+        case .developerInfo:
+            return 807
         }
     }
     
@@ -625,8 +628,39 @@ private enum TelewhiteModsEntry: ItemListNodeEntry, Equatable {
             return ItemListDisclosureItem(presentationData: presentationData, systemStyle: .glass, title: text, label: value, labelStyle: .text, sectionId: self.section, style: .blocks, disclosureStyle: fullToken.isEmpty ? .none : .arrow, action: fullToken.isEmpty ? nil : {
                 UIPasteboard.general.string = fullToken
             })
+        case let .apsEnvironment(text, value):
+            return ItemListDisclosureItem(presentationData: presentationData, systemStyle: .glass, title: text, label: value, labelStyle: .text, sectionId: self.section, style: .blocks, disclosureStyle: .none, action: nil)
         }
     }
+}
+
+private func telewhiteProvisioningEntitlements() -> [String: Any]? {
+    guard let url = Bundle.main.url(forResource: "embedded", withExtension: "mobileprovision"),
+          let data = try? Data(contentsOf: url) else {
+        return nil
+    }
+    // embedded.mobileprovision is a CMS/PKCS7 signed container. The embedded
+    // property list is stored as plain text between <?xml ...> and </plist>.
+    guard let raw = String(data: data, encoding: .ascii) ?? String(data: data, encoding: .isoLatin1) else {
+        return nil
+    }
+    guard let plistStart = raw.range(of: "<?xml"),
+          let plistEnd = raw.range(of: "</plist>") else {
+        return nil
+    }
+    let plistString = String(raw[plistStart.lowerBound..<plistEnd.upperBound])
+    guard let plistData = plistString.data(using: .isoLatin1),
+          let plist = try? PropertyListSerialization.propertyList(from: plistData, options: [], format: nil) as? [String: Any] else {
+        return nil
+    }
+    return plist["Entitlements"] as? [String: Any]
+}
+
+private func telewhiteApsEnvironmentValue() -> String? {
+    guard let entitlements = telewhiteProvisioningEntitlements() else {
+        return nil
+    }
+    return entitlements["aps-environment"] as? String
 }
 
 private struct TelewhiteModsStrings {
@@ -827,7 +861,22 @@ private func telewhiteModsEntries(tab: TelewhiteModsTab, settings: TelewhiteMods
             shortToken = pushToken
         }
         entries.append(.pushToken(strings.text("APNs token", "APNs токен"), pushToken.isEmpty ? shortToken : "\(shortToken) — \(strings.text("tap to copy", "нажмите чтобы скопировать"))"))
-        entries.append(.developerInfo(strings.text("If push status is not \"Registered\", Apple did not issue a token for this signing profile — messages will not push. IDs are shown in profile/context surfaces when enabled.", "Если статус пушей не \"Registered\", Apple не выдал токен для этого профиля подписи — пуши работать не будут. ID отображаются в профилях и контекстных меню.")))
+
+        let apsValue = telewhiteApsEnvironmentValue()
+        let apsDisplay: String
+        switch apsValue {
+        case "production":
+            apsDisplay = strings.text("production (real APNs)", "production (боевой APNs)")
+        case "development":
+            apsDisplay = strings.text("development (sandbox — no pushes)", "development (sandbox — пушей не будет)")
+        case .some(let other):
+            apsDisplay = other
+        case .none:
+            apsDisplay = strings.text("Unknown (no provisioning profile)", "Неизвестно (нет профиля)")
+        }
+        entries.append(.apsEnvironment(strings.text("APNs environment", "APNs окружение"), apsDisplay))
+
+        entries.append(.developerInfo(strings.text("Push delivery depends on APNs environment, not on api_id. Telegram sends to production APNs, so the profile you (re)sign with must have aps-environment = production. If it is development, Apple issues a sandbox token and messages will not push, even when status is \"Registered\". Free Apple ID profiles are always development. IDs are shown in profile/context surfaces when enabled.", "Доставка пушей зависит от APNs окружения, а не от api_id. Telegram шлёт на боевой APNs, поэтому профиль, которым ты (пере)подписываешь, должен иметь aps-environment = production. Если стоит development, Apple выдаёт sandbox-токен и пуши приходить не будут, даже если статус \"Registered\". Бесплатный Apple ID всегда даёт development. ID отображаются в профилях и контекстных меню.")))
     }
 
     return entries
