@@ -7,6 +7,25 @@
 
 ---
 
+## 2026-07-05
+
+- **[Исправлено]** Пуши на сайдлоад-сборках. Найдена настоящая причина, по которой статус был
+  «Registered», но уведомления не приходили: флаг `appSandbox`, который приложение сообщает серверам
+  Telegram при регистрации токена (`account.registerDevice`), определялся жёстко по `#if DEBUG`
+  (Release → `sandbox = false`, то есть «production»). При переподписи IPA бесплатным Apple ID / dev-профилем
+  Apple выдаёт **sandbox**-токен (`aps-environment = development`), а приложение говорило Telegram, что токен
+  production → сервер слал пуш на боевой APNs, где sandbox-токен неизвестен, и пуш молча выбрасывался.
+  Теперь `sandbox` определяется в рантайме из `aps-environment` встроенного `embedded.mobileprovision`
+  (`telewhiteIsApnsSandbox()`), поэтому флаг всегда совпадает с реально выданным токеном — пуши работают
+  и на бесплатном (development), и на платном (production) профиле. Правка в обоих потоках:
+  регистрация токена (`updateNotificationTokensRegistration`) и конфигурация при логине/смене номера
+  (`authorizationPushConfigurationValue`). Файл: `submodules/TelegramUI/Sources/SharedAccountContext.swift`.
+  К `api_id`/`api_hash` доставка пушей отношения не имеет.
+- **[Добавлено]** Диагностика «APNs environment» в `Telewhite Mods → Developer`: строка читает
+  `aps-environment` из `embedded.mobileprovision` в рантайме и показывает, куда маршрутизируются пуши
+  (`production → боевой APNs` / `development → sandbox APNs`). Пояснительный текст обновлён под новую логику
+  авто-детекции. Файл: `submodules/SettingsUI/Sources/TelewhiteModsController.swift`.
+
 ## 2026-07-03
 
 - **[Добавлено]** Диагностика push-уведомлений. В `Telewhite Mods → Developer` добавлены строки

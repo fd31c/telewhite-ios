@@ -106,6 +106,50 @@ import CreateBotScreen
 import EmojiStatusSelectionComponent
 import EntityKeyboard
 
+// Telewhite: read the `aps-environment` entitlement from the embedded provisioning
+// profile so the APNs sandbox flag we report to Telegram matches the token Apple
+// actually issued. On sideloaded / re-signed builds the signing profile (not the
+// compile-time DEBUG flag) decides whether Apple hands us a sandbox or production
+// device token. Reporting the wrong environment makes Telegram route pushes to the
+// other APNs environment, where the token is unknown and the push is silently
+// dropped — this is the usual reason sideloaded builds register a token but never
+// receive notifications.
+private func telewhiteProvisioningApsEnvironment() -> String? {
+    guard let url = Bundle.main.url(forResource: "embedded", withExtension: "mobileprovision"),
+          let data = try? Data(contentsOf: url) else {
+        return nil
+    }
+    guard let raw = String(data: data, encoding: .isoLatin1) else {
+        return nil
+    }
+    guard let plistStart = raw.range(of: "<?xml"),
+          let plistEnd = raw.range(of: "</plist>") else {
+        return nil
+    }
+    let plistString = String(raw[plistStart.lowerBound..<plistEnd.upperBound])
+    guard let plistData = plistString.data(using: .isoLatin1),
+          let plist = try? PropertyListSerialization.propertyList(from: plistData, options: [], format: nil) as? [String: Any],
+          let entitlements = plist["Entitlements"] as? [String: Any] else {
+        return nil
+    }
+    return entitlements["aps-environment"] as? String
+}
+
+// Telewhite: decide the APNs sandbox flag from the actual signing environment.
+// Priority: provisioning profile `aps-environment` (authoritative on device) →
+// fall back to the compile-time DEBUG flag when no profile is present (e.g. App
+// Store builds strip the embedded profile, where DEBUG=false / production is correct).
+private func telewhiteIsApnsSandbox() -> Bool {
+    if let apsEnvironment = telewhiteProvisioningApsEnvironment() {
+        return apsEnvironment != "production"
+    }
+    #if DEBUG
+    return true
+    #else
+    return false
+    #endif
+}
+
 private final class AccountUserInterfaceInUseContext {
     let subscribers = Bag<(Bool) -> Void>()
     let tokens = Bag<Void>()
@@ -326,12 +370,7 @@ public final class SharedAccountContextImpl: SharedAccountContext {
             guard let data else {
                 return nil
             }
-            let sandbox: Bool
-            #if DEBUG
-            sandbox = true
-            #else
-            sandbox = false
-            #endif
+            let sandbox = telewhiteIsApnsSandbox()
             return AuthorizationCodePushNotificationConfiguration(
                 token: hexString(data),
                 isSandbox: sandbox
@@ -1617,12 +1656,7 @@ public final class SharedAccountContextImpl: SharedAccountContext {
     }
 
     public func updateNotificationTokensRegistration() {
-        let sandbox: Bool
-        #if DEBUG
-        sandbox = true
-        #else
-        sandbox = false
-        #endif
+        let sandbox = telewhiteIsApnsSandbox()
 
         let settings = self.accountManager.sharedData(keys: [ApplicationSpecificSharedDataKeys.inAppNotificationSettings])
         |> map { sharedData -> (allAccounts: Bool, includeMuted: Bool) in

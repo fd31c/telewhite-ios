@@ -866,9 +866,9 @@ private func telewhiteModsEntries(tab: TelewhiteModsTab, settings: TelewhiteMods
         let apsDisplay: String
         switch apsValue {
         case "production":
-            apsDisplay = strings.text("production (real APNs)", "production (боевой APNs)")
+            apsDisplay = strings.text("production → production APNs", "production → боевой APNs")
         case "development":
-            apsDisplay = strings.text("development (sandbox — no pushes)", "development (sandbox — пушей не будет)")
+            apsDisplay = strings.text("development → sandbox APNs", "development → sandbox APNs")
         case .some(let other):
             apsDisplay = other
         case .none:
@@ -876,7 +876,7 @@ private func telewhiteModsEntries(tab: TelewhiteModsTab, settings: TelewhiteMods
         }
         entries.append(.apsEnvironment(strings.text("APNs environment", "APNs окружение"), apsDisplay))
 
-        entries.append(.developerInfo(strings.text("Push delivery depends on APNs environment, not on api_id. Telegram sends to production APNs, so the profile you (re)sign with must have aps-environment = production. If it is development, Apple issues a sandbox token and messages will not push, even when status is \"Registered\". Free Apple ID profiles are always development. IDs are shown in profile/context surfaces when enabled.", "Доставка пушей зависит от APNs окружения, а не от api_id. Telegram шлёт на боевой APNs, поэтому профиль, которым ты (пере)подписываешь, должен иметь aps-environment = production. Если стоит development, Apple выдаёт sandbox-токен и пуши приходить не будут, даже если статус \"Registered\". Бесплатный Apple ID всегда даёт development. ID отображаются в профилях и контекстных меню.")))
+        entries.append(.developerInfo(strings.text("Push delivery depends on the APNs environment of the signing profile, not on api_id. Telewhite now auto-detects aps-environment from the embedded provisioning profile and tells Telegram the matching sandbox/production flag, so pushes work whether you re-sign with a free (development) or paid (production) profile. If status stays not \"Registered\", Apple did not issue a token for this profile at all. IDs are shown in profile/context surfaces when enabled.", "Доставка пушей зависит от APNs окружения профиля подписи, а не от api_id. Telewhite теперь сам определяет aps-environment из встроенного профиля и сообщает Telegram правильный флаг sandbox/production, поэтому пуши работают и с бесплатным (development), и с платным (production) профилем. Если статус так и не \"Registered\", значит Apple вообще не выдал токен для этого профиля. ID отображаются в профилях и контекстных меню.")))
     }
 
     return entries
