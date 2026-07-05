@@ -150,6 +150,18 @@ private func telewhiteIsApnsSandbox() -> Bool {
     #endif
 }
 
+// Telewhite: whether the shared app group container (group.<bundleId>) is actually
+// reachable. Encrypted background pushes only work when the NotificationService
+// extension can read the decryption key from this container; re-signing tools
+// (ESign, shared certs) often strip the App Groups entitlement, making the
+// container inaccessible. When that happens we register the APNs token without an
+// encryption secret so the server sends plaintext alert pushes iOS can display
+// natively without the extension.
+private func telewhiteSharedAppGroupIsAccessible() -> Bool {
+    let bundleId = Bundle.main.bundleIdentifier ?? "ph.telegra.Telegraph"
+    return FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: "group.\(bundleId)") != nil
+}
+
 private final class AccountUserInterfaceInUseContext {
     let subscribers = Bag<(Bool) -> Void>()
     let tokens = Bag<Void>()
@@ -1729,7 +1741,14 @@ public final class SharedAccountContextImpl: SharedAccountContext {
                     }
                 } else {
                     if let apsNotificationToken {
-                        appliedAps = account.engine.accountData.registerNotificationToken(token: apsNotificationToken, type: .aps(encrypt: true), sandbox: sandbox, otherAccountUserIds: (account.account.testingEnvironment ? activeTestingUserIds : activeProductionUserIds).filter({ $0 != account.account.peerId.id }), excludeMutedChats: !settings.includeMuted)
+                        // Telewhite: encrypted pushes require the NotificationService extension to
+                        // read the decryption key from the shared app group container. When the app
+                        // is re-signed without a provisioned App Group (ESign/shared certs), the
+                        // extension cannot decrypt anything and background pushes silently vanish.
+                        // In that case register the token WITHOUT an encryption secret so Telegram's
+                        // server sends plaintext alert pushes that iOS displays natively, no
+                        // extension needed. Properly signed builds keep encrypted pushes.
+                        appliedAps = account.engine.accountData.registerNotificationToken(token: apsNotificationToken, type: .aps(encrypt: telewhiteSharedAppGroupIsAccessible()), sandbox: sandbox, otherAccountUserIds: (account.account.testingEnvironment ? activeTestingUserIds : activeProductionUserIds).filter({ $0 != account.account.peerId.id }), excludeMutedChats: !settings.includeMuted)
                     } else {
                         appliedAps = .single(true)
                     }

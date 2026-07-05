@@ -7,6 +7,22 @@
 
 ---
 
+## 2026-07-05 (фикс фоновых пушей без App Group)
+
+- **[Исправлено]** Фоновые пуши на переподписанных сборках без App Group (ESign, шаред-сертификаты).
+  Симптом: пуши приходят только в открытом приложении. Причина: Telegram по умолчанию регистрирует
+  APNs-токен с ключом шифрования (`registerDevice(..., secret: key)`), сервер шлёт зашифрованный payload
+  (`p`), расшифровать его может только NotificationService extension через общий app group контейнер —
+  а ре-сайнеры срезают entitlement `application-groups`, и extension не может прочитать ключ → пуш
+  молча пропадает. Фикс: при регистрации токена проверяем доступность контейнера
+  (`containerURL(forSecurityApplicationGroupIdentifier:)`); если недоступен — регистрируем токен
+  **без** ключа шифрования (`.aps(encrypt: false)`), и сервер Telegram шлёт открытые уведомления с
+  готовым текстом, которые iOS показывает сама, без extension. Нормально подписанные сборки продолжают
+  использовать зашифрованные пуши. Компромисс режима: текст уведомлений идёт через APNs в открытом виде.
+  Файлы: `submodules/TelegramUI/Sources/SharedAccountContext.swift` (хелпер
+  `telewhiteSharedAppGroupIsAccessible()` + адаптивный `encrypt:`),
+  `submodules/SettingsUI/Sources/TelewhiteModsController.swift` (обновлены тексты диагностики).
+
 ## 2026-07-05 (позже)
 
 - **[Добавлено]** Диагностика «App Group» в `Telewhite Mods → Developer`. Симптом: после фикса sandbox
