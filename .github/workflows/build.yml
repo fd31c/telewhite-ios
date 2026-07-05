@@ -97,23 +97,18 @@ jobs:
           echo "=== Disk before cleanup ==="
           df -h /
 
-          # Remove Xcode versions we are not using to reclaim tens of GB.
-          SELECTED_DEVELOPER_DIR="$(xcode-select -p)"
-          SELECTED_XCODE_APP="${SELECTED_DEVELOPER_DIR%/Contents/Developer}"
-          echo "Keeping active Xcode: ${SELECTED_XCODE_APP}"
-          for xcode in /Applications/Xcode_*.app /Applications/Xcode.app; do
-            if [ -d "$xcode" ] && [ "$xcode" != "$SELECTED_XCODE_APP" ]; then
-              echo "Removing unused ${xcode}"
-              sudo rm -rf "$xcode" || true
-            fi
-          done
+          # NOTE: do NOT delete Xcode installs here. /Applications/Xcode.app can be
+          # a symlink into an Xcode_XX.app, and removing the "unused" one breaks the
+          # active toolchain/SDK (missing stdlib.h/errno.h/assert.h when building
+          # third-party C libs like dav1d). Only remove things that safely
+          # regenerate and are not used by a device build.
 
-          # iOS/tvOS/watchOS simulator runtimes are not needed for a device build.
-          sudo rm -rf ~/Library/Developer/CoreSimulator/Caches/* || true
+          # iOS/tvOS/watchOS simulator devices + caches are not needed for a device build.
           xcrun simctl delete all || true
+          sudo rm -rf ~/Library/Developer/CoreSimulator/Caches/* || true
 
-          # Misc caches that safely regenerate.
-          sudo rm -rf /Library/Developer/CoreSimulator/Profiles/Runtimes/* || true
+          # Bazel/Homebrew/pip caches from image provisioning that we do not need.
+          sudo rm -rf ~/Library/Caches/* || true
 
           echo "=== Disk after cleanup ==="
           df -h /
