@@ -290,6 +290,7 @@ private enum TelewhiteModsEntry: ItemListNodeEntry, Equatable {
     case pushStatus(String, String)
     case pushToken(String, String)
     case apsEnvironment(String, String)
+    case appGroup(String, String)
     case developerInfo(String)
     
     var section: ItemListSectionId {
@@ -312,7 +313,7 @@ private enum TelewhiteModsEntry: ItemListNodeEntry, Equatable {
             return TelewhiteModsSection.calls.rawValue
         case .appearanceHeader, .compactChatList, .amoledMode:
             return TelewhiteModsSection.appearance.rawValue
-        case .developerHeader, .showUserIds, .showChatIds, .showMessageIds, .pushStatus, .pushToken, .apsEnvironment, .developerInfo:
+        case .developerHeader, .showUserIds, .showChatIds, .showMessageIds, .pushStatus, .pushToken, .apsEnvironment, .appGroup, .developerInfo:
             return TelewhiteModsSection.developer.rawValue
         }
     }
@@ -429,8 +430,10 @@ private enum TelewhiteModsEntry: ItemListNodeEntry, Equatable {
             return 805
         case .apsEnvironment:
             return 806
-        case .developerInfo:
+        case .appGroup:
             return 807
+        case .developerInfo:
+            return 808
         }
     }
     
@@ -630,6 +633,8 @@ private enum TelewhiteModsEntry: ItemListNodeEntry, Equatable {
             })
         case let .apsEnvironment(text, value):
             return ItemListDisclosureItem(presentationData: presentationData, systemStyle: .glass, title: text, label: value, labelStyle: .text, sectionId: self.section, style: .blocks, disclosureStyle: .none, action: nil)
+        case let .appGroup(text, value):
+            return ItemListDisclosureItem(presentationData: presentationData, systemStyle: .glass, title: text, label: value, labelStyle: .text, sectionId: self.section, style: .blocks, disclosureStyle: .none, action: nil)
         }
     }
 }
@@ -661,6 +666,34 @@ private func telewhiteApsEnvironmentValue() -> String? {
         return nil
     }
     return entitlements["aps-environment"] as? String
+}
+
+// Telewhite: the app groups the resigned profile actually grants. Telegram's
+// background notifications need the main app and the NotificationService
+// extension to share the SAME app group container (default:
+// group.ph.telegra.Telegraph) so the extension can read the decryption key the
+// app stored. Re-signing tools (ESign etc.) frequently strip or rewrite this
+// entitlement, which silently breaks background pushes while foreground still
+// works over the live connection.
+private func telewhiteProvisioningAppGroups() -> [String]? {
+    guard let entitlements = telewhiteProvisioningEntitlements() else {
+        return nil
+    }
+    return entitlements["com.apple.security.application-groups"] as? [String]
+}
+
+// Telewhite: the app group the code expects at runtime (group.<mainBundleId>),
+// mirroring how AppDelegate / NotificationService derive it.
+private func telewhiteExpectedAppGroup() -> String {
+    let bundleId = Bundle.main.bundleIdentifier ?? "ph.telegra.Telegraph"
+    return "group.\(bundleId)"
+}
+
+// Telewhite: whether the shared app group container is actually reachable. If the
+// entitlement was stripped/rewritten by the re-signer, this returns false and the
+// NotificationService extension cannot read the decryption key -> no background push.
+private func telewhiteAppGroupContainerAccessible() -> Bool {
+    return FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: telewhiteExpectedAppGroup()) != nil
 }
 
 private struct TelewhiteModsStrings {
@@ -876,7 +909,26 @@ private func telewhiteModsEntries(tab: TelewhiteModsTab, settings: TelewhiteMods
         }
         entries.append(.apsEnvironment(strings.text("APNs environment", "APNs окружение"), apsDisplay))
 
-        entries.append(.developerInfo(strings.text("Push delivery depends on the APNs environment of the signing profile, not on api_id. Telewhite now auto-detects aps-environment from the embedded provisioning profile and tells Telegram the matching sandbox/production flag, so pushes work whether you re-sign with a free (development) or paid (production) profile. If status stays not \"Registered\", Apple did not issue a token for this profile at all. IDs are shown in profile/context surfaces when enabled.", "Доставка пушей зависит от APNs окружения профиля подписи, а не от api_id. Telewhite теперь сам определяет aps-environment из встроенного профиля и сообщает Telegram правильный флаг sandbox/production, поэтому пуши работают и с бесплатным (development), и с платным (production) профилем. Если статус так и не \"Registered\", значит Apple вообще не выдал токен для этого профиля. ID отображаются в профилях и контекстных меню.")))
+        let expectedGroup = telewhiteExpectedAppGroup()
+        let profileGroups = telewhiteProvisioningAppGroups()
+        let containerOk = telewhiteAppGroupContainerAccessible()
+        let appGroupDisplay: String
+        if !containerOk {
+            appGroupDisplay = strings.text("Not shared — background push broken", "Не расшарен — фон не работает")
+        } else if let groups = profileGroups {
+            if groups.contains(expectedGroup) {
+                appGroupDisplay = strings.text("OK (shared)", "OK (расшарен)")
+            } else if groups.isEmpty {
+                appGroupDisplay = strings.text("Empty in profile", "Пусто в профиле")
+            } else {
+                appGroupDisplay = strings.text("Mismatch: \(groups.joined(separator: ", "))", "Не совпадает: \(groups.joined(separator: ", "))")
+            }
+        } else {
+            appGroupDisplay = strings.text("Container OK, no profile info", "Контейнер OK, нет данных профиля")
+        }
+        entries.append(.appGroup(strings.text("App Group", "App Group"), appGroupDisplay))
+
+        entries.append(.developerInfo(strings.text("Push delivery depends on the APNs environment of the signing profile, not on api_id. Telewhite auto-detects aps-environment from the embedded provisioning profile and tells Telegram the matching sandbox/production flag. Background pushes also need the App Group (group.<bundleId>) shared between the app and its NotificationService extension so the extension can decrypt them. If App Group is not \"OK (shared)\", your re-signer (e.g. ESign) stripped or changed the entitlement or did not re-sign the extension — foreground pushes still work over the live connection, but background ones fail. If status stays not \"Registered\", Apple did not issue a token for this profile at all.", "Доставка пушей зависит от APNs окружения профиля подписи, а не от api_id. Telewhite сам определяет aps-environment из встроенного профиля и сообщает Telegram правильный флаг sandbox/production. Фоновым пушам также нужен App Group (group.<bundleId>), общий у приложения и его NotificationService extension — иначе extension не сможет их расшифровать. Если App Group не \"OK (расшарен)\", значит твой ре-сайнер (например ESign) срезал/изменил entitlement или не переподписал extension — пуши в открытом приложении работают через живое соединение, а в фоне нет. Если статус так и не \"Registered\", значит Apple вообще не выдал токен для этого профиля.")))
     }
 
     return entries
