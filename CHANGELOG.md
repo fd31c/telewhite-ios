@@ -7,6 +7,25 @@
 
 ---
 
+## 2026-07-06 (авторезолв реального app group из provisioning-профиля)
+
+- **[Исправлено]** App group «не находился» на сборках, подписанных шаред-сертификатами, у которых
+  App Groups на самом деле поддерживается (сертификат «qianqian gu»: Push Notifications ✅,
+  App Groups ✅). Причина: весь код жёстко вычислял имя контейнера как `group.<bundleId>`
+  (`group.ph.telegra.Telegraph`), а подписные сервисы провижинят app group под своим App ID
+  (например `AYRY6Q6NWN.app.apricot7651.mango8575`) — то есть реальная группа называется иначе,
+  контейнер под «угаданным» именем недоступен, приложение падало в локальную папку
+  (`TelegramSideloadGroup`), а extension вообще не мог добраться до данных. Фикс: новый резолвер
+  `telewhiteResolvedAppGroupName()` — сначала пробует `group.<bundleId>`, затем читает
+  `com.apple.security.application-groups` из embedded.mobileprovision и берёт первую реально
+  доступную группу. Применён во всех точках: `AppDelegate` (основной контейнер + background
+  URLSession), `NotificationService` (init + pass-through проверка), `ShareRootController`,
+  `IntentHandler` (SiriIntents), `NotificationViewController` (NotificationContent),
+  `BroadcastUploadExtension`, диагностика в `TelewhiteModsController`, проверка plaintext-режима в
+  `SharedAccountContext`. Если подписчик провижинит любую app group — приложение и все extensions
+  автоматически сойдутся на ней, и зашифрованные фоновые пуши заработают штатно. Внимание: если
+  группа найдётся, хранилище переедет в неё → потребуется повторный вход в аккаунт.
+
 ## 2026-07-05 (NSE pass-through: пуш глушился самим extension)
 
 - **[Исправлено]** Фоновые пуши не показывались даже в режиме открытых пушей. Причина: сервер шлёт

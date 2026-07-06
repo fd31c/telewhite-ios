@@ -70,6 +70,35 @@ class IntentHandler: INExtension {
     }
 }
 
+// Telewhite: resolve the app group container name that is actually provisioned.
+// Re-signing services (ESign shared certs) often provision an app group named
+// after their own App ID instead of group.<bundleId>. Try the conventional name
+// first, then fall back to the groups listed in the embedded provisioning profile.
+private func telewhiteResolvedAppGroupName(baseAppBundleId: String) -> String {
+    let defaultName = "group.\(baseAppBundleId)"
+    if FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: defaultName) != nil {
+        return defaultName
+    }
+    guard let path = Bundle.main.path(forResource: "embedded", ofType: "mobileprovision"), let raw = try? String(contentsOfFile: path, encoding: .isoLatin1) else {
+        return defaultName
+    }
+    guard let keyRange = raw.range(of: "com.apple.security.application-groups") else {
+        return defaultName
+    }
+    guard let arrayEndRange = raw.range(of: "</array>", range: keyRange.upperBound ..< raw.endIndex) else {
+        return defaultName
+    }
+    var searchStart = keyRange.upperBound
+    while let start = raw.range(of: "<string>", range: searchStart ..< arrayEndRange.lowerBound), let end = raw.range(of: "</string>", range: start.upperBound ..< arrayEndRange.lowerBound) {
+        let candidate = String(raw[start.upperBound ..< end.lowerBound])
+        if !candidate.isEmpty, FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: candidate) != nil {
+            return candidate
+        }
+        searchStart = end.upperBound
+    }
+    return defaultName
+}
+
 @objc(IntentHandler)
 class DefaultIntentHandler: INExtension, INSendMessageIntentHandling, INSearchForMessagesIntentHandling, INSetMessageAttributeIntentHandling, INStartCallIntentHandling, INSearchCallHistoryIntentHandling {
     private let accountPromise = Promise<Account?>()
@@ -98,7 +127,7 @@ class DefaultIntentHandler: INExtension, INSendMessageIntentHandling, INSearchFo
         let apiHash: String = buildConfig.apiHash
         let languagesCategory = "ios"
         
-        let appGroupName = "group.\(baseAppBundleId)"
+        let appGroupName = telewhiteResolvedAppGroupName(baseAppBundleId: baseAppBundleId)
         let maybeAppGroupUrl = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: appGroupName)
         
         guard let appGroupUrl = maybeAppGroupUrl else {
@@ -878,7 +907,7 @@ private final class WidgetIntentHandler {
         
         let baseAppBundleId = String(appBundleIdentifier[..<lastDotRange.lowerBound])
         
-        let appGroupName = "group.\(baseAppBundleId)"
+        let appGroupName = telewhiteResolvedAppGroupName(baseAppBundleId: baseAppBundleId)
         let maybeAppGroupUrl = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: appGroupName)
         
         guard let appGroupUrl = maybeAppGroupUrl else {

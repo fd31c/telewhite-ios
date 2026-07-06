@@ -682,11 +682,23 @@ private func telewhiteProvisioningAppGroups() -> [String]? {
     return entitlements["com.apple.security.application-groups"] as? [String]
 }
 
-// Telewhite: the app group the code expects at runtime (group.<mainBundleId>),
-// mirroring how AppDelegate / NotificationService derive it.
+// Telewhite: the app group the code expects at runtime, mirroring how
+// AppDelegate / NotificationService resolve it: try group.<bundleId> first,
+// then fall back to whatever group the provisioning profile actually provides.
 private func telewhiteExpectedAppGroup() -> String {
     let bundleId = Bundle.main.bundleIdentifier ?? "ph.telegra.Telegraph"
-    return "group.\(bundleId)"
+    let defaultName = "group.\(bundleId)"
+    if FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: defaultName) != nil {
+        return defaultName
+    }
+    if let groups = telewhiteProvisioningAppGroups() {
+        for candidate in groups {
+            if !candidate.isEmpty, FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: candidate) != nil {
+                return candidate
+            }
+        }
+    }
+    return defaultName
 }
 
 // Telewhite: whether the shared app group container is actually reachable. If the

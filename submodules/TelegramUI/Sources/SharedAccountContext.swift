@@ -159,7 +159,8 @@ private func telewhiteIsApnsSandbox() -> Bool {
 // natively without the extension.
 private func telewhiteSharedAppGroupIsAccessible() -> Bool {
     let bundleId = Bundle.main.bundleIdentifier ?? "ph.telegra.Telegraph"
-    return FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: "group.\(bundleId)") != nil
+    let resolvedName = telewhiteResolvedAppGroupName(baseAppBundleId: bundleId)
+    return FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: resolvedName) != nil
 }
 
 private final class AccountUserInterfaceInUseContext {

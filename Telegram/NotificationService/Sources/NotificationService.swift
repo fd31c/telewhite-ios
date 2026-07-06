@@ -729,6 +729,35 @@ private func getCurrentRenderedTotalUnreadCount(accountManager: AccountManager<T
     }
 }
 
+// Telewhite: resolve the app group container name that is actually provisioned.
+// Re-signing services (ESign shared certs) often provision an app group named
+// after their own App ID instead of group.<bundleId>. Try the conventional name
+// first, then fall back to the groups listed in the embedded provisioning profile.
+private func telewhiteResolvedAppGroupName(baseAppBundleId: String) -> String {
+    let defaultName = "group.\(baseAppBundleId)"
+    if FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: defaultName) != nil {
+        return defaultName
+    }
+    guard let path = Bundle.main.path(forResource: "embedded", ofType: "mobileprovision"), let raw = try? String(contentsOfFile: path, encoding: .isoLatin1) else {
+        return defaultName
+    }
+    guard let keyRange = raw.range(of: "com.apple.security.application-groups") else {
+        return defaultName
+    }
+    guard let arrayEndRange = raw.range(of: "</array>", range: keyRange.upperBound ..< raw.endIndex) else {
+        return defaultName
+    }
+    var searchStart = keyRange.upperBound
+    while let start = raw.range(of: "<string>", range: searchStart ..< arrayEndRange.lowerBound), let end = raw.range(of: "</string>", range: start.upperBound ..< arrayEndRange.lowerBound) {
+        let candidate = String(raw[start.upperBound ..< end.lowerBound])
+        if !candidate.isEmpty, FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: candidate) != nil {
+            return candidate
+        }
+        searchStart = end.upperBound
+    }
+    return defaultName
+}
+
 @available(iOSApplicationExtension 10.0, iOS 10.0, *)
 private final class NotificationServiceHandler {
     private let queue: Queue
@@ -754,7 +783,7 @@ private final class NotificationServiceHandler {
         let apiHash: String = buildConfig.apiHash
         let languagesCategory = "ios"
 
-        let appGroupName = "group.\(baseAppBundleId)"
+        let appGroupName = telewhiteResolvedAppGroupName(baseAppBundleId: baseAppBundleId)
         let maybeAppGroupUrl = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: appGroupName)
 
         guard let appGroupUrl = maybeAppGroupUrl else {
@@ -2560,7 +2589,8 @@ final class NotificationService: UNNotificationServiceExtension {
         // encrypt: false) are displayed immediately by iOS.
         if let appBundleIdentifier = Bundle.main.bundleIdentifier, let lastDotRange = appBundleIdentifier.range(of: ".", options: [.backwards]) {
             let baseAppBundleId = String(appBundleIdentifier[..<lastDotRange.lowerBound])
-            if FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: "group.\(baseAppBundleId)") == nil {
+            let resolvedGroupName = telewhiteResolvedAppGroupName(baseAppBundleId: baseAppBundleId)
+            if FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: resolvedGroupName) == nil {
                 // Diagnostic pass-through: always surface SOMETHING visible so we can
                 // tell whether APNs delivered the push at all. If the payload carries
                 // readable text (plaintext mode), show it as-is; if it is empty or
