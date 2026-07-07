@@ -14,6 +14,44 @@ import TelegramStringFormatting
 import PeerNameColorItem
 import SettingsUI
 
+private var telewhiteAppIconRowCache: (name: String, image: UIImage)?
+
+private func telewhiteCurrentAppIconImage() -> UIImage? {
+    let iconName = UIApplication.shared.alternateIconName ?? "BlueIcon"
+    if let cached = telewhiteAppIconRowCache, cached.name == iconName {
+        return cached.image
+    }
+    
+    // Alternate icon PNG files are copied into the app bundle root; try common variants.
+    let candidates = [
+        "\(iconName)_120x120",
+        "\(iconName)@3x",
+        "\(iconName)@2x",
+        "\(iconName)_60x60",
+        iconName
+    ]
+    var source: UIImage?
+    for candidate in candidates {
+        if let image = UIImage(named: candidate) {
+            source = image
+            break
+        }
+    }
+    guard let sourceImage = source else {
+        return nil
+    }
+    
+    // Render at 29x29 with the standard iOS settings-icon corner radius.
+    let size = CGSize(width: 29.0, height: 29.0)
+    let renderer = UIGraphicsImageRenderer(size: size)
+    let result = renderer.image { _ in
+        UIBezierPath(roundedRect: CGRect(origin: .zero, size: size), cornerRadius: 6.5).addClip()
+        sourceImage.draw(in: CGRect(origin: .zero, size: size))
+    }
+    telewhiteAppIconRowCache = (iconName, result)
+    return result
+}
+
 enum SettingsSection: Int, CaseIterable {
     case edit
     case phone
@@ -152,7 +190,7 @@ func settingsItems(data: PeerInfoScreenData?, context: AccountContext, presentat
         items[.myProfile]!.append(PeerInfoScreenDisclosureItem(id: 0, text: presentationData.strings.Settings_MyProfile, icon: PresentationResourcesSettings.myProfile, action: {
             interaction.openSettings(.profile)
         }))
-        items[.telewhite]!.append(PeerInfoScreenDisclosureItem(id: 0, label: .titleBadge("MOD", presentationData.theme.list.itemAccentColor), text: "Telewhite Mods", icon: PresentationResourcesSettings.appearance, action: {
+        items[.telewhite]!.append(PeerInfoScreenDisclosureItem(id: 0, label: .titleBadge("MOD", presentationData.theme.list.itemAccentColor), text: "Telewhite Mods", icon: telewhiteCurrentAppIconImage() ?? PresentationResourcesSettings.appearance, action: {
             interaction.openSettings(.telewhiteMods)
         }))
         
