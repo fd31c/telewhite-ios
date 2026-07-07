@@ -2058,7 +2058,7 @@ public final class MediaPickerScreenImpl: ViewController, MediaPickerScreen, Att
         self.mainButtonAction = mainButtonAction
         self.secondaryButtonAction = secondaryButtonAction
         
-        let selectionContext = selectionContext ?? TGMediaSelectionContext(groupingAllowed: false, selectionLimit: enableMultiselection ? 100 : 1)!
+        let selectionContext = selectionContext ?? TGMediaSelectionContext(groupingAllowed: false, selectionLimit: enableMultiselection ? 1000 : 1)!
         let editingContext = editingContext ?? (subject.asFile ? TGMediaEditingContext.forCaptionsOnly() : TGMediaEditingContext())!
         
         self.titleView = MediaPickerTitleView(theme: self.presentationData.theme, glass: style == .glass, segments: [self.presentationData.strings.Attachment_AllMedia, self.presentationData.strings.Attachment_SelectedMedia(1)], selectedIndex: 0)

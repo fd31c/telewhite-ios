@@ -362,7 +362,7 @@ public func legacyAttachmentMenu(
     
     var underlyingViews: [UIView] = []
     
-    var selectionLimit: Int32 = 100
+    var selectionLimit: Int32 = 1000
     var slowModeEnabled = false
     if case let .channel(channel) = peer, channel.isRestrictedBySlowmode {
         slowModeEnabled = true

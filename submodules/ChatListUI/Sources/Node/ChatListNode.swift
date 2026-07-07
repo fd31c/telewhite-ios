@@ -1327,7 +1327,7 @@ public final class ChatListNode: ListViewImpl {
     
     var isSelectionGestureEnabled = true
     
-    public var selectionLimit: Int32 = 100
+    public var selectionLimit: Int32 = 1000
     public var reachedSelectionLimit: ((Int32) -> Void)?
     
     private var visibleTopInset: CGFloat?
