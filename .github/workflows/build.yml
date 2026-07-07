@@ -17,6 +17,12 @@ on:
 permissions:
   contents: read
 
+# Only one build per branch at a time: a new push cancels queued/running
+# builds of the same branch, preventing runner memory exhaustion.
+concurrency:
+  group: ios-ipa-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build:
     runs-on: macos-26
