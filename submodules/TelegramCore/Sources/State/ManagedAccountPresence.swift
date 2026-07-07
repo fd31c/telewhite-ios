@@ -50,7 +50,8 @@ private final class AccountPresenceManagerImpl {
     }
     
     private func updatePresence(_ isOnline: Bool) {
-        let isOnline = isOnline && !telewhiteGhostPresenceEnabled()
+        let ghostEnabled = telewhiteGhostPresenceEnabled()
+        let isOnline = isOnline && !ghostEnabled
         let request: Signal<Api.Bool, MTRpcError>
         if isOnline {
             let timer = SignalKitTimer(timeout: 30.0, repeat: false, completion: { [weak self] in
@@ -65,6 +66,19 @@ private final class AccountPresenceManagerImpl {
         } else {
             self.onlineTimer?.invalidate()
             self.onlineTimer = nil
+            if ghostEnabled && self.wasOnline {
+                // While the app is actively used in ghost mode, the server re-marks the
+                // account online after actions like sending messages. Periodically re-send
+                // the offline status so the account always shows "last seen recently".
+                let timer = SignalKitTimer(timeout: 30.0, repeat: false, completion: { [weak self] in
+                    guard let strongSelf = self else {
+                        return
+                    }
+                    strongSelf.updatePresence(strongSelf.wasOnline)
+                }, queue: self.queue)
+                self.onlineTimer = timer
+                timer.start()
+            }
             request = self.network.request(Api.functions.account.updateStatus(offline: .boolTrue))
         }
         self.isPerformingUpdate.set(true)

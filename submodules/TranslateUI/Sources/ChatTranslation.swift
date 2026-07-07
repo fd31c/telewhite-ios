@@ -349,10 +349,10 @@ public func chatTranslationState(context: AccountContext, peerId: EnginePeer.Id,
                             }
                             
                             let isEnabled: Bool
-                            if telewhiteShouldAutoTranslate {
-                                isEnabled = true
-                            } else if let currentIsEnabled = cached?.isEnabled {
+                            if let currentIsEnabled = cached?.isEnabled {
                                 isEnabled = currentIsEnabled
+                            } else if telewhiteShouldAutoTranslate {
+                                isEnabled = true
                             } else if autoTranslateEnabled {
                                 isEnabled = true
                             } else {
@@ -363,7 +363,7 @@ public func chatTranslationState(context: AccountContext, peerId: EnginePeer.Id,
                                 baseLang: baseLang,
                                 fromLang: fromLang,
                                 timestamp: currentTime,
-                                toLang: telewhiteShouldAutoTranslate ? telewhiteTargetLanguage : cached?.toLang,
+                                toLang: telewhiteShouldAutoTranslate ? (cached?.toLang ?? telewhiteTargetLanguage) : cached?.toLang,
                                 isEnabled: isEnabled
                             )
                             let _ = updateChatTranslationState(engine: context.engine, peerId: peerId, threadId: threadId, state: state).start()

@@ -1100,7 +1100,7 @@ private func telewhiteModsEntries(tab: TelewhiteModsTab, settings: TelewhiteMods
             (strings.text("Default", "По умолчанию"), nil),
             (strings.text("Small", "Маленькое"), 8),
             (strings.text("Medium", "Среднее"), 12),
-            (strings.text("Large", "Большое"), 22)
+            (strings.text("Large", "Большое"), 17)
         ]
         entries.append(.cornerRadiusHeader(strings.text("Bubble Corner Radius", "Скругление сообщений")))
         for (index, preset) in radiusPresets.enumerated() {

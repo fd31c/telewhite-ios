@@ -9,39 +9,73 @@ import Display
 import SettingsUI
 
 private func telewhiteGhostModeIcon(theme: PresentationTheme, isEnabled: Bool) -> UIImage? {
-    let color = UIColor.white
-    let fillColor = isEnabled ? color : color.withAlphaComponent(0.0)
+    let color = theme.rootController.navigationBar.buttonColor
 
     return generateImage(CGSize(width: 30.0, height: 30.0), contextGenerator: { size, context in
         context.clear(CGRect(origin: CGPoint(), size: size))
 
+        // Flip to UIKit coordinates (origin top-left)
         context.translateBy(x: 0.0, y: size.height)
         context.scaleBy(x: 1.0, y: -1.0)
 
-        let ghostRect = CGRect(x: 5.0, y: 4.5, width: 20.0, height: 21.0)
-        context.setLineWidth(2.4)
+        let rect = CGRect(x: 5.5, y: 4.0, width: 19.0, height: 22.0)
+        let lineWidth: CGFloat = 1.8
+        let minX = rect.minX
+        let maxX = rect.maxX
+        let midX = rect.midX
+        let minY = rect.minY
+        let maxY = rect.maxY
+        let waveTop = maxY - 3.0
+
+        let path = UIBezierPath()
+        // Left side going up
+        path.move(to: CGPoint(x: minX, y: waveTop))
+        path.addLine(to: CGPoint(x: minX, y: minY + 9.5))
+        // Rounded head (dome)
+        path.addCurve(to: CGPoint(x: midX, y: minY), controlPoint1: CGPoint(x: minX, y: minY + 4.25), controlPoint2: CGPoint(x: minX + 4.25, y: minY))
+        path.addCurve(to: CGPoint(x: maxX, y: minY + 9.5), controlPoint1: CGPoint(x: maxX - 4.25, y: minY), controlPoint2: CGPoint(x: maxX, y: minY + 4.25))
+        // Right side going down
+        path.addLine(to: CGPoint(x: maxX, y: waveTop))
+        // Wavy bottom: 3 smooth scallops (down-up-down-up pattern)
+        let segment = rect.width / 3.0
+        let waveDepth: CGFloat = 2.6
+        var x = maxX
+        for i in 0..<3 {
+            let isDown = (i % 2 == 0)
+            let targetX = x - segment
+            let controlY = isDown ? (waveTop + waveDepth) : (waveTop - waveDepth)
+            path.addQuadCurve(to: CGPoint(x: targetX, y: waveTop), controlPoint: CGPoint(x: x - segment / 2.0, y: controlY))
+            x = targetX
+        }
+        path.close()
+
+        context.setLineWidth(lineWidth)
         context.setLineJoin(.round)
         context.setLineCap(.round)
-        context.setStrokeColor(color.cgColor)
-        context.setFillColor(fillColor.cgColor)
 
-        context.beginPath()
-        context.move(to: CGPoint(x: ghostRect.minX, y: ghostRect.maxY - 3.4))
-        context.addLine(to: CGPoint(x: ghostRect.minX, y: ghostRect.minY + 10.0))
-        context.addCurve(to: CGPoint(x: ghostRect.midX, y: ghostRect.minY), control1: CGPoint(x: ghostRect.minX, y: ghostRect.minY + 4.2), control2: CGPoint(x: ghostRect.minX + 4.3, y: ghostRect.minY))
-        context.addCurve(to: CGPoint(x: ghostRect.maxX, y: ghostRect.minY + 10.0), control1: CGPoint(x: ghostRect.maxX - 4.3, y: ghostRect.minY), control2: CGPoint(x: ghostRect.maxX, y: ghostRect.minY + 4.2))
-        context.addLine(to: CGPoint(x: ghostRect.maxX, y: ghostRect.maxY - 3.4))
-        context.addCurve(to: CGPoint(x: ghostRect.maxX - 5.0, y: ghostRect.maxY - 3.4), control1: CGPoint(x: ghostRect.maxX - 1.7, y: ghostRect.maxY - 5.2), control2: CGPoint(x: ghostRect.maxX - 3.3, y: ghostRect.maxY - 5.2))
-        context.addCurve(to: CGPoint(x: ghostRect.maxX - 10.0, y: ghostRect.maxY - 3.4), control1: CGPoint(x: ghostRect.maxX - 6.7, y: ghostRect.maxY - 1.6), control2: CGPoint(x: ghostRect.maxX - 8.3, y: ghostRect.maxY - 1.6))
-        context.addCurve(to: CGPoint(x: ghostRect.maxX - 15.0, y: ghostRect.maxY - 3.4), control1: CGPoint(x: ghostRect.maxX - 11.7, y: ghostRect.maxY - 5.2), control2: CGPoint(x: ghostRect.maxX - 13.3, y: ghostRect.maxY - 5.2))
-        context.addCurve(to: CGPoint(x: ghostRect.minX, y: ghostRect.maxY - 3.4), control1: CGPoint(x: ghostRect.minX + 3.3, y: ghostRect.maxY - 1.6), control2: CGPoint(x: ghostRect.minX + 1.7, y: ghostRect.maxY - 1.6))
-        context.closePath()
-        context.drawPath(using: .fillStroke)
+        if isEnabled {
+            // Filled ghost with punched-out eyes
+            context.addPath(path.cgPath)
+            context.setFillColor(color.cgColor)
+            context.fillPath()
+            context.setStrokeColor(color.cgColor)
+            context.addPath(path.cgPath)
+            context.strokePath()
 
-        let eyeColor = isEnabled ? UIColor(white: 0.08, alpha: 1.0) : color
-        context.setFillColor(eyeColor.cgColor)
-        context.fillEllipse(in: CGRect(x: 10.4, y: 12.0, width: 3.2, height: 5.0))
-        context.fillEllipse(in: CGRect(x: 16.4, y: 12.0, width: 3.2, height: 5.0))
+            context.setBlendMode(.clear)
+            context.fillEllipse(in: CGRect(x: midX - 4.7, y: minY + 8.0, width: 2.8, height: 4.4))
+            context.fillEllipse(in: CGRect(x: midX + 1.9, y: minY + 8.0, width: 2.8, height: 4.4))
+            context.setBlendMode(.normal)
+        } else {
+            // Outlined ghost with solid eyes
+            context.setStrokeColor(color.cgColor)
+            context.addPath(path.cgPath)
+            context.strokePath()
+
+            context.setFillColor(color.cgColor)
+            context.fillEllipse(in: CGRect(x: midX - 4.7, y: minY + 8.0, width: 2.8, height: 4.4))
+            context.fillEllipse(in: CGRect(x: midX + 1.9, y: minY + 8.0, width: 2.8, height: 4.4))
+        }
     })
 }
 

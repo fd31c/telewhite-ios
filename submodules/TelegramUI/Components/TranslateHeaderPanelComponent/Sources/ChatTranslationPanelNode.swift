@@ -217,6 +217,9 @@ final class ChatTranslationPanelNode: ASDisplayNode {
         if case let .channel(channel) = info.peer, channel.flags.contains(.autoTranslateEnabled) {
             translationAvailable = true
         }
+        if UserDefaults.standard.bool(forKey: "telewhite.mods.autoTranslateEnglish") {
+            translationAvailable = true
+        }
         
         if translationAvailable {
             self.close()
@@ -234,6 +237,9 @@ final class ChatTranslationPanelNode: ASDisplayNode {
         
         var translationAvailable = isPremium
         if case let .channel(channel) = info.peer, channel.flags.contains(.autoTranslateEnabled) {
+            translationAvailable = true
+        }
+        if UserDefaults.standard.bool(forKey: "telewhite.mods.autoTranslateEnglish") {
             translationAvailable = true
         }
         
