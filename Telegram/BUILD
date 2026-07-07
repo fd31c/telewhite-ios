@@ -346,6 +346,9 @@ alternate_icon_folders = [
     "Premium",
     "PremiumBlack",
     "PremiumTurbo",
+    "TelewhiteGhost",
+    "TelewhiteWhite",
+    "TelewhiteNeon",
 ]
 
 composer_icon_folders = ["Telegram"]

@@ -405,6 +405,14 @@ class ThemeSettingsAppIconItemNode: ListViewItemNode, ItemListItemNode {
                                     name = item.strings.Appearance_AppIconBlack
                                 case "PremiumTurbo":
                                     name = item.strings.Appearance_AppIconTurbo
+                                case "TelewhiteGhost":
+                                    name = "Ghost"
+                                    bordered = false
+                                case "TelewhiteWhite":
+                                    name = "White"
+                                case "TelewhiteNeon":
+                                    name = "Neon"
+                                    bordered = false
                                 default:
                                     name = icon.name
                             }
