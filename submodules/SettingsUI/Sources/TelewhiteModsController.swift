@@ -797,20 +797,24 @@ private func telewhiteMenuIcon(_ icon: TelewhiteModsMenuIcon, color: UIColor) ->
             let keyhole = UIBezierPath(ovalIn: CGRect(x: 13.3, y: 16.8, width: 2.4, height: 2.4))
             keyhole.fill()
         case .ghost:
-            // Ghost: dome with wavy bottom, two eyes
+            // Ghost (TeleDark style): rounded dome, gentle scalloped bottom, two vertical oval eyes
+            let ghostLineWidth: CGFloat = 2.0
             let ghost = UIBezierPath()
-            ghost.move(to: CGPoint(x: 7.5, y: 23.0))
-            ghost.addLine(to: CGPoint(x: 7.5, y: 13.0))
-            ghost.addArc(withCenter: CGPoint(x: 14.5, y: 13.0), radius: 7.0, startAngle: .pi, endAngle: 0.0, clockwise: true)
-            ghost.addLine(to: CGPoint(x: 21.5, y: 23.0))
-            ghost.addCurve(to: CGPoint(x: 16.8, y: 23.0), controlPoint1: CGPoint(x: 20.0, y: 20.8), controlPoint2: CGPoint(x: 18.3, y: 20.8))
-            ghost.addCurve(to: CGPoint(x: 12.2, y: 23.0), controlPoint1: CGPoint(x: 15.3, y: 25.2), controlPoint2: CGPoint(x: 13.7, y: 25.2))
-            ghost.addCurve(to: CGPoint(x: 7.5, y: 23.0), controlPoint1: CGPoint(x: 10.7, y: 20.8), controlPoint2: CGPoint(x: 9.0, y: 20.8))
-            ghost.lineWidth = lineWidth
+            ghost.move(to: CGPoint(x: 7.0, y: 22.5))
+            ghost.addLine(to: CGPoint(x: 7.0, y: 13.5))
+            ghost.addArc(withCenter: CGPoint(x: 14.5, y: 13.5), radius: 7.5, startAngle: .pi, endAngle: 0.0, clockwise: true)
+            ghost.addLine(to: CGPoint(x: 22.0, y: 22.5))
+            // Gentle scalloped bottom: three soft rounded bumps
+            ghost.addCurve(to: CGPoint(x: 17.5, y: 22.5), controlPoint1: CGPoint(x: 21.0, y: 24.2), controlPoint2: CGPoint(x: 18.5, y: 24.2))
+            ghost.addCurve(to: CGPoint(x: 11.5, y: 22.5), controlPoint1: CGPoint(x: 16.3, y: 21.2), controlPoint2: CGPoint(x: 12.7, y: 21.2))
+            ghost.addCurve(to: CGPoint(x: 7.0, y: 22.5), controlPoint1: CGPoint(x: 10.5, y: 24.2), controlPoint2: CGPoint(x: 8.0, y: 24.2))
+            ghost.lineWidth = ghostLineWidth
             ghost.lineJoinStyle = .round
+            ghost.lineCapStyle = .round
             ghost.stroke()
-            UIBezierPath(ovalIn: CGRect(x: 11.0, y: 12.0, width: 2.2, height: 2.2)).fill()
-            UIBezierPath(ovalIn: CGRect(x: 15.8, y: 12.0, width: 2.2, height: 2.2)).fill()
+            // Vertical oval eyes
+            UIBezierPath(ovalIn: CGRect(x: 10.7, y: 11.0, width: 2.4, height: 4.2)).fill()
+            UIBezierPath(ovalIn: CGRect(x: 15.9, y: 11.0, width: 2.4, height: 4.2)).fill()
         case .messages:
             // Two overlapping chat bubbles
             let back = UIBezierPath(roundedRect: CGRect(x: 10.0, y: 6.5, width: 13.0, height: 10.0), cornerRadius: 5.0)
