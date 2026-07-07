@@ -195,8 +195,10 @@ public final class TelewhiteVpnEngine {
                 }
             }
             guard !candidates.isEmpty else {
-                lastStatus = "No servers"
-                completion(.subscriptionError(subscriptionError ?? "No servers found"))
+                DispatchQueue.main.async {
+                    lastStatus = "No servers"
+                    completion(.subscriptionError(subscriptionError ?? "No servers found"))
+                }
                 return
             }
 
