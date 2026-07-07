@@ -720,25 +720,83 @@ private struct TelewhiteModsStrings {
     }
 }
 
+// Telewhite: TeleDark-style category tiles. Instead of reusing the flat system
+// settings glyphs, each mods menu row gets a colored rounded-square tile with a
+// white SF Symbol centered on it, matching the look of the iOS Settings app and
+// TeleDark's mods menu. Tiles are rendered once and cached per icon.
+private var telewhiteMenuIconCache: [Int32: UIImage] = [:]
+
+private func telewhiteRenderedTile(color: UIColor, systemName: String) -> UIImage? {
+    let size = CGSize(width: 29.0, height: 29.0)
+    let renderer = UIGraphicsImageRenderer(size: size)
+    return renderer.image { context in
+        let rect = CGRect(origin: .zero, size: size)
+        let path = UIBezierPath(roundedRect: rect, cornerRadius: 7.0)
+        color.setFill()
+        path.fill()
+
+        let configuration = UIImage.SymbolConfiguration(pointSize: 16.0, weight: .semibold)
+        guard let glyph = UIImage(systemName: systemName, withConfiguration: configuration)?
+            .withTintColor(.white, renderingMode: .alwaysOriginal) else {
+            return
+        }
+        let maxGlyph: CGFloat = 17.0
+        let aspect = glyph.size.width / max(glyph.size.height, 0.001)
+        var glyphSize = CGSize(width: maxGlyph, height: maxGlyph)
+        if aspect > 1.0 {
+            glyphSize.height = maxGlyph / aspect
+        } else if aspect < 1.0 {
+            glyphSize.width = maxGlyph * aspect
+        }
+        let glyphRect = CGRect(
+            x: (size.width - glyphSize.width) / 2.0,
+            y: (size.height - glyphSize.height) / 2.0,
+            width: glyphSize.width,
+            height: glyphSize.height
+        )
+        glyph.draw(in: glyphRect)
+    }
+}
+
 private func telewhiteMenuIcon(_ icon: TelewhiteModsMenuIcon) -> UIImage? {
+    if let cached = telewhiteMenuIconCache[icon.rawValue] {
+        return cached
+    }
+
+    let color: UIColor
+    let systemName: String
     switch icon {
     case .privacy:
-        return PresentationResourcesSettings.security
+        color = UIColor(rgb: 0x3478f6)
+        systemName = "lock.fill"
     case .ghost:
-        return PresentationResourcesSettings.faceId
+        color = UIColor(rgb: 0x30b0c7)
+        systemName = "eye.slash.fill"
     case .messages:
-        return PresentationResourcesSettings.privateChats
+        color = UIColor(rgb: 0x34c759)
+        systemName = "bubble.left.fill"
     case .groups:
-        return PresentationResourcesSettings.groups
+        color = UIColor(rgb: 0xff9500)
+        systemName = "person.2.fill"
     case .media:
-        return PresentationResourcesSettings.stories
+        color = UIColor(rgb: 0xff2d55)
+        systemName = "photo.fill"
     case .calls:
-        return PresentationResourcesSettings.recentCalls
+        color = UIColor(rgb: 0x00a86b)
+        systemName = "phone.fill"
     case .appearance:
-        return PresentationResourcesSettings.appearance
+        color = UIColor(rgb: 0x5aa9e6)
+        systemName = "paintbrush.fill"
     case .developer:
-        return PresentationResourcesSettings.support
+        color = UIColor(rgb: 0x8e8e93)
+        systemName = "hammer.fill"
     }
+
+    guard let image = telewhiteRenderedTile(color: color, systemName: systemName) else {
+        return nil
+    }
+    telewhiteMenuIconCache[icon.rawValue] = image
+    return image
 }
 
 private func telewhiteTabTitle(_ tab: TelewhiteModsTab, strings: TelewhiteModsStrings) -> String {

@@ -43,6 +43,56 @@ public func telewhiteAmoledModeUpdated() -> Signal<Bool, NoError> {
     |> distinctUntilChanged
 }
 
+// Telewhite: consolidated appearance override read from the mods menu. All values
+// are stored as raw UserDefaults keys (mirroring `telewhiteAmoledModeEnabled`)
+// because TelegramPresentationData cannot import SettingsUI without creating a
+// circular dependency. `accentColor`/`bubbleColor` are injected into the native
+// theme pipeline (feeding `makePresentationTheme`), and `cornerRadius` overrides
+// the chat bubble corners struct, so all rendering stays correct.
+public struct TelewhiteAppearanceOverride: Equatable {
+    public var amoled: Bool
+    public var accentColor: UInt32?
+    public var bubbleColor: UInt32?
+    public var cornerRadius: Int32?
+
+    public init(amoled: Bool, accentColor: UInt32?, bubbleColor: UInt32?, cornerRadius: Int32?) {
+        self.amoled = amoled
+        self.accentColor = accentColor
+        self.bubbleColor = bubbleColor
+        self.cornerRadius = cornerRadius
+    }
+}
+
+public func telewhiteAppearanceOverride() -> TelewhiteAppearanceOverride {
+    let defaults = UserDefaults.standard
+    let accent: UInt32? = defaults.bool(forKey: "telewhite.mods.accentColorEnabled") ? UInt32(bitPattern: Int32(truncatingIfNeeded: defaults.integer(forKey: "telewhite.mods.accentColor"))) : nil
+    let bubble: UInt32? = defaults.bool(forKey: "telewhite.mods.bubbleColorEnabled") ? UInt32(bitPattern: Int32(truncatingIfNeeded: defaults.integer(forKey: "telewhite.mods.bubbleColor"))) : nil
+    let radius: Int32? = defaults.bool(forKey: "telewhite.mods.cornerRadiusEnabled") ? Int32(truncatingIfNeeded: defaults.integer(forKey: "telewhite.mods.cornerRadius")) : nil
+    return TelewhiteAppearanceOverride(
+        amoled: defaults.bool(forKey: "telewhite.mods.amoledMode"),
+        accentColor: accent,
+        bubbleColor: bubble,
+        cornerRadius: radius
+    )
+}
+
+// Emits the full appearance override and re-emits on any Telewhite mods change so
+// the presentation theme rebuilds live when accent color, bubble color, corner
+// radius or AMOLED mode is toggled. `distinctUntilChanged` avoids rebuilding for
+// unrelated toggles (privacy, media, etc.).
+public func telewhiteAppearanceUpdated() -> Signal<TelewhiteAppearanceOverride, NoError> {
+    return (Signal<TelewhiteAppearanceOverride, NoError> { subscriber in
+        subscriber.putNext(telewhiteAppearanceOverride())
+        let observer = NotificationCenter.default.addObserver(forName: Notification.Name("TelewhiteModsSettingsDidChange"), object: nil, queue: .main, using: { _ in
+            subscriber.putNext(telewhiteAppearanceOverride())
+        })
+        return ActionDisposable {
+            NotificationCenter.default.removeObserver(observer)
+        }
+    })
+    |> distinctUntilChanged
+}
+
 public func makeTelewhiteAmoledPresentationTheme(_ theme: PresentationTheme) -> PresentationTheme {
     guard theme.overallDarkAppearance else {
         return theme

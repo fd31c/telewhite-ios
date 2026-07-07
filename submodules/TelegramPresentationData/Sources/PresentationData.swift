@@ -801,8 +801,19 @@ public func updatedPresentationData(accountManager: AccountManager<TelegramAccou
                             effectiveColors = nil
                         }
                         
+                        let telewhiteAppearance = telewhiteAppearanceOverride()
+                        if telewhiteAppearance.accentColor != nil || telewhiteAppearance.bubbleColor != nil {
+                            effectiveColors = PresentationThemeAccentColor(
+                                index: -1,
+                                baseColor: .custom,
+                                accentColor: telewhiteAppearance.accentColor ?? effectiveColors?.accentColor,
+                                bubbleColors: telewhiteAppearance.bubbleColor.map { [$0] } ?? effectiveColors?.bubbleColors ?? [],
+                                wallpaper: effectiveColors?.wallpaper
+                            )
+                        }
+                        
                         var themeValue = makePresentationTheme(mediaBox: accountManager.mediaBox, themeReference: effectiveTheme, baseTheme: preferredBaseTheme, accentColor: effectiveColors?.colorFor(baseTheme: preferredBaseTheme ?? .day), bubbleColors: effectiveColors?.customBubbleColors ?? [], wallpaper: effectiveColors?.wallpaper, baseColor: effectiveColors?.baseColor, serviceBackgroundColor: serviceBackgroundColor) ?? defaultPresentationTheme
-                        if telewhiteAmoledModeEnabled() {
+                        if telewhiteAppearance.amoled {
                             themeValue = makeTelewhiteAmoledPresentationTheme(themeValue)
                         }
                         
