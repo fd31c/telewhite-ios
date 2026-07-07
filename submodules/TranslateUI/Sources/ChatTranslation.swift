@@ -65,10 +65,13 @@ public struct ChatTranslationState: Codable {
     }
     
     public func withIsEnabled(_ isEnabled: Bool) -> ChatTranslationState {
+        // Telewhite mod: refresh the timestamp when the user toggles translation,
+        // otherwise a stale (>1h) cached state makes the panel disappear right
+        // after tapping "Show Original".
         return ChatTranslationState(
             baseLang: self.baseLang,
             fromLang: self.fromLang,
-            timestamp: self.timestamp,
+            timestamp: Int32(CFAbsoluteTimeGetCurrent() + kCFAbsoluteTimeIntervalSince1970),
             toLang: self.toLang,
             isEnabled: isEnabled
         )
