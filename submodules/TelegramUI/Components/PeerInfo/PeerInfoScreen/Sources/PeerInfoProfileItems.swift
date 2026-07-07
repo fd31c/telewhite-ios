@@ -17,6 +17,7 @@ import AvatarNode
 import PeerNameColorItem
 import BoostLevelIconComponent
 import SettingsUI
+import UndoUI
 
 private let enabledPublicBioEntities: EnabledEntityTypes = [.allUrl, .mention, .hashtag]
 private let enabledPrivateBioEntities: EnabledEntityTypes = [.internalUrl, .mention, .hashtag]
@@ -187,10 +188,16 @@ func infoItems(
 
         if TelewhiteModsSettings.current.showUserIds {
             let idText = "\(user.id.id._internalGetInt64Value())"
+            let copyIdAndNotify: () -> Void = { [weak interaction] in
+                UIPasteboard.general.string = idText
+                if let controller = interaction?.getController() {
+                    controller.present(UndoOverlayController(presentationData: presentationData, content: .copy(text: "ID \(idText) скопирован"), elevatedLayout: false, animateInAsReplacement: false, action: { _ in return false }), in: .current)
+                }
+            }
             items[currentPeerInfoSection]!.append(PeerInfoScreenLabeledValueItem(id: ItemTelewhiteId, label: "Telewhite ID", text: idText, textColor: .accent, action: { _, _ in
-                UIPasteboard.general.string = idText
+                copyIdAndNotify()
             }, longTapAction: { _ in
-                UIPasteboard.general.string = idText
+                copyIdAndNotify()
             }, requestLayout: { animated in
                 interaction.requestLayout(animated)
             }))
@@ -553,10 +560,16 @@ func infoItems(
 
         if TelewhiteModsSettings.current.showChatIds {
             let idText = "\(channel.id.id._internalGetInt64Value())"
+            let copyIdAndNotify: () -> Void = { [weak interaction] in
+                UIPasteboard.general.string = idText
+                if let controller = interaction?.getController() {
+                    controller.present(UndoOverlayController(presentationData: presentationData, content: .copy(text: "ID \(idText) скопирован"), elevatedLayout: false, animateInAsReplacement: false, action: { _ in return false }), in: .current)
+                }
+            }
             items[currentPeerInfoSection]!.append(PeerInfoScreenLabeledValueItem(id: ItemTelewhiteId, label: "Telewhite ID", text: idText, textColor: .accent, action: { _, _ in
-                UIPasteboard.general.string = idText
+                copyIdAndNotify()
             }, longTapAction: { _ in
-                UIPasteboard.general.string = idText
+                copyIdAndNotify()
             }, requestLayout: { animated in
                 interaction.requestLayout(animated)
             }))
