@@ -19,6 +19,7 @@ public struct TelewhiteAppearanceOverrides: Equatable {
     public var accentColor: UInt32?
     public var bubbleColor: UInt32?
     public var chatBackgroundColor: UInt32?
+    public var chatBackgroundGradient: [UInt32]?
     public var bubbleCornerRadius: Int32?
     public var amoledMode: Bool
 }
@@ -27,6 +28,7 @@ private enum TelewhiteAppearanceKey {
     static let accentColor = "telewhite.mods.accentColor"
     static let bubbleColor = "telewhite.mods.bubbleColor"
     static let chatBackgroundColor = "telewhite.mods.chatBackgroundColor"
+    static let chatBackgroundGradient = "telewhite.mods.chatBackgroundGradient"
     static let bubbleCornerRadius = "telewhite.mods.bubbleCornerRadius"
     static let amoledMode = "telewhite.mods.amoledMode"
 }
@@ -44,13 +46,32 @@ public func telewhiteAppearanceOverrides() -> TelewhiteAppearanceOverrides {
     if let number = defaults.object(forKey: TelewhiteAppearanceKey.bubbleCornerRadius) as? NSNumber {
         cornerRadius = number.int32Value
     }
+    var gradient: [UInt32]?
+    if let numbers = defaults.array(forKey: TelewhiteAppearanceKey.chatBackgroundGradient) as? [NSNumber], numbers.count >= 2 {
+        gradient = numbers.map { UInt32(truncatingIfNeeded: $0.int64Value) }
+    }
     return TelewhiteAppearanceOverrides(
         accentColor: telewhiteReadColor(TelewhiteAppearanceKey.accentColor),
         bubbleColor: telewhiteReadColor(TelewhiteAppearanceKey.bubbleColor),
         chatBackgroundColor: telewhiteReadColor(TelewhiteAppearanceKey.chatBackgroundColor),
+        chatBackgroundGradient: gradient,
         bubbleCornerRadius: cornerRadius,
         amoledMode: defaults.bool(forKey: TelewhiteAppearanceKey.amoledMode)
     )
+}
+
+// Builds the wallpaper override from the Telewhite background settings.
+// Gradient takes precedence over a solid color; both return nil when unset
+// so the user's regular Telegram wallpaper stays active.
+public func telewhiteChatWallpaperOverride() -> TelegramWallpaper? {
+    let overrides = telewhiteAppearanceOverrides()
+    if let colors = overrides.chatBackgroundGradient, colors.count >= 2 {
+        return .gradient(TelegramWallpaper.Gradient(id: nil, colors: colors, settings: WallpaperSettings()))
+    }
+    if let color = overrides.chatBackgroundColor {
+        return .color(color)
+    }
+    return nil
 }
 
 // Emits the current appearance overrides snapshot and re-emits whenever the

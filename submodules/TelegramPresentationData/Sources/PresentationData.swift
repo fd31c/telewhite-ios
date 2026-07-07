@@ -417,8 +417,8 @@ public func currentPresentationDataAndSettings(accountManager: AccountManager<Te
         if case .builtin = effectiveChatWallpaper {
             effectiveChatWallpaper = defaultBuiltinWallpaper(data: .legacy, colors: legacyBuiltinWallpaperGradientColors.map(\.rgb))
         }
-        if let backgroundColor = telewhiteOverrides.chatBackgroundColor {
-            effectiveChatWallpaper = .color(backgroundColor)
+        if let wallpaperOverride = telewhiteChatWallpaperOverride() {
+            effectiveChatWallpaper = wallpaperOverride
         }
         
         let dateTimeFormat = currentDateTimeFormat()
@@ -826,8 +826,8 @@ public func updatedPresentationData(accountManager: AccountManager<TelegramAccou
                             }
                         }
                         
-                        if let backgroundColor = telewhiteAppearanceOverrides().chatBackgroundColor {
-                            effectiveChatWallpaper = .color(backgroundColor)
+                        if let wallpaperOverride = telewhiteChatWallpaperOverride() {
+                            effectiveChatWallpaper = wallpaperOverride
                         }
                         
                         let localizationSettings: LocalizationSettings?

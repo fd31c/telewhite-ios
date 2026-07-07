@@ -44,6 +44,7 @@ public struct TelewhiteModsSettings: Equatable {
     public var accentColorOverride: Int64?
     public var bubbleColorOverride: Int64?
     public var chatBackgroundColorOverride: Int64?
+    public var chatBackgroundGradientOverride: [Int64]?
     public var bubbleCornerRadiusOverride: Int32?
 
     private enum Key {
@@ -78,6 +79,7 @@ public struct TelewhiteModsSettings: Equatable {
         static let accentColor = "telewhite.mods.accentColor"
         static let bubbleColor = "telewhite.mods.bubbleColor"
         static let chatBackgroundColor = "telewhite.mods.chatBackgroundColor"
+        static let chatBackgroundGradient = "telewhite.mods.chatBackgroundGradient"
         static let bubbleCornerRadius = "telewhite.mods.bubbleCornerRadius"
     }
     
@@ -115,6 +117,7 @@ public struct TelewhiteModsSettings: Equatable {
             accentColorOverride: (defaults.object(forKey: Key.accentColor) as? NSNumber)?.int64Value,
             bubbleColorOverride: (defaults.object(forKey: Key.bubbleColor) as? NSNumber)?.int64Value,
             chatBackgroundColorOverride: (defaults.object(forKey: Key.chatBackgroundColor) as? NSNumber)?.int64Value,
+            chatBackgroundGradientOverride: (defaults.array(forKey: Key.chatBackgroundGradient) as? [NSNumber]).flatMap { numbers in numbers.count >= 2 ? numbers.map { $0.int64Value } : nil },
             bubbleCornerRadiusOverride: (defaults.object(forKey: Key.bubbleCornerRadius) as? NSNumber)?.int32Value
         )
     }
@@ -181,6 +184,11 @@ public struct TelewhiteModsSettings: Equatable {
             defaults.set(NSNumber(value: value), forKey: Key.chatBackgroundColor)
         } else {
             defaults.removeObject(forKey: Key.chatBackgroundColor)
+        }
+        if let value = self.chatBackgroundGradientOverride, value.count >= 2 {
+            defaults.set(value.map { NSNumber(value: $0) }, forKey: Key.chatBackgroundGradient)
+        } else {
+            defaults.removeObject(forKey: Key.chatBackgroundGradient)
         }
         if let value = self.bubbleCornerRadiusOverride {
             defaults.set(NSNumber(value: value), forKey: Key.bubbleCornerRadius)
@@ -324,6 +332,7 @@ private enum TelewhiteModsEntry: ItemListNodeEntry, Equatable {
     case bubbleColorOption(Int32, String, Int64?, Bool)
     case backgroundColorHeader(String)
     case backgroundColorOption(Int32, String, Int64?, Bool)
+    case backgroundGradientOption(Int32, String, [Int64], Bool)
     case cornerRadiusHeader(String)
     case cornerRadiusOption(Int32, String, Int32?, Bool)
     case appearanceInfo(String)
@@ -360,7 +369,7 @@ private enum TelewhiteModsEntry: ItemListNodeEntry, Equatable {
             return TelewhiteModsSection.accentColor.rawValue
         case .bubbleColorHeader, .bubbleColorOption:
             return TelewhiteModsSection.bubbleColor.rawValue
-        case .backgroundColorHeader, .backgroundColorOption:
+        case .backgroundColorHeader, .backgroundColorOption, .backgroundGradientOption:
             return TelewhiteModsSection.backgroundColor.rawValue
         case .cornerRadiusHeader, .cornerRadiusOption, .appearanceInfo:
             return TelewhiteModsSection.cornerRadius.rawValue
@@ -479,6 +488,8 @@ private enum TelewhiteModsEntry: ItemListNodeEntry, Equatable {
             return 750
         case let .backgroundColorOption(index, _, _, _):
             return 751 + index
+        case let .backgroundGradientOption(index, _, _, _):
+            return 761 + index
         case .cornerRadiusHeader:
             return 770
         case let .cornerRadiusOption(index, _, _, _):
@@ -546,6 +557,16 @@ private enum TelewhiteModsEntry: ItemListNodeEntry, Equatable {
                 arguments.updateSettings { current in
                     var updated = current
                     updated.chatBackgroundColorOverride = value
+                    updated.chatBackgroundGradientOverride = nil
+                    return updated
+                }
+            })
+        case let .backgroundGradientOption(_, title, colors, selected):
+            return ItemListCheckboxItem(presentationData: presentationData, systemStyle: .glass, icon: telewhiteGradientSwatchImage(colors), iconSize: CGSize(width: 22.0, height: 22.0), title: title, style: .right, checked: selected, zeroSeparatorInsets: false, sectionId: self.section, action: {
+                arguments.updateSettings { current in
+                    var updated = current
+                    updated.chatBackgroundColorOverride = nil
+                    updated.chatBackgroundGradientOverride = colors
                     return updated
                 }
             })
@@ -741,6 +762,23 @@ private struct TelewhiteModsStrings {
 
     func text(_ en: String, _ ru: String) -> String {
         return self.isRussian ? ru : en
+    }
+}
+
+private func telewhiteGradientSwatchImage(_ colors: [Int64]) -> UIImage? {
+    let size = CGSize(width: 22.0, height: 22.0)
+    let renderer = UIGraphicsImageRenderer(size: size)
+    return renderer.image { context in
+        let rect = CGRect(origin: .zero, size: size)
+        let path = UIBezierPath(ovalIn: rect.insetBy(dx: 1.0, dy: 1.0))
+        path.addClip()
+        let cgColors = colors.map { UIColor(rgb: UInt32(truncatingIfNeeded: $0)).cgColor }
+        if let gradient = CGGradient(colorsSpace: CGColorSpaceCreateDeviceRGB(), colors: cgColors as CFArray, locations: nil) {
+            context.cgContext.drawLinearGradient(gradient, start: CGPoint(x: 0.0, y: 0.0), end: CGPoint(x: size.width, y: size.height), options: [.drawsBeforeStartLocation, .drawsAfterEndLocation])
+        }
+        path.lineWidth = 1.0
+        UIColor(white: 0.5, alpha: 0.35).setStroke()
+        path.stroke()
     }
 }
 
@@ -1089,11 +1127,28 @@ private func telewhiteModsEntries(tab: TelewhiteModsTab, settings: TelewhiteMods
             (strings.text("Black", "Чёрный"), 0x000000),
             (strings.text("Dark Blue", "Тёмно-синий"), 0x18222d),
             (strings.text("Graphite", "Графит"), 0x1c1c1e),
-            (strings.text("Light", "Светлый"), 0xf2f2f7)
+            (strings.text("Deep Green", "Тёмно-зелёный"), 0x0e1f16),
+            (strings.text("Coffee", "Кофейный"), 0x241a12),
+            (strings.text("Plum", "Сливовый"), 0x241726),
+            (strings.text("Light", "Светлый"), 0xf2f2f7),
+            (strings.text("Cream", "Кремовый"), 0xf7f2e7)
         ]
         entries.append(.backgroundColorHeader(strings.text("Chat Background", "Фон чата")))
         for (index, preset) in backgroundPresets.enumerated() {
-            entries.append(.backgroundColorOption(Int32(index), preset.0, preset.1, settings.chatBackgroundColorOverride == preset.1))
+            let selected = settings.chatBackgroundGradientOverride == nil && settings.chatBackgroundColorOverride == preset.1
+            entries.append(.backgroundColorOption(Int32(index), preset.0, preset.1, selected))
+        }
+
+        let gradientPresets: [(String, [Int64])] = [
+            (strings.text("Midnight", "Полночь"), [0x0f1621, 0x1c2b3a]),
+            (strings.text("Northern Lights", "Северное сияние"), [0x0b1e2d, 0x14453d]),
+            (strings.text("Sunset", "Закат"), [0x2d1b2f, 0x6b2d3c]),
+            (strings.text("Ocean", "Океан"), [0x0d2137, 0x1b4965]),
+            (strings.text("Morning", "Утро"), [0xdfe9f3, 0xf6f8fb]),
+            (strings.text("Peach", "Персик"), [0xf9e0c7, 0xf6cfcf])
+        ]
+        for (index, preset) in gradientPresets.enumerated() {
+            entries.append(.backgroundGradientOption(Int32(index), preset.0, preset.1, settings.chatBackgroundGradientOverride == preset.1))
         }
 
         let radiusPresets: [(String, Int32?)] = [
