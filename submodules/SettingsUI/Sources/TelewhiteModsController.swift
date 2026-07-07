@@ -7,6 +7,7 @@ import ItemListUI
 import PresentationDataUtils
 import AccountContext
 import AlertUI
+import PromptUI
 import TelegramCore
 import TelegramUIPreferences
 
@@ -211,22 +212,31 @@ public struct TelewhiteModsSettings: Equatable {
     }
 }
 
+enum TelewhiteCustomColorTarget {
+    case accent
+    case bubble
+    case background
+}
+
 private final class TelewhiteModsControllerArguments {
     let updateSettings: ((TelewhiteModsSettings) -> TelewhiteModsSettings) -> Void
     let updateTranslationSettings: (@escaping (TranslationSettings) -> TranslationSettings) -> Void
     let startVpn: () -> Void
     let openTab: (TelewhiteModsTab) -> Void
+    let promptCustomColor: (TelewhiteCustomColorTarget) -> Void
     
     init(
         updateSettings: @escaping ((TelewhiteModsSettings) -> TelewhiteModsSettings) -> Void,
         updateTranslationSettings: @escaping (@escaping (TranslationSettings) -> TranslationSettings) -> Void,
         startVpn: @escaping () -> Void,
-        openTab: @escaping (TelewhiteModsTab) -> Void = { _ in }
+        openTab: @escaping (TelewhiteModsTab) -> Void = { _ in },
+        promptCustomColor: @escaping (TelewhiteCustomColorTarget) -> Void = { _ in }
     ) {
         self.updateSettings = updateSettings
         self.updateTranslationSettings = updateTranslationSettings
         self.startVpn = startVpn
         self.openTab = openTab
+        self.promptCustomColor = promptCustomColor
     }
 }
 
@@ -328,11 +338,14 @@ private enum TelewhiteModsEntry: ItemListNodeEntry, Equatable {
     case amoledMode(String, Bool)
     case accentColorHeader(String)
     case accentColorOption(Int32, String, Int64?, Bool)
+    case accentColorCustom(String, Int64?, Bool)
     case bubbleColorHeader(String)
     case bubbleColorOption(Int32, String, Int64?, Bool)
+    case bubbleColorCustom(String, Int64?, Bool)
     case backgroundColorHeader(String)
     case backgroundColorOption(Int32, String, Int64?, Bool)
     case backgroundGradientOption(Int32, String, [Int64], Bool)
+    case backgroundColorCustom(String, Int64?, Bool)
     case cornerRadiusHeader(String)
     case cornerRadiusOption(Int32, String, Int32?, Bool)
     case appearanceInfo(String)
@@ -365,11 +378,11 @@ private enum TelewhiteModsEntry: ItemListNodeEntry, Equatable {
             return TelewhiteModsSection.calls.rawValue
         case .appearanceHeader, .compactChatList, .amoledMode:
             return TelewhiteModsSection.appearance.rawValue
-        case .accentColorHeader, .accentColorOption:
+        case .accentColorHeader, .accentColorOption, .accentColorCustom:
             return TelewhiteModsSection.accentColor.rawValue
-        case .bubbleColorHeader, .bubbleColorOption:
+        case .bubbleColorHeader, .bubbleColorOption, .bubbleColorCustom:
             return TelewhiteModsSection.bubbleColor.rawValue
-        case .backgroundColorHeader, .backgroundColorOption, .backgroundGradientOption:
+        case .backgroundColorHeader, .backgroundColorOption, .backgroundGradientOption, .backgroundColorCustom:
             return TelewhiteModsSection.backgroundColor.rawValue
         case .cornerRadiusHeader, .cornerRadiusOption, .appearanceInfo:
             return TelewhiteModsSection.cornerRadius.rawValue
@@ -480,16 +493,22 @@ private enum TelewhiteModsEntry: ItemListNodeEntry, Equatable {
             return 710
         case let .accentColorOption(index, _, _, _):
             return 711 + index
+        case .accentColorCustom:
+            return 729
         case .bubbleColorHeader:
             return 730
         case let .bubbleColorOption(index, _, _, _):
             return 731 + index
+        case .bubbleColorCustom:
+            return 749
         case .backgroundColorHeader:
             return 750
         case let .backgroundColorOption(index, _, _, _):
             return 751 + index
         case let .backgroundGradientOption(index, _, _, _):
             return 761 + index
+        case .backgroundColorCustom:
+            return 769
         case .cornerRadiusHeader:
             return 770
         case let .cornerRadiusOption(index, _, _, _):
@@ -569,6 +588,18 @@ private enum TelewhiteModsEntry: ItemListNodeEntry, Equatable {
                     updated.chatBackgroundGradientOverride = colors
                     return updated
                 }
+            })
+        case let .accentColorCustom(title, value, selected):
+            return ItemListCheckboxItem(presentationData: presentationData, systemStyle: .glass, icon: telewhiteColorSwatchImage(selected ? value : nil), iconSize: CGSize(width: 22.0, height: 22.0), title: title, style: .right, checked: selected, zeroSeparatorInsets: false, sectionId: self.section, action: {
+                arguments.promptCustomColor(.accent)
+            })
+        case let .bubbleColorCustom(title, value, selected):
+            return ItemListCheckboxItem(presentationData: presentationData, systemStyle: .glass, icon: telewhiteColorSwatchImage(selected ? value : nil), iconSize: CGSize(width: 22.0, height: 22.0), title: title, style: .right, checked: selected, zeroSeparatorInsets: false, sectionId: self.section, action: {
+                arguments.promptCustomColor(.bubble)
+            })
+        case let .backgroundColorCustom(title, value, selected):
+            return ItemListCheckboxItem(presentationData: presentationData, systemStyle: .glass, icon: telewhiteColorSwatchImage(selected ? value : nil), iconSize: CGSize(width: 22.0, height: 22.0), title: title, style: .right, checked: selected, zeroSeparatorInsets: false, sectionId: self.section, action: {
+                arguments.promptCustomColor(.background)
             })
         case let .cornerRadiusOption(_, title, value, selected):
             return ItemListCheckboxItem(presentationData: presentationData, systemStyle: .glass, title: title, style: .right, checked: selected, zeroSeparatorInsets: false, sectionId: self.section, action: {
@@ -763,6 +794,31 @@ private struct TelewhiteModsStrings {
     func text(_ en: String, _ ru: String) -> String {
         return self.isRussian ? ru : en
     }
+}
+
+private func telewhiteCustomColorTitle(strings: TelewhiteModsStrings, value: Int64?) -> String {
+    let base = strings.text("Custom Color (HEX)", "Свой цвет (HEX)")
+    if let value = value {
+        return base + String(format: " — #%06X", UInt32(truncatingIfNeeded: value) & 0xffffff)
+    }
+    return base
+}
+
+func telewhiteParseHexColor(_ input: String) -> Int64? {
+    var cleaned = input.trimmingCharacters(in: .whitespacesAndNewlines)
+    if cleaned.hasPrefix("#") {
+        cleaned = String(cleaned.dropFirst())
+    }
+    if cleaned.hasPrefix("0x") || cleaned.hasPrefix("0X") {
+        cleaned = String(cleaned.dropFirst(2))
+    }
+    if cleaned.count == 3 {
+        cleaned = cleaned.map { "\($0)\($0)" }.joined()
+    }
+    guard cleaned.count == 6, let value = UInt32(cleaned, radix: 16) else {
+        return nil
+    }
+    return Int64(value)
 }
 
 private func telewhiteGradientSwatchImage(_ colors: [Int64]) -> UIImage? {
@@ -1099,28 +1155,43 @@ private func telewhiteModsEntries(tab: TelewhiteModsTab, settings: TelewhiteMods
             (strings.text("Default", "По умолчанию"), nil),
             (strings.text("Blue", "Синий"), 0x007aff),
             (strings.text("Cyan", "Голубой"), 0x5ac8fa),
+            (strings.text("Teal", "Бирюзовый"), 0x30b0c7),
+            (strings.text("Mint", "Мятный"), 0x00c7be),
             (strings.text("Green", "Зелёный"), 0x34c759),
+            (strings.text("Yellow", "Жёлтый"), 0xffcc00),
             (strings.text("Orange", "Оранжевый"), 0xff9500),
             (strings.text("Red", "Красный"), 0xff3b30),
-            (strings.text("Pink", "Розовый"), 0xff2d55)
+            (strings.text("Pink", "Розовый"), 0xff2d55),
+            (strings.text("Coral", "Коралловый"), 0xff6b6b),
+            (strings.text("Indigo", "Индиго"), 0x5856d6),
+            (strings.text("Brown", "Коричневый"), 0xa2845e)
         ]
         entries.append(.accentColorHeader(strings.text("Accent Color", "Акцентный цвет")))
         for (index, preset) in accentPresets.enumerated() {
             entries.append(.accentColorOption(Int32(index), preset.0, preset.1, settings.accentColorOverride == preset.1))
         }
+        let accentIsCustom = settings.accentColorOverride != nil && !accentPresets.contains(where: { $0.1 == settings.accentColorOverride })
+        entries.append(.accentColorCustom(telewhiteCustomColorTitle(strings: strings, value: accentIsCustom ? settings.accentColorOverride : nil), settings.accentColorOverride, accentIsCustom))
 
         let bubblePresets: [(String, Int64?)] = [
             (strings.text("Default", "По умолчанию"), nil),
             (strings.text("Blue", "Синий"), 0x007aff),
+            (strings.text("Teal", "Бирюзовый"), 0x30b0c7),
             (strings.text("Green", "Зелёный"), 0x34c759),
+            (strings.text("Yellow", "Жёлтый"), 0xffcc00),
             (strings.text("Orange", "Оранжевый"), 0xff9500),
             (strings.text("Red", "Красный"), 0xff3b30),
-            (strings.text("Graphite", "Графит"), 0x3a3a3c)
+            (strings.text("Pink", "Розовый"), 0xff2d55),
+            (strings.text("Indigo", "Индиго"), 0x5856d6),
+            (strings.text("Graphite", "Графит"), 0x3a3a3c),
+            (strings.text("Dark Green", "Тёмно-зелёный"), 0x1f3d2b)
         ]
         entries.append(.bubbleColorHeader(strings.text("Outgoing Bubble Color", "Цвет исходящих сообщений")))
         for (index, preset) in bubblePresets.enumerated() {
             entries.append(.bubbleColorOption(Int32(index), preset.0, preset.1, settings.bubbleColorOverride == preset.1))
         }
+        let bubbleIsCustom = settings.bubbleColorOverride != nil && !bubblePresets.contains(where: { $0.1 == settings.bubbleColorOverride })
+        entries.append(.bubbleColorCustom(telewhiteCustomColorTitle(strings: strings, value: bubbleIsCustom ? settings.bubbleColorOverride : nil), settings.bubbleColorOverride, bubbleIsCustom))
 
         let backgroundPresets: [(String, Int64?)] = [
             (strings.text("Default", "По умолчанию"), nil),
@@ -1150,6 +1221,8 @@ private func telewhiteModsEntries(tab: TelewhiteModsTab, settings: TelewhiteMods
         for (index, preset) in gradientPresets.enumerated() {
             entries.append(.backgroundGradientOption(Int32(index), preset.0, preset.1, settings.chatBackgroundGradientOverride == preset.1))
         }
+        let backgroundIsCustom = settings.chatBackgroundGradientOverride == nil && settings.chatBackgroundColorOverride != nil && !backgroundPresets.contains(where: { $0.1 == settings.chatBackgroundColorOverride })
+        entries.append(.backgroundColorCustom(telewhiteCustomColorTitle(strings: strings, value: backgroundIsCustom ? settings.chatBackgroundColorOverride : nil), settings.chatBackgroundColorOverride, backgroundIsCustom))
 
         let radiusPresets: [(String, Int32?)] = [
             (strings.text("Default", "По умолчанию"), nil),
@@ -1267,6 +1340,47 @@ private func telewhiteModsSectionController(context: AccountContext, tab: Telewh
         presentControllerImpl?(textAlertController(context: context, title: "VPN", text: text, actions: [
             TextAlertAction(type: .defaultAction, title: presentationData.strings.Common_OK, action: {})
         ]))
+    }, promptCustomColor: { target in
+        let presentationData = context.sharedContext.currentPresentationData.with { $0 }
+        let strings = TelewhiteModsStrings(presentationData: presentationData)
+        let settings = stateValue.with { $0 }
+        let currentValue: Int64?
+        switch target {
+        case .accent:
+            currentValue = settings.accentColorOverride
+        case .bubble:
+            currentValue = settings.bubbleColorOverride
+        case .background:
+            currentValue = settings.chatBackgroundColorOverride
+        }
+        let initialText = currentValue.flatMap { String(format: "#%06X", UInt32(truncatingIfNeeded: $0) & 0xffffff) } ?? ""
+        let prompt = promptController(
+            context: context,
+            text: strings.text("Custom Color", "Свой цвет"),
+            subtitle: strings.text("Enter a HEX code, e.g. #1E90FF", "Введите HEX-код, например #1E90FF"),
+            value: initialText,
+            placeholder: "#RRGGBB",
+            characterLimit: 9,
+            apply: { value in
+                guard let value = value, let parsed = telewhiteParseHexColor(value) else {
+                    return
+                }
+                updateSettings { current in
+                    var updated = current
+                    switch target {
+                    case .accent:
+                        updated.accentColorOverride = parsed
+                    case .bubble:
+                        updated.bubbleColorOverride = parsed
+                    case .background:
+                        updated.chatBackgroundColorOverride = parsed
+                        updated.chatBackgroundGradientOverride = nil
+                    }
+                    return updated
+                }
+            }
+        )
+        presentControllerImpl?(prompt)
     })
 
     let translationSettings = context.sharedContext.accountManager.sharedData(keys: [ApplicationSpecificSharedDataKeys.translationSettings])
