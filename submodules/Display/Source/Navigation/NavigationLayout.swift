@@ -96,10 +96,15 @@ func makeNavigationLayout(mode: NavigationControllerMode, layout: ContainerViewL
     case .single:
         rootLayout = .flat(rootControllers)
     case .automaticMasterDetail:
+        var useSplit: Bool
         switch layout.metrics.widthClass {
         case .compact:
-            rootLayout = .flat(rootControllers)
+            // Telewhite mod: allow master-detail split on iPhone in landscape.
+            useSplit = TelewhiteSplitViewSettings.splitInCompactLandscape && layout.size.width > layout.size.height && layout.size.width >= 640.0
         case .regular:
+            useSplit = true
+        }
+        if useSplit {
             let masterControllers = rootControllers.filter {
                 if case .master = $0.navigationPresentation {
                     return true
@@ -115,7 +120,16 @@ func makeNavigationLayout(mode: NavigationControllerMode, layout: ContainerViewL
                 }
             }
             rootLayout = .split(masterControllers, detailControllers)
+        } else {
+            rootLayout = .flat(rootControllers)
         }
     }
     return NavigationLayout(root: rootLayout, modal: modalStack)
+}
+
+// Telewhite mod: runtime switch for enabling chat split view on iPhone landscape.
+// The value is loaded from UserDefaults at startup and updated live from the
+// Telewhite Mods settings screen.
+public enum TelewhiteSplitViewSettings {
+    public static var splitInCompactLandscape: Bool = UserDefaults.standard.bool(forKey: "telewhite.mods.chatSplitLandscape")
 }

@@ -9,6 +9,15 @@
 
 ## 2026-07-07
 
+- **[Добавлено]** — **Сплит чатов на iPhone** (как на десктопе/iPad): новый тоггл
+  `Telewhite Mods → Внешний вид → «Сплит чатов (альбомная)»`. При включении и повороте
+  телефона в альбомную ориентацию список чатов показывается слева (~320 pt),
+  а открытый чат — справа, в одном экране. В портрете возвращается обычный вид.
+  Реализация: используется родной iPad master-detail механизм
+  (`NavigationController .automaticMasterDetail` + `NavigationSplitContainer`);
+  в `NavigationLayout.swift` добавлен флаг `TelewhiteSplitViewSettings.splitInCompactLandscape`,
+  разрешающий split при compact-ширине, если ширина ≥ 640 pt и ориентация альбомная.
+  Настройка `chatSplitLandscape` в `TelewhiteModsSettings` обновляет флаг вживую.
 - **[Улучшено]** — Сняты лимиты «100» при выделении:
   - медиа-пикер (выбор фото/видео для отправки): лимит поднят со 100 до **1000**
     (`MediaPickerScreen.swift`, `LegacyAttachmentMenu.swift`);
@@ -46,7 +55,7 @@
   - в шапке профиля вместо номера показывается прочерк «—» (раньше строка была пустой);
   - если username задан, показывается только `@username` без номера;
   - исправлен обход: когда у аккаунта нет имени, заголовок профиля падал обратно на номер
-    телефона, игнорируя настройку — теперь показывается прочерк (`PeerInfoHeaderNode.swift`);
+    телефона, игнорируя настройку — т��перь показывается прочерк (`PeerInfoHeaderNode.swift`);
   - пункт «Phone» в списке настроек больше не исчезает, а показывает «—»
     (`PeerInfoSettingsItems.swift`).
 - **[Добавлено]** — Три новые альтернативные иконки приложения в `Appearance → APP ICON`:
@@ -81,7 +90,7 @@
   - **Цвет исходящих сообщений** (6 пресетов, включая графит);
   - **Фон чата** (5 пресетов: Default, чёрный, тёмно-синий, графит, светлый) — применяется как сплошной цвет поверх обоев;
   - **Скругление сообщений** (Default / 8 / 12 / 22 pt).
-  Настройки хранятся в `UserDefaults` (`telewhite.mods.accentColor` и др.), у цветовых пунктов — круглые свотчи.
+  Настро��ки хранятся в `UserDefaults` (`telewhite.mods.accentColor` и др.), у цветовых пунктов — круглые свотчи.
   Файл: `TelewhiteModsController.swift`.
 - **[Добавлено]** `780c47d` — Слой оверрайдов внешнего вида `TelewhiteAppearance.swift` (TelegramPresentationData):
   `TelewhiteAppearanceOverrides` читает настройки из `UserDefaults`, `telewhiteOverriddenAccentColors(...)`

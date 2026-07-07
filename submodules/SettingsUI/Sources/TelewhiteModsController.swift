@@ -28,6 +28,7 @@ public struct TelewhiteModsSettings: Equatable {
     public var hideStories: Bool
     public var ghostStories: Bool
     public var compactChatList: Bool
+    public var chatSplitLandscape: Bool
     public var amoledMode: Bool
     public var showUserIds: Bool
     public var showChatIds: Bool
@@ -63,6 +64,7 @@ public struct TelewhiteModsSettings: Equatable {
         static let hideStories = "telewhite.mods.hideStories"
         static let ghostStories = "telewhite.mods.ghostStories"
         static let compactChatList = "telewhite.mods.compactChatList"
+        static let chatSplitLandscape = "telewhite.mods.chatSplitLandscape"
         static let amoledMode = "telewhite.mods.amoledMode"
         static let showUserIds = "telewhite.mods.showUserIds"
         static let showChatIds = "telewhite.mods.showChatIds"
@@ -101,6 +103,7 @@ public struct TelewhiteModsSettings: Equatable {
             hideStories: defaults.bool(forKey: Key.hideStories),
             ghostStories: defaults.bool(forKey: Key.ghostStories),
             compactChatList: defaults.bool(forKey: Key.compactChatList),
+            chatSplitLandscape: defaults.bool(forKey: Key.chatSplitLandscape),
             amoledMode: defaults.bool(forKey: Key.amoledMode),
             showUserIds: defaults.bool(forKey: Key.showUserIds),
             showChatIds: defaults.bool(forKey: Key.showChatIds),
@@ -157,6 +160,8 @@ public struct TelewhiteModsSettings: Equatable {
         defaults.set(self.hideStories, forKey: Key.hideStories)
         defaults.set(self.ghostStories, forKey: Key.ghostStories)
         defaults.set(self.compactChatList, forKey: Key.compactChatList)
+        defaults.set(self.chatSplitLandscape, forKey: Key.chatSplitLandscape)
+        TelewhiteSplitViewSettings.splitInCompactLandscape = self.chatSplitLandscape
         defaults.set(self.amoledMode, forKey: Key.amoledMode)
         defaults.set(self.showUserIds, forKey: Key.showUserIds)
         defaults.set(self.showChatIds, forKey: Key.showChatIds)
@@ -335,6 +340,7 @@ private enum TelewhiteModsEntry: ItemListNodeEntry, Equatable {
     case appearanceHeader(String)
     case hideStories(String, Bool)
     case compactChatList(String, Bool)
+    case chatSplitLandscape(String, Bool)
     case amoledMode(String, Bool)
     case accentColorHeader(String)
     case accentColorOption(Int32, String, Int64?, Bool)
@@ -376,7 +382,7 @@ private enum TelewhiteModsEntry: ItemListNodeEntry, Equatable {
             return TelewhiteModsSection.media.rawValue
         case .callsHeader, .autoRecordCalls, .callRecordButton, .callsInfo:
             return TelewhiteModsSection.calls.rawValue
-        case .appearanceHeader, .compactChatList, .amoledMode:
+        case .appearanceHeader, .compactChatList, .chatSplitLandscape, .amoledMode:
             return TelewhiteModsSection.appearance.rawValue
         case .accentColorHeader, .accentColorOption, .accentColorCustom:
             return TelewhiteModsSection.accentColor.rawValue
@@ -489,6 +495,8 @@ private enum TelewhiteModsEntry: ItemListNodeEntry, Equatable {
             return 702
         case .amoledMode:
             return 703
+        case .chatSplitLandscape:
+            return 704
         case .accentColorHeader:
             return 710
         case let .accentColorOption(index, _, _, _):
@@ -756,6 +764,10 @@ private enum TelewhiteModsEntry: ItemListNodeEntry, Equatable {
         case let .compactChatList(text, value):
             return self.switchItem(presentationData: presentationData, arguments: arguments, text: text, value: value) { settings, value in
                 settings.compactChatList = value
+            }
+        case let .chatSplitLandscape(text, value):
+            return self.switchItem(presentationData: presentationData, arguments: arguments, text: text, value: value) { settings, value in
+                settings.chatSplitLandscape = value
             }
         case let .amoledMode(text, value):
             return self.switchItem(presentationData: presentationData, arguments: arguments, text: text, value: value) { settings, value in
@@ -1087,6 +1099,8 @@ private func telewhiteEntryDescription(_ entry: TelewhiteModsEntry, presentation
         return text("Stores call recording preferences; full recording needs the call audio pipeline hook.", "\u{0421}\u{043e}\u{0445}\u{0440}\u{0430}\u{043d}\u{044f}\u{0435}\u{0442} \u{043d}\u{0430}\u{0441}\u{0442}\u{0440}\u{043e}\u{0439}\u{043a}\u{0438} \u{0437}\u{0432}\u{043e}\u{043d}\u{043a}\u{043e}\u{0432}; \u{0434}\u{043b}\u{044f} \u{0437}\u{0430}\u{043f}\u{0438}\u{0441}\u{0438} \u{043d}\u{0443}\u{0436}\u{0435}\u{043d} \u{0445}\u{0443}\u{043a} \u{0430}\u{0443}\u{0434}\u{0438}\u{043e}.")
     case .compactChatList:
         return text("Reduces visual spacing in the chat list for a denser Telegram layout.", "\u{0423}\u{043c}\u{0435}\u{043d}\u{044c}\u{0448}\u{0430}\u{0435}\u{0442} \u{043e}\u{0442}\u{0441}\u{0442}\u{0443}\u{043f}\u{044b} \u{0432} \u{0441}\u{043f}\u{0438}\u{0441}\u{043a}\u{0435} \u{0447}\u{0430}\u{0442}\u{043e}\u{0432}.")
+    case .chatSplitLandscape:
+        return text("Shows the chat list next to the open chat when the phone is rotated to landscape, like on desktop.", "В альбомной ориентации показывает список чатов рядом с открытым чатом — как на компьютере.")
     case .amoledMode:
         return text("Keeps the AMOLED visual preference for darker surfaces.", "\u{0421}\u{043e}\u{0445}\u{0440}\u{0430}\u{043d}\u{044f}\u{0435}\u{0442} AMOLED-\u{0440}\u{0435}\u{0436}\u{0438}\u{043c} \u{0434}\u{043b}\u{044f} \u{0431}\u{043e}\u{043b}\u{0435}\u{0435} \u{0442}\u{0451}\u{043c}\u{043d}\u{044b}\u{0445} \u{044d}\u{043a}\u{0440}\u{0430}\u{043d}\u{043e}\u{0432}.")
     default:
@@ -1149,6 +1163,7 @@ private func telewhiteModsEntries(tab: TelewhiteModsTab, settings: TelewhiteMods
     case .appearance:
         entries.append(.appearanceHeader(telewhiteTabTitle(.appearance, strings: strings)))
         entries.append(.compactChatList(strings.text("Compact Chat List", "Компактный список чатов"), settings.compactChatList))
+        entries.append(.chatSplitLandscape(strings.text("Split View in Landscape", "Сплит чатов (альбомная)"), settings.chatSplitLandscape))
         entries.append(.amoledMode(strings.text("AMOLED Mode", "AMOLED режим"), settings.amoledMode))
 
         let accentPresets: [(String, Int64?)] = [
