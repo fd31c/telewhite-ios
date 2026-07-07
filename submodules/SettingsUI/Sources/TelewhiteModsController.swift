@@ -677,9 +677,11 @@ private enum TelewhiteModsEntry: ItemListNodeEntry, Equatable {
                 settings.uploadVideoMessage = value
             }
         case let .vpnEnabled(text, value):
-            return self.switchItem(presentationData: presentationData, arguments: arguments, text: text, value: value) { settings, value in
-                settings.vpnEnabled = value
-            }
+            return ItemListSwitchItem(presentationData: presentationData, systemStyle: .glass, title: text, value: value, sectionId: self.section, style: .blocks, updated: { _ in
+                // Toggling runs the smart connect / disconnect flow; the flag is
+                // set by that flow once the proxy is actually (de)activated.
+                arguments.startVpn()
+            })
         case let .vpnSubscription(placeholder, text):
             return ItemListSingleLineInputItem(presentationData: presentationData, systemStyle: .glass, title: NSAttributedString(), text: text, placeholder: placeholder, type: .regular(capitalization: false, autocorrection: false), returnKeyType: .done, clearType: .onFocus, maxLength: 4096, sectionId: self.section, textUpdated: { text in
                 arguments.updateSettings { current in
@@ -1279,21 +1281,23 @@ private func telewhiteModsEntries(tab: TelewhiteModsTab, settings: TelewhiteMods
 
 private func telewhiteVpnEntries(settings: TelewhiteModsSettings) -> [TelewhiteModsEntry] {
     let vpnStatus: String
-    if settings.vpnSubscription.isEmpty {
-        vpnStatus = "No subscription"
+    if !TelewhiteVpnEngine.lastStatus.isEmpty {
+        vpnStatus = TelewhiteVpnEngine.lastStatus
     } else if settings.vpnEnabled {
-        vpnStatus = "Ready"
+        vpnStatus = "Connected"
+    } else if settings.vpnSubscription.isEmpty {
+        vpnStatus = "Off — built-in servers"
     } else {
-        vpnStatus = "Configured"
+        vpnStatus = "Off"
     }
 
     var entries: [TelewhiteModsEntry] = []
-    entries.append(.vpnHeader("Telegram-only VPN"))
-    entries.append(.vpnEnabled("Enable VPN Profile", settings.vpnEnabled))
-    entries.append(.vpnSubscription("Subscription URL", settings.vpnSubscription))
+    entries.append(.vpnHeader("Telewhite VPN — Telegram only"))
+    entries.append(.vpnEnabled("VPN Enabled", settings.vpnEnabled))
+    entries.append(.vpnSubscription("Subscription URL (optional)", settings.vpnSubscription))
     entries.append(.vpnStatus("Status", vpnStatus))
-    entries.append(.vpnStart("Start VPN"))
-    entries.append(.vpnInfo("Subscription storage is ready. Actual Telegram-only tunneling requires an iOS Packet Tunnel extension plus Network Extension entitlement; this screen is the configuration surface."))
+    entries.append(.vpnStart(settings.vpnEnabled ? "Disconnect" : "Connect"))
+    entries.append(.vpnInfo("Smart connect: Telewhite tests all servers from your subscription plus built-in ones, and picks the fastest working. Only Telegram traffic is routed through it — other apps are unaffected. Subscription formats: tg://proxy links, t.me/proxy links, or host:port:secret, one per line (plain or base64)."))
     return entries
 }
 
@@ -1344,17 +1348,9 @@ private func telewhiteModsSectionController(context: AccountContext, tab: Telewh
     let arguments = TelewhiteModsControllerArguments(updateSettings: updateSettings, updateTranslationSettings: { f in
         let _ = updateTranslationSettingsInteractively(accountManager: context.sharedContext.accountManager, f).start()
     }, startVpn: {
-        let presentationData = context.sharedContext.currentPresentationData.with { $0 }
-        let settings = stateValue.with { $0 }
-        let text: String
-        if settings.vpnSubscription.isEmpty {
-            text = "Paste a VPN subscription first. After that, the next step is adding a Packet Tunnel extension for a real iOS VPN connection."
-        } else {
-            text = "Your subscription is saved. To actually start VPN, Telewhite needs a Packet Tunnel extension and a tunnel engine such as sing-box, Xray, or WireGuard."
-        }
-        presentControllerImpl?(textAlertController(context: context, title: "VPN", text: text, actions: [
-            TextAlertAction(type: .defaultAction, title: presentationData.strings.Common_OK, action: {})
-        ]))
+        telewhiteRunVpnConnect(context: context, stateValue: stateValue, updateSettings: updateSettings, present: { c in
+            presentControllerImpl?(c)
+        })
     }, promptCustomColor: { target in
         let presentationData = context.sharedContext.currentPresentationData.with { $0 }
         let strings = TelewhiteModsStrings(presentationData: presentationData)
@@ -1437,17 +1433,9 @@ public func telewhiteVpnController(context: AccountContext) -> ViewController {
 
     let arguments = TelewhiteModsControllerArguments(updateSettings: updateSettings, updateTranslationSettings: { _ in
     }, startVpn: {
-        let presentationData = context.sharedContext.currentPresentationData.with { $0 }
-        let settings = stateValue.with { $0 }
-        let text: String
-        if settings.vpnSubscription.isEmpty {
-            text = "Paste a VPN subscription first."
-        } else {
-            text = "Telewhite saved the VPN profile. Starting a real Telegram-only tunnel needs a Packet Tunnel extension and Network Extension entitlement in the app bundle."
-        }
-        presentControllerImpl?(textAlertController(context: context, title: "Telewhite VPN", text: text, actions: [
-            TextAlertAction(type: .defaultAction, title: presentationData.strings.Common_OK, action: {})
-        ]))
+        telewhiteRunVpnConnect(context: context, stateValue: stateValue, updateSettings: updateSettings, present: { c in
+            presentControllerImpl?(c)
+        })
     })
 
     let signal = combineLatest(context.sharedContext.presentationData, statePromise.get())
