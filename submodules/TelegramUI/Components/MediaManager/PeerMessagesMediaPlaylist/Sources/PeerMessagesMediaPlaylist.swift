@@ -917,7 +917,10 @@ public final class PeerMessagesMediaPlaylist: SharedMediaPlaylist {
                 default:
                     break
             }
-            let _ = self.context.engine.messages.markMessageContentAsConsumedInteractively(messageId: item.message.id).startStandalone()
+            // Telewhite: when hiding read receipts, don't report voice/video messages as listened/watched.
+            if !UserDefaults.standard.bool(forKey: "telewhite.mods.hideReadReceipts") {
+                let _ = self.context.engine.messages.markMessageContentAsConsumedInteractively(messageId: item.message.id).startStandalone()
+            }
         }
     }
 }

@@ -640,7 +640,8 @@ func contextMenuForChatPresentationInterfaceState(chatPresentationInterfaceState
             
             actions.append(.separator)
             
-            if chatPresentationInterfaceState.copyProtectionEnabled {
+            // Telewhite: honor the content restriction bypass for the copy action.
+            if chatPresentationInterfaceState.copyProtectionEnabled && !TelewhiteModsSettings.current.contentRestrictionBypass {
             } else {
                 actions.append(.action(ContextMenuActionItem(text: chatPresentationInterfaceState.strings.Conversation_ContextMenuCopy, icon: { theme in
                     return generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/Copy"), color: theme.actionSheet.primaryTextColor)
@@ -1307,7 +1308,8 @@ func contextMenuForChatPresentationInterfaceState(chatPresentationInterfaceState
             }
         }
         
-        let isCopyProtected = chatPresentationInterfaceState.copyProtectionEnabled || message.isCopyProtected()
+        // Telewhite: honor the content restriction bypass for text copy and media saving.
+        let isCopyProtected = !TelewhiteModsSettings.current.contentRestrictionBypass && (chatPresentationInterfaceState.copyProtectionEnabled || message.isCopyProtected())
         if !messageText.isEmpty || richMessageMarkdown != nil || (resourceAvailable && isImage) || diceEmoji != nil {
             if !isExpired {
                 if !isPoll {

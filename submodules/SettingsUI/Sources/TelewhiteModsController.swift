@@ -1104,7 +1104,7 @@ private func telewhiteEntryDescription(_ entry: TelewhiteModsEntry, presentation
     case .hideTypingStatus:
         return text("Others won't see when you're typing or recording.", "Другие не увидят, что вы печатаете или записываете.")
     case .hideReadReceipts, .ghostMessages:
-        return text("You can read messages without the sender seeing checkmarks.", "Вы читаете сообщения, а отправитель не видит галочки прочтения.")
+        return text("Read messages and play voice/video notes without the sender seeing checkmarks.", "Читайте сообщения и слушайте голосовые/видео без галочек прочтения у отправителя.")
     case .ghostStories:
         return text("Watch stories without the author knowing.", "Смотрите истории так, что автор об этом не узнает.")
     case .screenshotProtectionBypass:
