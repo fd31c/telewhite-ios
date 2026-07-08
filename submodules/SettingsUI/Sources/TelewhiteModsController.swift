@@ -229,19 +229,22 @@ private final class TelewhiteModsControllerArguments {
     let startVpn: () -> Void
     let openTab: (TelewhiteModsTab) -> Void
     let promptCustomColor: (TelewhiteCustomColorTarget) -> Void
+    let openDebug: () -> Void
     
     init(
         updateSettings: @escaping ((TelewhiteModsSettings) -> TelewhiteModsSettings) -> Void,
         updateTranslationSettings: @escaping (@escaping (TranslationSettings) -> TranslationSettings) -> Void,
         startVpn: @escaping () -> Void,
         openTab: @escaping (TelewhiteModsTab) -> Void = { _ in },
-        promptCustomColor: @escaping (TelewhiteCustomColorTarget) -> Void = { _ in }
+        promptCustomColor: @escaping (TelewhiteCustomColorTarget) -> Void = { _ in },
+        openDebug: @escaping () -> Void = {}
     ) {
         self.updateSettings = updateSettings
         self.updateTranslationSettings = updateTranslationSettings
         self.startVpn = startVpn
         self.openTab = openTab
         self.promptCustomColor = promptCustomColor
+        self.openDebug = openDebug
     }
 }
 
@@ -362,6 +365,7 @@ private enum TelewhiteModsEntry: ItemListNodeEntry, Equatable {
     case showMessageIds(String, Bool)
     case pushStatus(String, String)
     case pushToken(String, String)
+    case debugMenu(String)
     case developerInfo(String)
     
     var section: ItemListSectionId {
@@ -392,7 +396,7 @@ private enum TelewhiteModsEntry: ItemListNodeEntry, Equatable {
             return TelewhiteModsSection.backgroundColor.rawValue
         case .cornerRadiusHeader, .cornerRadiusOption, .appearanceInfo:
             return TelewhiteModsSection.cornerRadius.rawValue
-        case .developerHeader, .showUserIds, .showChatIds, .showMessageIds, .pushStatus, .pushToken, .developerInfo:
+        case .developerHeader, .showUserIds, .showChatIds, .showMessageIds, .pushStatus, .pushToken, .debugMenu, .developerInfo:
             return TelewhiteModsSection.developer.rawValue
         }
     }
@@ -535,8 +539,10 @@ private enum TelewhiteModsEntry: ItemListNodeEntry, Equatable {
             return 804
         case .pushToken:
             return 805
-        case .developerInfo:
+        case .debugMenu:
             return 806
+        case .developerInfo:
+            return 807
         }
     }
     
@@ -695,6 +701,10 @@ private enum TelewhiteModsEntry: ItemListNodeEntry, Equatable {
         case let .vpnStart(text):
             return ItemListActionItem(presentationData: presentationData, systemStyle: .glass, title: text, kind: .generic, alignment: .natural, sectionId: self.section, style: .blocks, action: {
                 arguments.startVpn()
+            })
+        case let .debugMenu(text):
+            return ItemListDisclosureItem(presentationData: presentationData, systemStyle: .glass, title: text, label: "", sectionId: self.section, style: .blocks, disclosureStyle: .arrow, action: {
+                arguments.openDebug()
             })
         case let .messengerInfo(text), let .vpnInfo(text), let .privacyInfo(text), let .stealthInfo(text), let .channelsInfo(text), let .mediaInfo(text), let .callsInfo(text), let .developerInfo(text), let .appearanceInfo(text):
             return ItemListTextItem(presentationData: presentationData, text: .plain(text), sectionId: self.section)
@@ -880,142 +890,48 @@ private func telewhiteColorSwatchImage(_ value: Int64?) -> UIImage? {
 
 private var telewhiteMenuIconCache: [String: UIImage] = [:]
 
+// Telewhite: section icons now reuse Telegram's native settings icon style —
+// the bundled glyphs rendered on colored rounded squares — instead of
+// hand-drawn bezier paths, for a consistent, polished look.
 private func telewhiteMenuIcon(_ icon: TelewhiteModsMenuIcon, color: UIColor) -> UIImage? {
-    let cacheKey = "\(icon.rawValue)-\(color.argb)"
+    let cacheKey = "\(icon.rawValue)"
     if let cached = telewhiteMenuIconCache[cacheKey] {
         return cached
     }
-    
-    let size = CGSize(width: 29.0, height: 29.0)
-    let lineWidth: CGFloat = 1.7
-    let renderer = UIGraphicsImageRenderer(size: size)
-    let image = renderer.image { _ in
-        color.setStroke()
-        color.setFill()
-        
-        switch icon {
-        case .privacy:
-            // Lock: rounded body + shackle
-            let body = UIBezierPath(roundedRect: CGRect(x: 7.5, y: 13.0, width: 14.0, height: 10.5), cornerRadius: 3.0)
-            body.lineWidth = lineWidth
-            body.stroke()
-            let shackle = UIBezierPath(arcCenter: CGPoint(x: 14.5, y: 13.0), radius: 4.5, startAngle: .pi, endAngle: 0.0, clockwise: true)
-            shackle.lineWidth = lineWidth
-            shackle.stroke()
-            let keyhole = UIBezierPath(ovalIn: CGRect(x: 13.3, y: 16.8, width: 2.4, height: 2.4))
-            keyhole.fill()
-        case .ghost:
-            // Ghost (TeleDark style): rounded dome, gentle scalloped bottom, two vertical oval eyes
-            let ghostLineWidth: CGFloat = 2.0
-            let ghost = UIBezierPath()
-            ghost.move(to: CGPoint(x: 7.0, y: 22.5))
-            ghost.addLine(to: CGPoint(x: 7.0, y: 13.5))
-            ghost.addArc(withCenter: CGPoint(x: 14.5, y: 13.5), radius: 7.5, startAngle: .pi, endAngle: 0.0, clockwise: true)
-            ghost.addLine(to: CGPoint(x: 22.0, y: 22.5))
-            // Gentle scalloped bottom: three soft rounded bumps
-            ghost.addCurve(to: CGPoint(x: 17.5, y: 22.5), controlPoint1: CGPoint(x: 21.0, y: 24.2), controlPoint2: CGPoint(x: 18.5, y: 24.2))
-            ghost.addCurve(to: CGPoint(x: 11.5, y: 22.5), controlPoint1: CGPoint(x: 16.3, y: 21.2), controlPoint2: CGPoint(x: 12.7, y: 21.2))
-            ghost.addCurve(to: CGPoint(x: 7.0, y: 22.5), controlPoint1: CGPoint(x: 10.5, y: 24.2), controlPoint2: CGPoint(x: 8.0, y: 24.2))
-            ghost.lineWidth = ghostLineWidth
-            ghost.lineJoinStyle = .round
-            ghost.lineCapStyle = .round
-            ghost.stroke()
-            // Vertical oval eyes
-            UIBezierPath(ovalIn: CGRect(x: 10.7, y: 11.0, width: 2.4, height: 4.2)).fill()
-            UIBezierPath(ovalIn: CGRect(x: 15.9, y: 11.0, width: 2.4, height: 4.2)).fill()
-        case .messages:
-            // Two overlapping chat bubbles
-            let back = UIBezierPath(roundedRect: CGRect(x: 10.0, y: 6.5, width: 13.0, height: 10.0), cornerRadius: 5.0)
-            back.lineWidth = lineWidth
-            back.stroke()
-            let front = UIBezierPath()
-            front.move(to: CGPoint(x: 16.5, y: 13.5))
-            front.addArc(withCenter: CGPoint(x: 11.5, y: 18.0), radius: 5.5, startAngle: -0.6, endAngle: .pi + 0.4, clockwise: true)
-            front.addLine(to: CGPoint(x: 6.0, y: 24.5))
-            front.addLine(to: CGPoint(x: 12.5, y: 23.3))
-            front.addArc(withCenter: CGPoint(x: 11.5, y: 18.0), radius: 5.5, startAngle: 1.2, endAngle: -0.6, clockwise: false)
-            front.lineWidth = lineWidth
-            front.lineJoinStyle = .round
-            front.stroke()
-        case .groups:
-            // Megaphone
-            let horn = UIBezierPath()
-            horn.move(to: CGPoint(x: 7.0, y: 12.5))
-            horn.addLine(to: CGPoint(x: 15.0, y: 8.0))
-            horn.addLine(to: CGPoint(x: 21.5, y: 5.5))
-            horn.addLine(to: CGPoint(x: 21.5, y: 20.5))
-            horn.addLine(to: CGPoint(x: 15.0, y: 18.0))
-            horn.addLine(to: CGPoint(x: 7.0, y: 17.5))
-            horn.close()
-            horn.lineWidth = lineWidth
-            horn.lineJoinStyle = .round
-            horn.stroke()
-            let handle = UIBezierPath()
-            handle.move(to: CGPoint(x: 9.5, y: 17.8))
-            handle.addLine(to: CGPoint(x: 11.5, y: 24.0))
-            handle.addLine(to: CGPoint(x: 14.5, y: 24.0))
-            handle.addLine(to: CGPoint(x: 12.8, y: 18.0))
-            handle.lineWidth = lineWidth
-            handle.lineJoinStyle = .round
-            handle.stroke()
-        case .media:
-            // Circle with a wave through it
-            let circle = UIBezierPath(ovalIn: CGRect(x: 6.0, y: 6.0, width: 17.0, height: 17.0))
-            circle.lineWidth = lineWidth
-            circle.stroke()
-            let wave = UIBezierPath()
-            wave.move(to: CGPoint(x: 7.0, y: 16.5))
-            wave.addCurve(to: CGPoint(x: 14.5, y: 15.0), controlPoint1: CGPoint(x: 9.5, y: 12.5), controlPoint2: CGPoint(x: 12.0, y: 12.5))
-            wave.addCurve(to: CGPoint(x: 22.0, y: 13.5), controlPoint1: CGPoint(x: 17.0, y: 17.5), controlPoint2: CGPoint(x: 19.5, y: 17.5))
-            wave.lineWidth = lineWidth
-            wave.stroke()
-        case .calls:
-            // Phone handset
-            let handset = UIBezierPath()
-            handset.move(to: CGPoint(x: 8.0, y: 7.5))
-            handset.addCurve(to: CGPoint(x: 12.5, y: 12.0), controlPoint1: CGPoint(x: 11.0, y: 7.0), controlPoint2: CGPoint(x: 12.5, y: 9.0))
-            handset.addCurve(to: CGPoint(x: 11.5, y: 15.5), controlPoint1: CGPoint(x: 12.5, y: 13.5), controlPoint2: CGPoint(x: 11.5, y: 14.0))
-            handset.addCurve(to: CGPoint(x: 13.5, y: 18.5), controlPoint1: CGPoint(x: 11.8, y: 16.5), controlPoint2: CGPoint(x: 12.5, y: 17.5))
-            handset.addCurve(to: CGPoint(x: 17.0, y: 17.5), controlPoint1: CGPoint(x: 15.0, y: 17.5), controlPoint2: CGPoint(x: 15.5, y: 16.5))
-            handset.addCurve(to: CGPoint(x: 21.5, y: 21.0), controlPoint1: CGPoint(x: 20.0, y: 16.5), controlPoint2: CGPoint(x: 22.0, y: 18.0))
-            handset.addCurve(to: CGPoint(x: 17.0, y: 24.0), controlPoint1: CGPoint(x: 21.0, y: 23.0), controlPoint2: CGPoint(x: 19.5, y: 24.0))
-            handset.addCurve(to: CGPoint(x: 8.0, y: 16.0), controlPoint1: CGPoint(x: 13.0, y: 23.5), controlPoint2: CGPoint(x: 8.5, y: 20.0))
-            handset.addCurve(to: CGPoint(x: 8.0, y: 7.5), controlPoint1: CGPoint(x: 7.5, y: 13.0), controlPoint2: CGPoint(x: 6.5, y: 9.0))
-            handset.lineWidth = lineWidth
-            handset.lineJoinStyle = .round
-            handset.stroke()
-        case .appearance:
-            // Circle half-filled (contrast/appearance)
-            let circle = UIBezierPath(ovalIn: CGRect(x: 6.0, y: 6.0, width: 17.0, height: 17.0))
-            circle.lineWidth = lineWidth
-            circle.stroke()
-            let half = UIBezierPath(arcCenter: CGPoint(x: 14.5, y: 14.5), radius: 6.5, startAngle: -.pi / 2.0, endAngle: .pi / 2.0, clockwise: true)
-            half.close()
-            half.fill()
-        case .developer:
-            // Angle brackets </> 
-            let left = UIBezierPath()
-            left.move(to: CGPoint(x: 10.0, y: 9.5))
-            left.addLine(to: CGPoint(x: 5.5, y: 14.5))
-            left.addLine(to: CGPoint(x: 10.0, y: 19.5))
-            left.lineWidth = lineWidth
-            left.lineJoinStyle = .round
-            left.stroke()
-            let right = UIBezierPath()
-            right.move(to: CGPoint(x: 19.0, y: 9.5))
-            right.addLine(to: CGPoint(x: 23.5, y: 14.5))
-            right.addLine(to: CGPoint(x: 19.0, y: 19.5))
-            right.lineWidth = lineWidth
-            right.lineJoinStyle = .round
-            right.stroke()
-            let slash = UIBezierPath()
-            slash.move(to: CGPoint(x: 16.3, y: 8.0))
-            slash.addLine(to: CGPoint(x: 12.7, y: 21.0))
-            slash.lineWidth = lineWidth
-            slash.stroke()
-        }
+
+    let name: String
+    let backgroundColors: [UIColor]
+    switch icon {
+    case .privacy:
+        name = "Item List/Icons/Privacy"
+        backgroundColors = [UIColor(rgb: 0x8E8E93)]
+    case .ghost:
+        name = "Item List/Icons/LastSeen"
+        backgroundColors = [UIColor(rgb: 0x5856D6)]
+    case .messages:
+        name = "Item List/Icons/Messages"
+        backgroundColors = [UIColor(rgb: 0x34C759)]
+    case .groups:
+        name = "Item List/Icons/Channel"
+        backgroundColors = [UIColor(rgb: 0xFF9500)]
+    case .media:
+        name = "Item List/Icons/Photo"
+        backgroundColors = [UIColor(rgb: 0xAF52DE)]
+    case .calls:
+        name = "Item List/Icons/Phone"
+        backgroundColors = [UIColor(rgb: 0x30B0C7)]
+    case .appearance:
+        name = "Item List/Icons/Appearance"
+        backgroundColors = [UIColor(rgb: 0x007AFF)]
+    case .developer:
+        name = "Item List/Icons/Settings"
+        backgroundColors = [UIColor(rgb: 0x636366)]
     }
-    telewhiteMenuIconCache[cacheKey] = image
+
+    let image = renderSettingsIcon(name: name, backgroundColors: backgroundColors)
+    if let image {
+        telewhiteMenuIconCache[cacheKey] = image
+    }
     return image
 }
 
@@ -1047,9 +963,8 @@ private func telewhiteMenuEntries(strings: TelewhiteModsStrings) -> [TelewhiteMo
         .menuItem(2, .messages, telewhiteTabTitle(.messenger, strings: strings), strings.text("Deleted messages, one-time media, uploads and translation.", "\u{0423}\u{0434}\u{0430}\u{043b}\u{0451}\u{043d}\u{043d}\u{044b}\u{0435} \u{0441}\u{043e}\u{043e}\u{0431}\u{0449}\u{0435}\u{043d}\u{0438}\u{044f}, \u{043e}\u{0434}\u{043d}\u{043e}\u{0440}\u{0430}\u{0437}\u{043e}\u{0432}\u{044b}\u{0435} \u{043c}\u{0435}\u{0434}\u{0438}\u{0430}, \u{0437}\u{0430}\u{0433}\u{0440}\u{0443}\u{0437}\u{043a}\u{0438} \u{0438} \u{043f}\u{0435}\u{0440}\u{0435}\u{0432}\u{043e}\u{0434}."), .messenger),
         .menuItem(3, .groups, telewhiteTabTitle(.channels, strings: strings), strings.text("Channel and group content controls.", "\u{0424}\u{0443}\u{043d}\u{043a}\u{0446}\u{0438}\u{0438} \u{0434}\u{043b}\u{044f} \u{043a}\u{0430}\u{043d}\u{0430}\u{043b}\u{043e}\u{0432} \u{0438} \u{0433}\u{0440}\u{0443}\u{043f}\u{043f}."), .channels),
         .menuItem(4, .media, telewhiteTabTitle(.media, strings: strings), strings.text("Stories, downloads and media actions.", "\u{0418}\u{0441}\u{0442}\u{043e}\u{0440}\u{0438}\u{0438}, \u{0441}\u{043a}\u{0430}\u{0447}\u{0438}\u{0432}\u{0430}\u{043d}\u{0438}\u{0435} \u{0438} \u{043c}\u{0435}\u{0434}\u{0438}\u{0430}-\u{0434}\u{0435}\u{0439}\u{0441}\u{0442}\u{0432}\u{0438}\u{044f}."), .media),
-        .menuItem(5, .calls, telewhiteTabTitle(.calls, strings: strings), strings.text("Call recording preferences and controls.", "\u{0417}\u{0430}\u{043f}\u{0438}\u{0441}\u{044c} \u{0437}\u{0432}\u{043e}\u{043d}\u{043a}\u{043e}\u{0432} \u{0438} \u{0443}\u{043f}\u{0440}\u{0430}\u{0432}\u{043b}\u{0435}\u{043d}\u{0438}\u{0435}."), .calls),
-        .menuItem(6, .appearance, telewhiteTabTitle(.appearance, strings: strings), strings.text("Chat list density and visual mode.", "\u{041f}\u{043b}\u{043e}\u{0442}\u{043d}\u{043e}\u{0441}\u{0442}\u{044c} \u{0441}\u{043f}\u{0438}\u{0441}\u{043a}\u{0430} \u{0447}\u{0430}\u{0442}\u{043e}\u{0432} \u{0438} \u{0432}\u{0438}\u{0434}."), .appearance),
-        .menuItem(7, .developer, telewhiteTabTitle(.developer, strings: strings), strings.text("User, chat and message IDs.", "ID \u{043f}\u{043e}\u{043b}\u{044c}\u{0437}\u{043e}\u{0432}\u{0430}\u{0442}\u{0435}\u{043b}\u{0435}\u{0439}, \u{0447}\u{0430}\u{0442}\u{043e}\u{0432} \u{0438} \u{0441}\u{043e}\u{043e}\u{0431}\u{0449}\u{0435}\u{043d}\u{0438}\u{0439}."), .developer)
+        .menuItem(5, .appearance, telewhiteTabTitle(.appearance, strings: strings), strings.text("Colors, chat list and split view.", "Цвета, список чатов и сплит-режим."), .appearance),
+        .menuItem(6, .developer, telewhiteTabTitle(.developer, strings: strings), strings.text("IDs and technical tools.", "ID и технические инструменты."), .developer)
     ]
 }
 
@@ -1060,51 +975,49 @@ private func telewhiteEntryDescription(_ entry: TelewhiteModsEntry, presentation
     }
     switch entry {
     case .preserveDeletedMessages:
-        return text("Keeps deleted cloud messages visible locally; deleting the marked copy again removes it from this device.", "\u{0423}\u{0434}\u{0430}\u{043b}\u{0451}\u{043d}\u{043d}\u{044b}\u{0435} \u{043e}\u{0431}\u{043b}\u{0430}\u{0447}\u{043d}\u{044b}\u{0435} \u{0441}\u{043e}\u{043e}\u{0431}\u{0449}\u{0435}\u{043d}\u{0438}\u{044f} \u{043e}\u{0441}\u{0442}\u{0430}\u{044e}\u{0442}\u{0441}\u{044f} \u{043b}\u{043e}\u{043a}\u{0430}\u{043b}\u{044c}\u{043d}\u{043e}; \u{043f}\u{043e}\u{0432}\u{0442}\u{043e}\u{0440}\u{043d}\u{043e}\u{0435} \u{0443}\u{0434}\u{0430}\u{043b}\u{0435}\u{043d}\u{0438}\u{0435} \u{0443}\u{0431}\u{0438}\u{0440}\u{0430}\u{0435}\u{0442} \u{043a}\u{043e}\u{043f}\u{0438}\u{044e}.")
+        return text("Messages deleted by others stay visible on this device.", "Сообщения, удалённые собеседником, остаются видны на этом устройстве.")
     case .translateMessages:
-        return text("Shows the manual translate action in message menus.", "Показывает ручную кнопку перевода в меню сообщений.")
+        return text("Adds a Translate button to the message menu.", "Добавляет кнопку «Перевести» в меню сообщения.")
     case .translateChats:
-        return text("Enables full chat translation when Telegram exposes the translation pipeline.", "Включает перевод чата, когда в клиенте доступна система перевода.")
+        return text("Shows a translate bar at the top of foreign-language chats.", "Показывает панель перевода сверху в чатах на иностранном языке.")
     case .autoTranslateEnglish:
-        return text("Prepares outgoing messages for automatic translation to the selected language.", "Готовит исходящие сообщения к автопереводу на выбранный язык.")
-    case .oneTimeMediaUnlimited, .downloadOneTimeMedia:
-        return text("Loosens local view-once media limits and screenshot blocking where the client controls the UI.", "\u{041e}\u{0441}\u{043b}\u{0430}\u{0431}\u{043b}\u{044f}\u{0435}\u{0442} \u{043b}\u{043e}\u{043a}\u{0430}\u{043b}\u{044c}\u{043d}\u{044b}\u{0435} \u{043b}\u{0438}\u{043c}\u{0438}\u{0442}\u{044b} \u{043e}\u{0434}\u{043d}\u{043e}\u{0440}\u{0430}\u{0437}\u{043e}\u{0432}\u{044b}\u{0445} \u{043c}\u{0435}\u{0434}\u{0438}\u{0430} \u{0438} \u{0431}\u{043b}\u{043e}\u{043a} \u{0441}\u{043a}\u{0440}\u{0438}\u{043d}\u{0448}\u{043e}\u{0442}\u{043e}\u{0432}.")
-    case .uploadVoice:
-        return text("Keeps the upload preference for sending local audio/video as voice messages.", "Сохраняет настройку отправки локальных аудио/видео как голосовых.")
-    case .uploadVideoMessage:
-        return text("Keeps the upload preference for sending gallery video as a round video message.", "Сохраняет настройку отправки видео из галереи как круглого видеосообщения.")
+        return text("Automatically translates your messages before sending.", "Автоматически переводит ваши сообщения перед отправкой.")
+    case .oneTimeMediaUnlimited:
+        return text("View-once photos and videos can be opened multiple times.", "Одноразовые фото и видео можно открывать сколько угодно раз.")
+    case .downloadOneTimeMedia:
+        return text("Lets you save view-once photos and videos.", "Позволяет сохранять одноразовые фото и видео.")
     case .vpnEnabled:
-        return text("Stores whether the Telegram-only VPN profile should be active.", "Сохраняет, должен ли Telegram-only VPN быть активен.")
+        return text("Routes Telegram traffic through a proxy server. Other apps are not affected.", "Пропускает трафик Telegram через прокси-сервер. Другие приложения не затрагиваются.")
     case .hideOnlineStatus:
-        return text("Stops the app from keeping your account online while enabled.", "\u{041d}\u{0435} \u{0434}\u{0430}\u{0451}\u{0442} \u{043f}\u{0440}\u{0438}\u{043b}\u{043e}\u{0436}\u{0435}\u{043d}\u{0438}\u{044e} \u{0434}\u{0435}\u{0440}\u{0436}\u{0430}\u{0442}\u{044c} \u{0430}\u{043a}\u{043a}\u{0430}\u{0443}\u{043d}\u{0442} \u{043e}\u{043d}\u{043b}\u{0430}\u{0439}\u{043d}.")
+        return text("Others won't see you online.", "Другие не будут видеть вас в сети.")
     case .ghostMode:
-        return text("Global stealth combines hidden reads, typing and online presence.", "\u{0413}\u{043b}\u{043e}\u{0431}\u{0430}\u{043b}\u{044c}\u{043d}\u{0430}\u{044f} \u{043d}\u{0435}\u{0432}\u{0438}\u{0434}\u{0438}\u{043c}\u{043a}\u{0430}: \u{0447}\u{0442}\u{0435}\u{043d}\u{0438}\u{0435}, \u{043d}\u{0430}\u{0431}\u{043e}\u{0440} \u{0438} \u{043e}\u{043d}\u{043b}\u{0430}\u{0439}\u{043d}.")
+        return text("Full invisibility: hides reads, typing and online status.", "Полная невидимость: скрывает прочтение, набор текста и онлайн.")
     case .ghostChatButtonEnabled:
-        return text("Shows the ghost button in private chats for per-peer stealth.", "\u{041f}\u{043e}\u{043a}\u{0430}\u{0437}\u{044b}\u{0432}\u{0430}\u{0435}\u{0442} \u{043a}\u{043d}\u{043e}\u{043f}\u{043a}\u{0443} \u{043f}\u{0440}\u{0438}\u{0437}\u{0440}\u{0430}\u{043a}\u{0430} \u{0432} \u{043b}\u{0438}\u{0447}\u{043d}\u{044b}\u{0445} \u{0447}\u{0430}\u{0442}\u{0430}\u{0445}.")
+        return text("Adds a ghost button inside private chats to go invisible in that chat only.", "Добавляет кнопку призрака в личных чатах — невидимость только в этом чате.")
     case .hideTypingStatus:
-        return text("Blocks outgoing typing and recording activity updates.", "\u{0411}\u{043b}\u{043e}\u{043a}\u{0438}\u{0440}\u{0443}\u{0435}\u{0442} \u{043d}\u{0430}\u{0431}\u{043e}\u{0440} \u{0442}\u{0435}\u{043a}\u{0441}\u{0442}\u{0430} \u{0438} \u{0441}\u{0442}\u{0430}\u{0442}\u{0443}\u{0441} \u{0437}\u{0430}\u{043f}\u{0438}\u{0441}\u{0438}.")
+        return text("Others won't see when you're typing or recording.", "Другие не увидят, что вы печатаете или записываете.")
     case .hideReadReceipts, .ghostMessages:
-        return text("Prevents automatic read-state sync for messages.", "\u{041d}\u{0435} \u{043e}\u{0442}\u{043f}\u{0440}\u{0430}\u{0432}\u{043b}\u{044f}\u{0435}\u{0442} \u{0430}\u{0432}\u{0442}\u{043e}\u{043f}\u{0440}\u{043e}\u{0447}\u{0442}\u{0435}\u{043d}\u{0438}\u{0435} \u{0441}\u{043e}\u{043e}\u{0431}\u{0449}\u{0435}\u{043d}\u{0438}\u{0439}.")
+        return text("You can read messages without the sender seeing checkmarks.", "Вы читаете сообщения, а отправитель не видит галочки прочтения.")
     case .ghostStories:
-        return text("Skips story view sync so authors do not receive your view.", "\u{041d}\u{0435} \u{043e}\u{0442}\u{043f}\u{0440}\u{0430}\u{0432}\u{043b}\u{044f}\u{0435}\u{0442} \u{043f}\u{0440}\u{043e}\u{0441}\u{043c}\u{043e}\u{0442}\u{0440} \u{0438}\u{0441}\u{0442}\u{043e}\u{0440}\u{0438}\u{0439} \u{0430}\u{0432}\u{0442}\u{043e}\u{0440}\u{0443}.")
+        return text("Watch stories without the author knowing.", "Смотрите истории так, что автор об этом не узнает.")
     case .screenshotProtectionBypass:
-        return text("Disables local screenshot warnings and screen-recording blocks where possible.", "\u{041e}\u{0442}\u{043a}\u{043b}\u{044e}\u{0447}\u{0430}\u{0435}\u{0442} \u{043b}\u{043e}\u{043a}\u{0430}\u{043b}\u{044c}\u{043d}\u{044b}\u{0435} \u{0431}\u{043b}\u{043e}\u{043a}\u{0438} \u{0438} \u{0443}\u{0432}\u{0435}\u{0434}\u{043e}\u{043c}\u{043b}\u{0435}\u{043d}\u{0438}\u{044f} \u{0441}\u{043a}\u{0440}\u{0438}\u{043d}\u{0448}\u{043e}\u{0442}\u{043e}\u{0432}.")
+        return text("Removes screenshot blocks in protected chats.", "Убирает блокировку скриншотов в защищённых чатах.")
     case .contentRestrictionBypass, .channelContentRestrictionBypass:
-        return text("Restores local forward/share/reply actions when copy protection hides them.", "\u{0412}\u{043e}\u{0437}\u{0432}\u{0440}\u{0430}\u{0449}\u{0430}\u{0435}\u{0442} \u{043f}\u{0435}\u{0440}\u{0435}\u{0441}\u{044b}\u{043b}\u{043a}\u{0443}, \u{0448}\u{0430}\u{0440}\u{0438}\u{043d}\u{0433} \u{0438} \u{043e}\u{0442}\u{0432}\u{0435}\u{0442}, \u{0435}\u{0441}\u{043b}\u{0438} copy protection \u{0438}\u{0445} \u{0441}\u{043a}\u{0440}\u{044b}\u{0432}\u{0430}\u{0435}\u{0442}.")
+        return text("Lets you forward, copy and save from protected chats and channels.", "Позволяет пересылать, копировать и сохранять из защищённых чатов и каналов.")
     case .hidePhoneInSettings:
-        return text("Hides your phone number from settings/profile header.", "\u{0421}\u{043a}\u{0440}\u{044b}\u{0432}\u{0430}\u{0435}\u{0442} \u{043d}\u{043e}\u{043c}\u{0435}\u{0440} \u{0432} \u{043d}\u{0430}\u{0441}\u{0442}\u{0440}\u{043e}\u{0439}\u{043a}\u{0430}\u{0445} \u{0438} \u{0448}\u{0430}\u{043f}\u{043a}\u{0435} \u{043f}\u{0440}\u{043e}\u{0444}\u{0438}\u{043b}\u{044f}.")
+        return text("Hides your phone number in Settings and your profile.", "Скрывает ваш номер телефона в настройках и профиле.")
     case .showProfileIds, .showUserIds, .showChatIds, .showMessageIds:
-        return text("Shows IDs and lets you copy them from profile/context surfaces.", "\u{041f}\u{043e}\u{043a}\u{0430}\u{0437}\u{044b}\u{0432}\u{0430}\u{0435}\u{0442} ID \u{0438} \u{0434}\u{0430}\u{0451}\u{0442} \u{043a}\u{043e}\u{043f}\u{0438}\u{0440}\u{043e}\u{0432}\u{0430}\u{0442}\u{044c} \u{0438}\u{0445} \u{0438}\u{0437} \u{043f}\u{0440}\u{043e}\u{0444}\u{0438}\u{043b}\u{044f} \u{0438} \u{043c}\u{0435}\u{043d}\u{044e}.")
-    case .downloadStories, .hideStories:
-        return text("Controls story visibility/download surfaces in the client.", "\u{0423}\u{043f}\u{0440}\u{0430}\u{0432}\u{043b}\u{044f}\u{0435}\u{0442} \u{0438}\u{0441}\u{0442}\u{043e}\u{0440}\u{0438}\u{044f}\u{043c}\u{0438}, \u{0438}\u{0445} \u{043f}\u{043e}\u{043a}\u{0430}\u{0437}\u{043e}\u{043c} \u{0438} \u{0441}\u{043a}\u{0430}\u{0447}\u{0438}\u{0432}\u{0430}\u{043d}\u{0438}\u{0435}\u{043c}.")
-    case .autoRecordCalls, .callRecordButton:
-        return text("Stores call recording preferences; full recording needs the call audio pipeline hook.", "\u{0421}\u{043e}\u{0445}\u{0440}\u{0430}\u{043d}\u{044f}\u{0435}\u{0442} \u{043d}\u{0430}\u{0441}\u{0442}\u{0440}\u{043e}\u{0439}\u{043a}\u{0438} \u{0437}\u{0432}\u{043e}\u{043d}\u{043a}\u{043e}\u{0432}; \u{0434}\u{043b}\u{044f} \u{0437}\u{0430}\u{043f}\u{0438}\u{0441}\u{0438} \u{043d}\u{0443}\u{0436}\u{0435}\u{043d} \u{0445}\u{0443}\u{043a} \u{0430}\u{0443}\u{0434}\u{0438}\u{043e}.")
+        return text("Shows user and chat IDs in profiles. Tap an ID to copy it.", "Показывает ID пользователей и чатов в профилях. Нажмите на ID, чтобы скопировать.")
+    case .downloadStories:
+        return text("Adds a save button to stories.", "Добавляет кнопку сохранения в истории.")
+    case .hideStories:
+        return text("Hides the stories row above the chat list.", "Скрывает ленту историй над списком чатов.")
     case .compactChatList:
-        return text("Reduces visual spacing in the chat list for a denser Telegram layout.", "\u{0423}\u{043c}\u{0435}\u{043d}\u{044c}\u{0448}\u{0430}\u{0435}\u{0442} \u{043e}\u{0442}\u{0441}\u{0442}\u{0443}\u{043f}\u{044b} \u{0432} \u{0441}\u{043f}\u{0438}\u{0441}\u{043a}\u{0435} \u{0447}\u{0430}\u{0442}\u{043e}\u{0432}.")
+        return text("Makes chat list rows smaller so more chats fit on screen.", "Уменьшает строки чатов — на экране помещается больше.")
     case .chatSplitLandscape:
-        return text("Shows the chat list next to the open chat when the phone is rotated to landscape, like on desktop.", "В альбомной ориентации показывает список чатов рядом с открытым чатом — как на компьютере.")
+        return text("In landscape, shows the chat list next to the open chat, like on a computer.", "В альбомной ориентации показывает список чатов рядом с открытым чатом — как на компьютере.")
     case .amoledMode:
-        return text("Keeps the AMOLED visual preference for darker surfaces.", "\u{0421}\u{043e}\u{0445}\u{0440}\u{0430}\u{043d}\u{044f}\u{0435}\u{0442} AMOLED-\u{0440}\u{0435}\u{0436}\u{0438}\u{043c} \u{0434}\u{043b}\u{044f} \u{0431}\u{043e}\u{043b}\u{0435}\u{0435} \u{0442}\u{0451}\u{043c}\u{043d}\u{044b}\u{0445} \u{044d}\u{043a}\u{0440}\u{0430}\u{043d}\u{043e}\u{0432}.")
+        return text("Pure black theme for OLED screens.", "Чисто-чёрная тема для OLED-экранов.")
     default:
         return nil
     }
@@ -1119,9 +1032,6 @@ private func telewhiteModsEntries(tab: TelewhiteModsTab, settings: TelewhiteMods
         entries.append(.preserveDeletedMessages(strings.text("Keep Deleted Messages", "Сохранять удалённые сообщения"), settings.preserveDeletedMessages))
         entries.append(.oneTimeMediaUnlimited(strings.text("Unlimited One-Time View", "Одноразовый просмотр без ограничений"), settings.oneTimeMediaUnlimited))
         entries.append(.downloadOneTimeMedia(strings.text("Download One-Time Media", "Скачать одноразовые медиа"), settings.downloadOneTimeMedia))
-        entries.append(.uploadVoice(strings.text("Upload Voice Message", "Загрузить голосовое"), settings.uploadVoice))
-        entries.append(.voiceChangeSettings(strings.text("Voice Change Settings", "Настройки изменения голоса")))
-        entries.append(.uploadVideoMessage(strings.text("Upload Video Message", "Загрузить видеосообщение"), settings.uploadVideoMessage))
         entries.append(.translateMessages(strings.text("Show Translate Button", "Показывать кнопку перевода"), translationSettings.showTranslate))
         entries.append(.translateChats(strings.text("Translate Entire Chats", "Перевод чатов"), translationSettings.translateChats))
         entries.append(.autoTranslateEnglish(strings.text("Translate Before Sending", "Перевод перед отправкой"), settings.autoTranslateEnglish))
@@ -1158,9 +1068,7 @@ private func telewhiteModsEntries(tab: TelewhiteModsTab, settings: TelewhiteMods
 
     case .calls:
         entries.append(.callsHeader(telewhiteTabTitle(.calls, strings: strings)))
-        entries.append(.autoRecordCalls(strings.text("Auto-Record Calls", "Авто-запись звонков"), settings.autoRecordCalls))
-        entries.append(.callRecordButton(strings.text("Call Record Button", "Кнопка записи звонка"), settings.callRecordButton))
-        entries.append(.callsInfo(strings.text("Call recording still needs the call UI and audio pipeline hook.", "Для записи звонков ещё нужен хук UI и аудио-пайплайна звонка.")))
+        entries.append(.callsInfo(strings.text("Call features are coming in a future update.", "Функции для звонков появятся в следующих обновлениях.")))
 
     case .appearance:
         entries.append(.appearanceHeader(telewhiteTabTitle(.appearance, strings: strings)))
@@ -1273,6 +1181,7 @@ private func telewhiteModsEntries(tab: TelewhiteModsTab, settings: TelewhiteMods
             shortToken = pushToken
         }
         entries.append(.pushToken(strings.text("APNs token", "APNs токен"), pushToken.isEmpty ? shortToken : "\(shortToken) — \(strings.text("tap to copy", "нажмите чтобы скопировать"))"))
+        entries.append(.debugMenu(strings.text("Debug Menu", "Меню отладки")))
         entries.append(.developerInfo(strings.text("If push status is not \"Registered\", Apple did not issue a token for this signing profile — messages will not push. IDs are shown in profile/context surfaces when enabled.", "Если статус пушей не \"Registered\", Apple не выдал токен для этого профиля подписи — пуши работать не будут. ID отображаются в профилях и контекстных меню.")))
     }
 
@@ -1344,6 +1253,7 @@ public func telewhiteModsController(context: AccountContext) -> ViewController {
 
 private func telewhiteModsSectionController(context: AccountContext, tab: TelewhiteModsTab, statePromise: ValuePromise<TelewhiteModsSettings>, stateValue: Atomic<TelewhiteModsSettings>, updateSettings: @escaping ((TelewhiteModsSettings) -> TelewhiteModsSettings) -> Void) -> ViewController {
     var presentControllerImpl: ((ViewController) -> Void)?
+    var pushControllerImpl: ((ViewController) -> Void)?
 
     let arguments = TelewhiteModsControllerArguments(updateSettings: updateSettings, updateTranslationSettings: { f in
         let _ = updateTranslationSettingsInteractively(accountManager: context.sharedContext.accountManager, f).start()
@@ -1392,6 +1302,10 @@ private func telewhiteModsSectionController(context: AccountContext, tab: Telewh
             }
         )
         presentControllerImpl?(prompt)
+    }, openDebug: {
+        if let debugController = context.sharedContext.makeDebugSettingsController(context: context) {
+            pushControllerImpl?(debugController)
+        }
     })
 
     let translationSettings = context.sharedContext.accountManager.sharedData(keys: [ApplicationSpecificSharedDataKeys.translationSettings])
@@ -1411,6 +1325,9 @@ private func telewhiteModsSectionController(context: AccountContext, tab: Telewh
     let controller = ItemListController(context: context, state: signal)
     presentControllerImpl = { [weak controller] c in
         controller?.present(c, in: .window(.root))
+    }
+    pushControllerImpl = { [weak controller] c in
+        (controller?.navigationController as? NavigationController)?.pushViewController(c)
     }
     return controller
 }
