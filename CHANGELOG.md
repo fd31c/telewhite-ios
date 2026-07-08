@@ -7,6 +7,16 @@
 
 ---
 
+## 2026-07-09
+
+- **[Добавлено]** Тонировка удалённых сообщений. Сообщения с `TelewhiteDeletedMessageAttribute` теперь помечаются
+  визуально: поверх фона бабла (под контентом) добавляется overlay-нода `telewhiteDeletedOverlayNode` —
+  второй `ChatMessageBackground` с `customHighlightColor = itemDestructiveColor` (alpha 0.14), повторяющий
+  форму бабла вместе с хвостиком (по паттерну `backgroundHighlightNode`). Работает в паре с уже существующим
+  затемнением `mainContainerNode.alpha = 0.55`. Overlay создаётся/удаляется в apply рядом с `setType`
+  и синхронизирует frame во всех трёх ветках обновления layout (анимированная, extracted, статичная).
+  Файл: `submodules/TelegramUI/Components/Chat/ChatMessageBubbleItemNode/Sources/ChatMessageBubbleItemNode.swift`.
+
 ## 2026-07-03
 
 - **[Добавлено]** Диагностика push-уведомлений. В `Telewhite Mods → Developer` добавлены строки
