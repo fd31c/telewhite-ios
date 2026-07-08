@@ -849,6 +849,14 @@ public final class OngoingCallContext {
                 CallAudioTone(samples: tone.samples, sampleRate: tone.sampleRate, loopCount: tone.loopCount)
             })
         }
+        
+        public func startCallRecording(path: String) {
+            self.impl.startCallRecording(path)
+        }
+        
+        public func stopCallRecording() {
+            self.impl.stopCallRecording()
+        }
     }
     
     public static func setupAudioSession() {

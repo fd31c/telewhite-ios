@@ -61,6 +61,9 @@
 
 - (void)setTone:(CallAudioTone * _Nullable)tone;
 
+- (void)startCallRecording:(NSString * _Nonnull)path;
+- (void)stopCallRecording;
+
 @end
 
 @interface OngoingCallConnectionDescriptionWebrtc : NSObject

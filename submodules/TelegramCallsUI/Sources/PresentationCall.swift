@@ -174,6 +174,12 @@ public final class PresentationCallImpl: PresentationCall {
     
     private var isMovedToConference: Bool = false
     
+    // Telewhite: call recording.
+    private var telewhiteRecordingPath: String?
+    private var telewhiteRecordingStartTimestamp: Double?
+    private var telewhiteDidStartRecording: Bool = false
+    private var telewhiteDidSaveRecording: Bool = false
+    
     init(
         context: AccountContext,
         audioSession: ManagedAudioSession,
@@ -569,6 +575,67 @@ public final class PresentationCallImpl: PresentationCall {
         }
     }
     
+    private func telewhiteStartRecordingIfNeeded() {
+        guard UserDefaults.standard.bool(forKey: "telewhite.mods.recordCalls") else {
+            return
+        }
+        guard !self.telewhiteDidStartRecording else {
+            return
+        }
+        guard let audioDevice = self.sharedAudioContext?.audioDevice else {
+            return
+        }
+        self.telewhiteDidStartRecording = true
+        let path = NSTemporaryDirectory() + "telewhite-call-\(Int64.random(in: Int64.min ..< Int64.max)).wav"
+        self.telewhiteRecordingPath = path
+        self.telewhiteRecordingStartTimestamp = CFAbsoluteTimeGetCurrent()
+        audioDevice.startCallRecording(path: path)
+    }
+    
+    private func telewhiteStopAndSaveRecording() {
+        guard self.telewhiteDidStartRecording, !self.telewhiteDidSaveRecording else {
+            return
+        }
+        self.telewhiteDidSaveRecording = true
+        guard let path = self.telewhiteRecordingPath else {
+            return
+        }
+        self.sharedAudioContext?.audioDevice?.stopCallRecording()
+        
+        let duration = self.telewhiteRecordingStartTimestamp.flatMap { Int(CFAbsoluteTimeGetCurrent() - $0) } ?? 0
+        
+        guard let fileSize = (try? FileManager.default.attributesOfItem(atPath: path)[.size] as? Int) ?? nil, fileSize > 44 else {
+            try? FileManager.default.removeItem(atPath: path)
+            return
+        }
+        
+        let account = self.context.account
+        let peerId = self.peerId
+        let peerTitle = self.peer?.debugDisplayTitle ?? "Call"
+        let dateString = DateFormatter.localizedString(from: Date(), dateStyle: .short, timeStyle: .short)
+        let fileName = "Call \(peerTitle) \(dateString).wav"
+        
+        let randomId = Int64.random(in: Int64.min ..< Int64.max)
+        let resource = LocalFileReferenceMediaResource(localFilePath: path, randomId: randomId, isUniquelyReferencedTemporaryFile: true)
+        let file = TelegramMediaFile(
+            fileId: EngineMedia.Id(namespace: Namespaces.Media.LocalFile, id: randomId),
+            partialReference: nil,
+            resource: resource,
+            previewRepresentations: [],
+            videoThumbnails: [],
+            immediateThumbnailData: nil,
+            mimeType: "audio/wav",
+            size: Int64(fileSize),
+            attributes: [
+                .Audio(isVoice: false, duration: duration, title: nil, performer: nil, waveform: nil),
+                .FileName(fileName: fileName)
+            ],
+            alternativeRepresentations: []
+        )
+        let message: EnqueueMessage = .message(text: "", attributes: [], inlineStickers: [:], mediaReference: .standalone(media: file), threadId: nil, replyToMessageId: nil, replyToStoryId: nil, localGroupingKey: nil, correlationId: nil, bubbleUpEmojiOrStickersets: [])
+        let _ = enqueueMessages(account: account, peerId: peerId, messages: [message]).start()
+    }
+    
     private func updateSessionState(sessionState: CallSession, callContextState: OngoingCallContextState?, reception: Int32?, audioSessionControl: ManagedAudioSessionControl?) {
         if self.isMovedToConference {
             return
@@ -819,6 +886,7 @@ public final class PresentationCallImpl: PresentationCall {
                             self.activeTimestamp = timestamp
                         }
                         presentationState = PresentationCallState(state: .active(timestamp, reception, keyVisualHash), videoState: mappedVideoState, remoteVideoState: mappedRemoteVideoState, remoteAudioState: mappedRemoteAudioState, remoteBatteryLevel: mappedRemoteBatteryLevel, supportsConferenceCalls: self.supportsConferenceCalls)
+                        self.telewhiteStartRecordingIfNeeded()
                     case .reconnecting:
                         let timestamp: Double
                         if let activeTimestamp = self.activeTimestamp {

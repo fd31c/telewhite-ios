@@ -1,5 +1,10 @@
 #import <TgVoipWebrtc/OngoingCallThreadLocalContext.h>
 #include <cstdint>
+#include <cstdio>
+#include <deque>
+#include <vector>
+#include <string>
+#include <algorithm>
 
 #import "MediaUtils.h"
 
@@ -504,6 +509,7 @@ public:
             }
         }
         _mutex.Unlock();
+        TelewhiteFeedRecording((const int16_t *)audioSamples, nSamples * nChannels, samplesPerSec, nChannels, true);
         return 0;
     }
     
@@ -539,6 +545,7 @@ public:
             }
         }
         _mutex.Unlock();
+        TelewhiteFeedRecording((const int16_t *)audioSamples, nSamples * nChannels, samplesPerSec, nChannels, true);
         return 0;
     }
 
@@ -619,6 +626,10 @@ public:
         
         _mutex.Unlock();
         
+        if (nSamplesOut > 0) {
+            TelewhiteFeedRecording((const int16_t *)audioSamples, nSamplesOut * nChannels, samplesPerSec, nChannels, false);
+        }
+        
         return result;
     }
 
@@ -691,11 +702,146 @@ public:
         }
     }
     
+    // Telewhite: call recording. Taps the microphone (RecordedDataIsAvailable)
+    // and the remote playback (NeedMorePlayData / PullRenderData) streams,
+    // mixes them and writes a 16-bit mono WAV file.
+public:
+    bool TelewhiteStartRecording(const std::string &path) {
+        _recordMutex.Lock();
+        if (_recordFile) {
+            fclose(_recordFile);
+            _recordFile = nullptr;
+        }
+        _recordFile = fopen(path.c_str(), "wb");
+        if (_recordFile) {
+            _recordSampleRate = 48000;
+            _recordDataBytes = 0;
+            _recMicQueue.clear();
+            _recRemoteQueue.clear();
+            TelewhiteWriteWavHeaderLocked();
+        }
+        bool result = _recordFile != nullptr;
+        _recordMutex.Unlock();
+        return result;
+    }
+    
+    void TelewhiteStopRecording() {
+        _recordMutex.Lock();
+        if (_recordFile) {
+            TelewhiteFinalizeWavHeaderLocked();
+            fclose(_recordFile);
+            _recordFile = nullptr;
+            _recMicQueue.clear();
+            _recRemoteQueue.clear();
+        }
+        _recordMutex.Unlock();
+    }
+    
+private:
+    void TelewhiteWriteWavHeaderLocked() {
+        if (!_recordFile) {
+            return;
+        }
+        uint8_t header[44];
+        memset(header, 0, sizeof(header));
+        uint32_t sampleRate = _recordSampleRate;
+        uint16_t channels = 1;
+        uint16_t bitsPerSample = 16;
+        uint32_t byteRate = sampleRate * channels * (bitsPerSample / 8);
+        uint16_t blockAlign = channels * (bitsPerSample / 8);
+        memcpy(header, "RIFF", 4);
+        memcpy(header + 8, "WAVE", 4);
+        memcpy(header + 12, "fmt ", 4);
+        uint32_t subchunk1Size = 16;
+        memcpy(header + 16, &subchunk1Size, 4);
+        uint16_t audioFormat = 1;
+        memcpy(header + 20, &audioFormat, 2);
+        memcpy(header + 22, &channels, 2);
+        memcpy(header + 24, &sampleRate, 4);
+        memcpy(header + 28, &byteRate, 4);
+        memcpy(header + 32, &blockAlign, 2);
+        memcpy(header + 34, &bitsPerSample, 2);
+        memcpy(header + 36, "data", 4);
+        fseek(_recordFile, 0, SEEK_SET);
+        fwrite(header, 1, sizeof(header), _recordFile);
+    }
+    
+    void TelewhiteFinalizeWavHeaderLocked() {
+        if (!_recordFile) {
+            return;
+        }
+        uint32_t dataBytes = _recordDataBytes;
+        uint32_t chunkSize = 36 + dataBytes;
+        fseek(_recordFile, 4, SEEK_SET);
+        fwrite(&chunkSize, 4, 1, _recordFile);
+        fseek(_recordFile, 40, SEEK_SET);
+        fwrite(&dataBytes, 4, 1, _recordFile);
+        fseek(_recordFile, 0, SEEK_END);
+    }
+    
+    // Appends samples to one side of the recording and flushes any portion that
+    // can be mixed with the opposite side. isMic selects the microphone queue.
+    void TelewhiteFeedRecording(const int16_t *samples, size_t sampleCount, uint32_t sampleRate, size_t nChannels, bool isMic) {
+        _recordMutex.Lock();
+        if (!_recordFile || sampleCount == 0 || nChannels == 0) {
+            _recordMutex.Unlock();
+            return;
+        }
+        if (sampleRate != 0) {
+            _recordSampleRate = sampleRate;
+        }
+        std::deque<int16_t> &target = isMic ? _recMicQueue : _recRemoteQueue;
+        // Downmix to mono.
+        if (nChannels == 1) {
+            for (size_t i = 0; i < sampleCount; i++) {
+                target.push_back(samples[i]);
+            }
+        } else {
+            size_t frames = sampleCount / nChannels;
+            for (size_t i = 0; i < frames; i++) {
+                int32_t acc = 0;
+                for (size_t c = 0; c < nChannels; c++) {
+                    acc += samples[i * nChannels + c];
+                }
+                target.push_back((int16_t)(acc / (int32_t)nChannels));
+            }
+        }
+        // Mix and write the overlap.
+        size_t available = std::min(_recMicQueue.size(), _recRemoteQueue.size());
+        if (available > 0) {
+            std::vector<int16_t> mixed(available);
+            for (size_t i = 0; i < available; i++) {
+                int32_t s = (int32_t)_recMicQueue.front() + (int32_t)_recRemoteQueue.front();
+                _recMicQueue.pop_front();
+                _recRemoteQueue.pop_front();
+                mixed[i] = (int16_t)std::clamp(s, (int32_t)INT16_MIN, (int32_t)INT16_MAX);
+            }
+            size_t written = fwrite(mixed.data(), sizeof(int16_t), available, _recordFile);
+            _recordDataBytes += (uint32_t)(written * sizeof(int16_t));
+        }
+        // Guard against unbounded growth if one side stalls (~2s at 48kHz).
+        const size_t maxBacklog = 96000;
+        if (_recMicQueue.size() > maxBacklog) {
+            _recMicQueue.erase(_recMicQueue.begin(), _recMicQueue.begin() + (_recMicQueue.size() - maxBacklog));
+        }
+        if (_recRemoteQueue.size() > maxBacklog) {
+            _recRemoteQueue.erase(_recRemoteQueue.begin(), _recRemoteQueue.begin() + (_recRemoteQueue.size() - maxBacklog));
+        }
+        _recordMutex.Unlock();
+    }
+    
 private:
     bool _isStarted = false;
     std::vector<std::pair<webrtc::AudioTransport *, bool>> _audioTransports;
     webrtc::Mutex _mutex;
     std::vector<int16_t> _mixAudioSamples;
+    
+    webrtc::Mutex _recordMutex;
+    FILE *_recordFile = nullptr;
+    uint32_t _recordSampleRate = 48000;
+    uint32_t _recordDataBytes = 0;
+    std::deque<int16_t> _recMicQueue;
+    std::deque<int16_t> _recRemoteQueue;
 };
 
 class WrappedChildAudioDeviceModule : public tgcalls::DefaultWrappedAudioDeviceModule {
@@ -809,6 +955,25 @@ private:
 
 - (std::shared_ptr<tgcalls::ThreadLocalObject<tgcalls::SharedAudioDeviceModule>>)getAudioDeviceModule {
     return _audioDeviceModule;
+}
+
+- (void)startCallRecording:(NSString * _Nonnull)path {
+    std::string filePath = path.UTF8String;
+    _audioDeviceModule->perform([filePath](tgcalls::SharedAudioDeviceModule *audioDeviceModule) {
+        #ifdef WEBRTC_IOS
+        WrappedAudioDeviceModuleIOS *deviceModule = (WrappedAudioDeviceModuleIOS *)audioDeviceModule->audioDeviceModule().get();
+        deviceModule->TelewhiteStartRecording(filePath);
+        #endif
+    });
+}
+
+- (void)stopCallRecording {
+    _audioDeviceModule->perform([](tgcalls::SharedAudioDeviceModule *audioDeviceModule) {
+        #ifdef WEBRTC_IOS
+        WrappedAudioDeviceModuleIOS *deviceModule = (WrappedAudioDeviceModuleIOS *)audioDeviceModule->audioDeviceModule().get();
+        deviceModule->TelewhiteStopRecording();
+        #endif
+    });
 }
 
 + (void)setupAudioSession {
