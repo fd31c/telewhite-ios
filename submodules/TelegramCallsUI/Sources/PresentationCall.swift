@@ -576,7 +576,7 @@ public final class PresentationCallImpl: PresentationCall {
     }
     
     private func telewhiteStartRecordingIfNeeded() {
-        guard UserDefaults.standard.bool(forKey: "telewhite.mods.recordCalls") else {
+        guard UserDefaults.standard.bool(forKey: "telewhite.mods.autoRecordCalls") else {
             return
         }
         guard !self.telewhiteDidStartRecording else {
@@ -860,6 +860,7 @@ public final class PresentationCallImpl: PresentationCall {
                 }
             case let .terminated(id, reason, options):
                 presentationState = PresentationCallState(state: .terminated(id, reason, self.callWasActive && (options.contains(.reportRating) || self.shouldPresentCallRating)), videoState: mappedVideoState, remoteVideoState: .inactive, remoteAudioState: mappedRemoteAudioState, remoteBatteryLevel: mappedRemoteBatteryLevel, supportsConferenceCalls: self.supportsConferenceCalls)
+                self.telewhiteStopAndSaveRecording()
             case let .requesting(ringing):
                 presentationState = PresentationCallState(state: .requesting(ringing), videoState: mappedVideoState, remoteVideoState: mappedRemoteVideoState, remoteAudioState: mappedRemoteAudioState, remoteBatteryLevel: mappedRemoteBatteryLevel, supportsConferenceCalls: self.supportsConferenceCalls)
             case .active(_, _, _, _, _, _, _, _, _), .switchedToConference:
