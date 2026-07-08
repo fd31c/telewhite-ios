@@ -1261,7 +1261,12 @@ extension ChatControllerImpl {
                                     var attributes: [TelegramMediaFileAttribute] = []
                                     attributes.append(.FileName(fileName: item.fileName))
                                     if let audioMetadata = item.audioMetadata {
-                                        attributes.append(.Audio(isVoice: false, duration: audioMetadata.duration, title: audioMetadata.title, performer: audioMetadata.performer, waveform: nil))
+                                        // Telewhite: optionally send picked audio files as voice messages.
+                                        if UserDefaults.standard.bool(forKey: "telewhite.mods.uploadVoice") {
+                                            attributes.append(.Audio(isVoice: true, duration: audioMetadata.duration, title: nil, performer: nil, waveform: nil))
+                                        } else {
+                                            attributes.append(.Audio(isVoice: false, duration: audioMetadata.duration, title: audioMetadata.title, performer: audioMetadata.performer, waveform: nil))
+                                        }
                                     }
 
                                     let file = TelegramMediaFile(fileId: EngineMedia.Id(namespace: Namespaces.Media.LocalFile, id: fileId), partialReference: nil, resource: ICloudFileResource(urlData: item.urlData, thumbnail: false), previewRepresentations: previewRepresentations, videoThumbnails: [], immediateThumbnailData: nil, mimeType: mimeType, size: Int64(item.fileSize), attributes: attributes, alternativeRepresentations: [])

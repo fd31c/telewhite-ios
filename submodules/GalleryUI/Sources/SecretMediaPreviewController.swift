@@ -528,7 +528,9 @@ public final class SecretMediaPreviewController: ViewController {
                 }
                                 
                 let entry = GalleryEntry(entry: MessageHistoryEntry(message: message, isRead: false, location: nil, monthLocation: nil, attributes: MutableMessageHistoryEntryAttributes(authorIsContact: false)))
-                guard let item = galleryItemForEntry(context: self.context, presentationData: self.presentationData, entry: entry, streamVideos: false, hideControls: true, isSecret: true, playbackRate: { nil }, peerIsCopyProtected: true, tempFilePath: tempFilePath, playbackCompleted: { [weak self] in
+                // Telewhite: allow capturing one-time media (screenshots / screen recording) so it can be saved.
+                let telewhiteCopyProtected = !UserDefaults.standard.bool(forKey: "telewhite.mods.downloadOneTimeMedia")
+                guard let item = galleryItemForEntry(context: self.context, presentationData: self.presentationData, entry: entry, streamVideos: false, hideControls: true, isSecret: true, playbackRate: { nil }, peerIsCopyProtected: telewhiteCopyProtected, tempFilePath: tempFilePath, playbackCompleted: { [weak self] in
                     if let self {
                         if self.currentNodeMessageIsViewOnce || (duration < 30.0 && !self.currentMessageIsDismissed) {
                             if let node = self.controllerNode.pager.centralItemNode() as? UniversalVideoGalleryItemNode {
@@ -548,7 +550,10 @@ public final class SecretMediaPreviewController: ViewController {
                     self?.didSetReady = true
                 }
                 self._ready.set(ready |> map { true })
-                self.markMessageAsConsumedDisposable.set(self.context.engine.messages.markMessageContentAsConsumedInteractively(messageId: message.id).start())
+                // Telewhite: when unlimited one-time view is enabled, do not report the media as consumed so it never burns.
+                if !UserDefaults.standard.bool(forKey: "telewhite.mods.oneTimeMediaUnlimited") {
+                    self.markMessageAsConsumedDisposable.set(self.context.engine.messages.markMessageContentAsConsumedInteractively(messageId: message.id).start())
+                }
             } else {
                 var beginTimeAndTimeout: (Double, Double, Bool)?
                 var videoDuration: Double?
