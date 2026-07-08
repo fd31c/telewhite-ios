@@ -179,6 +179,7 @@ public final class PresentationCallImpl: PresentationCall {
     private var telewhiteRecordingStartTimestamp: Double?
     private var telewhiteDidStartRecording: Bool = false
     private var telewhiteDidSaveRecording: Bool = false
+    private var telewhiteRecordingToggleObserver: NSObjectProtocol?
     
     init(
         context: AccountContext,
@@ -446,9 +447,16 @@ public final class PresentationCallImpl: PresentationCall {
             self.proximityManagerIndex = DeviceProximityManager.shared().add { _ in
             }
         }
+        
+        self.telewhiteRecordingToggleObserver = NotificationCenter.default.addObserver(forName: NSNotification.Name("Telewhite.ToggleCallRecording"), object: nil, queue: OperationQueue.main) { [weak self] _ in
+            self?.telewhiteToggleRecordingManually()
+        }
     }
     
     deinit {
+        if let telewhiteRecordingToggleObserver = self.telewhiteRecordingToggleObserver {
+            NotificationCenter.default.removeObserver(telewhiteRecordingToggleObserver)
+        }
         self.audioSessionShouldBeActiveDisposable?.dispose()
         self.audioSessionActiveDisposable?.dispose()
         self.sessionStateDisposable?.dispose()
@@ -579,6 +587,10 @@ public final class PresentationCallImpl: PresentationCall {
         guard UserDefaults.standard.bool(forKey: "telewhite.mods.autoRecordCalls") else {
             return
         }
+        self.telewhiteStartRecordingCore()
+    }
+    
+    private func telewhiteStartRecordingCore() {
         guard !self.telewhiteDidStartRecording else {
             return
         }
@@ -590,6 +602,15 @@ public final class PresentationCallImpl: PresentationCall {
         self.telewhiteRecordingPath = path
         self.telewhiteRecordingStartTimestamp = CFAbsoluteTimeGetCurrent()
         audioDevice.startCallRecording(path: path)
+    }
+    
+    // Telewhite: triggered by the manual record button on the call screen.
+    private func telewhiteToggleRecordingManually() {
+        if self.telewhiteDidStartRecording {
+            self.telewhiteStopAndSaveRecording()
+        } else {
+            self.telewhiteStartRecordingCore()
+        }
     }
     
     private func telewhiteStopAndSaveRecording() {
@@ -610,7 +631,8 @@ public final class PresentationCallImpl: PresentationCall {
         }
         
         let account = self.context.account
-        let peerId = self.peerId
+        // Telewhite: save the recording into Saved Messages so the other party never receives it.
+        let peerId = self.context.account.peerId
         let peerTitle = self.peer?.debugDisplayTitle ?? "Call"
         let dateString = DateFormatter.localizedString(from: Date(), dateStyle: .short, timeStyle: .short)
         let fileName = "Call \(peerTitle) \(dateString).wav"
