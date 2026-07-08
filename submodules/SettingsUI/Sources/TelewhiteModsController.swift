@@ -890,48 +890,153 @@ private func telewhiteColorSwatchImage(_ value: Int64?) -> UIImage? {
 
 private var telewhiteMenuIconCache: [String: UIImage] = [:]
 
-// Telewhite: section icons now reuse Telegram's native settings icon style —
-// the bundled glyphs rendered on colored rounded squares — instead of
-// hand-drawn bezier paths, for a consistent, polished look.
 private func telewhiteMenuIcon(_ icon: TelewhiteModsMenuIcon, color: UIColor) -> UIImage? {
-    let cacheKey = "\(icon.rawValue)"
+    let cacheKey = "\(icon.rawValue)-\(color.argb)"
     if let cached = telewhiteMenuIconCache[cacheKey] {
         return cached
     }
-
-    let name: String
-    let backgroundColors: [UIColor]
-    switch icon {
-    case .privacy:
-        name = "Item List/Icons/Privacy"
-        backgroundColors = [UIColor(rgb: 0x8E8E93)]
-    case .ghost:
-        name = "Item List/Icons/LastSeen"
-        backgroundColors = [UIColor(rgb: 0x5856D6)]
-    case .messages:
-        name = "Item List/Icons/Messages"
-        backgroundColors = [UIColor(rgb: 0x34C759)]
-    case .groups:
-        name = "Item List/Icons/Channel"
-        backgroundColors = [UIColor(rgb: 0xFF9500)]
-    case .media:
-        name = "Item List/Icons/Photo"
-        backgroundColors = [UIColor(rgb: 0xAF52DE)]
-    case .calls:
-        name = "Item List/Icons/Phone"
-        backgroundColors = [UIColor(rgb: 0x30B0C7)]
-    case .appearance:
-        name = "Item List/Icons/Appearance"
-        backgroundColors = [UIColor(rgb: 0x007AFF)]
-    case .developer:
-        name = "Item List/Icons/Settings"
-        backgroundColors = [UIColor(rgb: 0x636366)]
+    
+    let size = CGSize(width: 29.0, height: 29.0)
+    let lineWidth: CGFloat = 1.7
+    let renderer = UIGraphicsImageRenderer(size: size)
+    let image = renderer.image { _ in
+        color.setStroke()
+        color.setFill()
+        
+        switch icon {
+        case .privacy:
+            // Lock: rounded body + shackle
+            let body = UIBezierPath(roundedRect: CGRect(x: 7.5, y: 13.0, width: 14.0, height: 10.5), cornerRadius: 3.0)
+            body.lineWidth = lineWidth
+            body.stroke()
+            let shackle = UIBezierPath(arcCenter: CGPoint(x: 14.5, y: 13.0), radius: 4.5, startAngle: .pi, endAngle: 0.0, clockwise: true)
+            shackle.lineWidth = lineWidth
+            shackle.stroke()
+            let keyhole = UIBezierPath(ovalIn: CGRect(x: 13.3, y: 16.8, width: 2.4, height: 2.4))
+            keyhole.fill()
+        case .ghost:
+            // Ghost (TeleDark style): rounded dome, gentle scalloped bottom, two vertical oval eyes
+            let ghostLineWidth: CGFloat = 2.0
+            let ghost = UIBezierPath()
+            ghost.move(to: CGPoint(x: 7.0, y: 22.5))
+            ghost.addLine(to: CGPoint(x: 7.0, y: 13.5))
+            ghost.addArc(withCenter: CGPoint(x: 14.5, y: 13.5), radius: 7.5, startAngle: .pi, endAngle: 0.0, clockwise: true)
+            ghost.addLine(to: CGPoint(x: 22.0, y: 22.5))
+            // Gentle scalloped bottom: three soft rounded bumps
+            ghost.addCurve(to: CGPoint(x: 17.5, y: 22.5), controlPoint1: CGPoint(x: 21.0, y: 24.2), controlPoint2: CGPoint(x: 18.5, y: 24.2))
+            ghost.addCurve(to: CGPoint(x: 11.5, y: 22.5), controlPoint1: CGPoint(x: 16.3, y: 21.2), controlPoint2: CGPoint(x: 12.7, y: 21.2))
+            ghost.addCurve(to: CGPoint(x: 7.0, y: 22.5), controlPoint1: CGPoint(x: 10.5, y: 24.2), controlPoint2: CGPoint(x: 8.0, y: 24.2))
+            ghost.lineWidth = ghostLineWidth
+            ghost.lineJoinStyle = .round
+            ghost.lineCapStyle = .round
+            ghost.stroke()
+            // Vertical oval eyes
+            UIBezierPath(ovalIn: CGRect(x: 10.7, y: 11.0, width: 2.4, height: 4.2)).fill()
+            UIBezierPath(ovalIn: CGRect(x: 15.9, y: 11.0, width: 2.4, height: 4.2)).fill()
+        case .messages:
+            // Messenger-style speech bubble: rounded bubble with a tail at the
+            // bottom-left and three typing dots inside
+            let bubble = UIBezierPath()
+            // Rounded rectangle bubble
+            bubble.move(to: CGPoint(x: 10.5, y: 6.5))
+            bubble.addLine(to: CGPoint(x: 18.5, y: 6.5))
+            bubble.addArc(withCenter: CGPoint(x: 18.5, y: 11.0), radius: 4.5, startAngle: -.pi / 2.0, endAngle: 0.0, clockwise: true)
+            bubble.addLine(to: CGPoint(x: 23.0, y: 14.5))
+            bubble.addArc(withCenter: CGPoint(x: 18.5, y: 14.5), radius: 4.5, startAngle: 0.0, endAngle: .pi / 2.0, clockwise: true)
+            // Bottom edge going left, then the tail
+            bubble.addLine(to: CGPoint(x: 13.0, y: 19.0))
+            bubble.addLine(to: CGPoint(x: 8.5, y: 23.0))
+            bubble.addLine(to: CGPoint(x: 8.5, y: 19.0))
+            bubble.addArc(withCenter: CGPoint(x: 10.5, y: 14.5), radius: 4.5, startAngle: .pi / 2.0, endAngle: .pi, clockwise: true)
+            bubble.addLine(to: CGPoint(x: 6.0, y: 11.0))
+            bubble.addArc(withCenter: CGPoint(x: 10.5, y: 11.0), radius: 4.5, startAngle: .pi, endAngle: -.pi / 2.0, clockwise: true)
+            bubble.close()
+            bubble.lineWidth = lineWidth
+            bubble.lineJoinStyle = .round
+            bubble.stroke()
+            // Three typing dots
+            UIBezierPath(ovalIn: CGRect(x: 9.4, y: 11.7, width: 2.0, height: 2.0)).fill()
+            UIBezierPath(ovalIn: CGRect(x: 13.5, y: 11.7, width: 2.0, height: 2.0)).fill()
+            UIBezierPath(ovalIn: CGRect(x: 17.6, y: 11.7, width: 2.0, height: 2.0)).fill()
+        case .groups:
+            // Megaphone
+            let horn = UIBezierPath()
+            horn.move(to: CGPoint(x: 7.0, y: 12.5))
+            horn.addLine(to: CGPoint(x: 15.0, y: 8.0))
+            horn.addLine(to: CGPoint(x: 21.5, y: 5.5))
+            horn.addLine(to: CGPoint(x: 21.5, y: 20.5))
+            horn.addLine(to: CGPoint(x: 15.0, y: 18.0))
+            horn.addLine(to: CGPoint(x: 7.0, y: 17.5))
+            horn.close()
+            horn.lineWidth = lineWidth
+            horn.lineJoinStyle = .round
+            horn.stroke()
+            let handle = UIBezierPath()
+            handle.move(to: CGPoint(x: 9.5, y: 17.8))
+            handle.addLine(to: CGPoint(x: 11.5, y: 24.0))
+            handle.addLine(to: CGPoint(x: 14.5, y: 24.0))
+            handle.addLine(to: CGPoint(x: 12.8, y: 18.0))
+            handle.lineWidth = lineWidth
+            handle.lineJoinStyle = .round
+            handle.stroke()
+        case .media:
+            // Circle with a wave through it
+            let circle = UIBezierPath(ovalIn: CGRect(x: 6.0, y: 6.0, width: 17.0, height: 17.0))
+            circle.lineWidth = lineWidth
+            circle.stroke()
+            let wave = UIBezierPath()
+            wave.move(to: CGPoint(x: 7.0, y: 16.5))
+            wave.addCurve(to: CGPoint(x: 14.5, y: 15.0), controlPoint1: CGPoint(x: 9.5, y: 12.5), controlPoint2: CGPoint(x: 12.0, y: 12.5))
+            wave.addCurve(to: CGPoint(x: 22.0, y: 13.5), controlPoint1: CGPoint(x: 17.0, y: 17.5), controlPoint2: CGPoint(x: 19.5, y: 17.5))
+            wave.lineWidth = lineWidth
+            wave.stroke()
+        case .calls:
+            // Phone handset
+            let handset = UIBezierPath()
+            handset.move(to: CGPoint(x: 8.0, y: 7.5))
+            handset.addCurve(to: CGPoint(x: 12.5, y: 12.0), controlPoint1: CGPoint(x: 11.0, y: 7.0), controlPoint2: CGPoint(x: 12.5, y: 9.0))
+            handset.addCurve(to: CGPoint(x: 11.5, y: 15.5), controlPoint1: CGPoint(x: 12.5, y: 13.5), controlPoint2: CGPoint(x: 11.5, y: 14.0))
+            handset.addCurve(to: CGPoint(x: 13.5, y: 18.5), controlPoint1: CGPoint(x: 11.8, y: 16.5), controlPoint2: CGPoint(x: 12.5, y: 17.5))
+            handset.addCurve(to: CGPoint(x: 17.0, y: 17.5), controlPoint1: CGPoint(x: 15.0, y: 17.5), controlPoint2: CGPoint(x: 15.5, y: 16.5))
+            handset.addCurve(to: CGPoint(x: 21.5, y: 21.0), controlPoint1: CGPoint(x: 20.0, y: 16.5), controlPoint2: CGPoint(x: 22.0, y: 18.0))
+            handset.addCurve(to: CGPoint(x: 17.0, y: 24.0), controlPoint1: CGPoint(x: 21.0, y: 23.0), controlPoint2: CGPoint(x: 19.5, y: 24.0))
+            handset.addCurve(to: CGPoint(x: 8.0, y: 16.0), controlPoint1: CGPoint(x: 13.0, y: 23.5), controlPoint2: CGPoint(x: 8.5, y: 20.0))
+            handset.addCurve(to: CGPoint(x: 8.0, y: 7.5), controlPoint1: CGPoint(x: 7.5, y: 13.0), controlPoint2: CGPoint(x: 6.5, y: 9.0))
+            handset.lineWidth = lineWidth
+            handset.lineJoinStyle = .round
+            handset.stroke()
+        case .appearance:
+            // Circle half-filled (contrast/appearance)
+            let circle = UIBezierPath(ovalIn: CGRect(x: 6.0, y: 6.0, width: 17.0, height: 17.0))
+            circle.lineWidth = lineWidth
+            circle.stroke()
+            let half = UIBezierPath(arcCenter: CGPoint(x: 14.5, y: 14.5), radius: 6.5, startAngle: -.pi / 2.0, endAngle: .pi / 2.0, clockwise: true)
+            half.close()
+            half.fill()
+        case .developer:
+            // Angle brackets </> 
+            let left = UIBezierPath()
+            left.move(to: CGPoint(x: 10.0, y: 9.5))
+            left.addLine(to: CGPoint(x: 5.5, y: 14.5))
+            left.addLine(to: CGPoint(x: 10.0, y: 19.5))
+            left.lineWidth = lineWidth
+            left.lineJoinStyle = .round
+            left.stroke()
+            let right = UIBezierPath()
+            right.move(to: CGPoint(x: 19.0, y: 9.5))
+            right.addLine(to: CGPoint(x: 23.5, y: 14.5))
+            right.addLine(to: CGPoint(x: 19.0, y: 19.5))
+            right.lineWidth = lineWidth
+            right.lineJoinStyle = .round
+            right.stroke()
+            let slash = UIBezierPath()
+            slash.move(to: CGPoint(x: 16.3, y: 8.0))
+            slash.addLine(to: CGPoint(x: 12.7, y: 21.0))
+            slash.lineWidth = lineWidth
+            slash.stroke()
+        }
     }
-
-    let image = renderSettingsIcon(name: name, backgroundColors: backgroundColors)
-    if let image {
-        telewhiteMenuIconCache[cacheKey] = image
-    }
+    telewhiteMenuIconCache[cacheKey] = image
     return image
 }
 
