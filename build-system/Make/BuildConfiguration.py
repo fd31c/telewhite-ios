@@ -155,6 +155,13 @@ def load_codesigning_data_from_git(working_dir, repo_url, temp_key_path, branch,
     decrypt_codesigning_directory_recursively(encrypted_working_dir + '/certs', decrypted_working_dir + '/certs', password)
 
 
+# Telewhite: the bundled fake-codesigning profiles are keyed to the original
+# Telegram bundle id. When a fork configuration uses a custom bundle id, fall
+# back to matching profiles against this legacy id (they get rewritten to the
+# configured id later, in GenerateProfiles.process_provisioning_profile).
+legacy_fallback_bundle_id = 'ph.telegra.Telegraph'
+
+
 def copy_profiles_from_directory(source_path, destination_path, team_id, bundle_id):
     profile_name_mapping = {
         '.SiriIntents': 'Intents',
@@ -168,60 +175,76 @@ def copy_profiles_from_directory(source_path, destination_path, team_id, bundle_
         '.BroadcastUpload': 'BroadcastUpload'
     }
 
-    for file_name in os.listdir(source_path):
-        file_path = source_path + '/' + file_name
-        if os.path.isfile(file_path):
-            if not file_path.endswith('.mobileprovision'):
-                continue
+    candidate_bundle_ids = [bundle_id]
+    if bundle_id != legacy_fallback_bundle_id:
+        candidate_bundle_ids.append(legacy_fallback_bundle_id)
 
-            profile_data = run_executable_with_output('openssl', arguments=[
-                'smime',
-                '-inform',
-                'der',
-                '-verify',
-                '-noverify',
-                '-in',
-                file_path
-            ], decode=False, stderr_to_stdout=False, check_result=True)
+    for candidate_bundle_id in candidate_bundle_ids:
+        copied_count = 0
+        for file_name in os.listdir(source_path):
+            file_path = source_path + '/' + file_name
+            if os.path.isfile(file_path):
+                if not file_path.endswith('.mobileprovision'):
+                    continue
 
-            profile_dict = plistlib.loads(profile_data)
-            profile_name = profile_dict['Entitlements']['application-identifier']
+                profile_data = run_executable_with_output('openssl', arguments=[
+                    'smime',
+                    '-inform',
+                    'der',
+                    '-verify',
+                    '-noverify',
+                    '-in',
+                    file_path
+                ], decode=False, stderr_to_stdout=False, check_result=True)
 
-            if profile_name.startswith(team_id + '.' + bundle_id):
-                profile_base_name = profile_name[len(team_id + '.' + bundle_id):]
-                if profile_base_name in profile_name_mapping:
-                    shutil.copyfile(file_path, destination_path + '/' + profile_name_mapping[profile_base_name] + '.mobileprovision')
-                else:
-                    print('Warning: skipping provisioning profile at {} with bundle_id {} (base_name {})'.format(file_path, profile_name, profile_base_name))
+                profile_dict = plistlib.loads(profile_data)
+                profile_name = profile_dict['Entitlements']['application-identifier']
+
+                if profile_name.startswith(team_id + '.' + candidate_bundle_id):
+                    profile_base_name = profile_name[len(team_id + '.' + candidate_bundle_id):]
+                    if profile_base_name in profile_name_mapping:
+                        shutil.copyfile(file_path, destination_path + '/' + profile_name_mapping[profile_base_name] + '.mobileprovision')
+                        copied_count += 1
+                    else:
+                        print('Warning: skipping provisioning profile at {} with bundle_id {} (base_name {})'.format(file_path, profile_name, profile_base_name))
+        if copied_count != 0:
+            if candidate_bundle_id != bundle_id:
+                print('Note: matched {} provisioning profiles using legacy bundle id {}'.format(copied_count, candidate_bundle_id))
+            break
 
 
 def resolve_aps_environment_from_directory(source_path, team_id, bundle_id):
-    for file_name in os.listdir(source_path):
-        file_path = source_path + '/' + file_name
-        if os.path.isfile(file_path):
-            if not file_path.endswith('.mobileprovision'):
-                continue
+    candidate_bundle_ids = [bundle_id]
+    if bundle_id != legacy_fallback_bundle_id:
+        candidate_bundle_ids.append(legacy_fallback_bundle_id)
 
-            profile_data = run_executable_with_output('openssl', arguments=[
-                'smime',
-                '-inform',
-                'der',
-                '-verify',
-                '-noverify',
-                '-in',
-                file_path
-            ], decode=False, stderr_to_stdout=False, check_result=True)
+    for candidate_bundle_id in candidate_bundle_ids:
+        for file_name in os.listdir(source_path):
+            file_path = source_path + '/' + file_name
+            if os.path.isfile(file_path):
+                if not file_path.endswith('.mobileprovision'):
+                    continue
 
-            profile_dict = plistlib.loads(profile_data)
-            profile_name = profile_dict['Entitlements']['application-identifier']
+                profile_data = run_executable_with_output('openssl', arguments=[
+                    'smime',
+                    '-inform',
+                    'der',
+                    '-verify',
+                    '-noverify',
+                    '-in',
+                    file_path
+                ], decode=False, stderr_to_stdout=False, check_result=True)
 
-            if profile_name.startswith(team_id + '.' + bundle_id):
-                profile_base_name = profile_name[len(team_id + '.' + bundle_id):]
-                if profile_base_name == '':
-                    if 'aps-environment' not in profile_dict['Entitlements']:
-                        print('Provisioning profile at {} does not include an aps-environment entitlement'.format(file_path))
-                        sys.exit(1)
-                    return profile_dict['Entitlements']['aps-environment']
+                profile_dict = plistlib.loads(profile_data)
+                profile_name = profile_dict['Entitlements']['application-identifier']
+
+                if profile_name.startswith(team_id + '.' + candidate_bundle_id):
+                    profile_base_name = profile_name[len(team_id + '.' + candidate_bundle_id):]
+                    if profile_base_name == '':
+                        if 'aps-environment' not in profile_dict['Entitlements']:
+                            print('Provisioning profile at {} does not include an aps-environment entitlement'.format(file_path))
+                            sys.exit(1)
+                        return profile_dict['Entitlements']['aps-environment']
     return None
 
 

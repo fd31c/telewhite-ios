@@ -1505,7 +1505,8 @@ if __name__ == '__main__':
                 additional_codesigning_output_path=remote_input_path
             )
 
-            GenerateProfiles.generate_provisioning_profiles(source_path=remote_input_path + '/profiles', destination_path=args.destination, certs_path=args.certsPath)
+            profiles_build_configuration = build_configuration_from_json(path=args.configurationPath)
+            GenerateProfiles.generate_provisioning_profiles(source_path=remote_input_path + '/profiles', destination_path=args.destination, certs_path=args.certsPath, bundle_id=profiles_build_configuration.bundle_id)
         elif args.commandName == 'remote-deploy-testflight':
             env = os.environ
             if 'APPSTORE_CONNECT_USERNAME' not in env:
