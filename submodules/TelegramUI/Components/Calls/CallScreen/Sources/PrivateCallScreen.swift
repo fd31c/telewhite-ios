@@ -247,6 +247,8 @@ public final class PrivateCallScreen: OverlayMaskContainerView, AVPictureInPictu
     public var endCallAction: (() -> Void)?
     public var backAction: (() -> Void)?
     public var closeAction: (() -> Void)?
+    // Telewhite: manual call-recording button state. Reflects auto-record so the button starts in the right state.
+    private var telewhiteIsRecording: Bool = UserDefaults.standard.bool(forKey: "telewhite.mods.autoRecordCalls")
     public var restoreUIForPictureInPicture: ((@escaping (Bool) -> Void) -> Void)?
     public var conferenceAddParticipant: (() -> Void)?
     
@@ -820,6 +822,17 @@ public final class PrivateCallScreen: OverlayMaskContainerView, AVPictureInPictu
                 self.endCallAction?()
             })
         ]
+        // Telewhite: manual record button (gated by the mods setting).
+        if UserDefaults.standard.object(forKey: "telewhite.mods.callRecordButton") == nil || UserDefaults.standard.bool(forKey: "telewhite.mods.callRecordButton") {
+            buttons.insert(ButtonGroupView.Button(content: .record(isActive: self.telewhiteIsRecording), isEnabled: !isTerminated, action: { [weak self] in
+                guard let self else {
+                    return
+                }
+                self.telewhiteIsRecording = !self.telewhiteIsRecording
+                NotificationCenter.default.post(name: NSNotification.Name("Telewhite.ToggleCallRecording"), object: nil)
+                self.update(transition: .easeInOut(duration: 0.2))
+            }), at: buttons.count - 1)
+        }
         if self.activeLocalVideoSource != nil {
             buttons.insert(ButtonGroupView.Button(content: .flipCamera, isEnabled: !isTerminated, action: { [weak self] in
                 guard let self else {

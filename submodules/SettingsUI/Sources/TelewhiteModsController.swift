@@ -1176,7 +1176,7 @@ private func telewhiteModsEntries(tab: TelewhiteModsTab, settings: TelewhiteMods
 
     case .calls:
         entries.append(.callsHeader(telewhiteTabTitle(.calls, strings: strings)))
-        entries.append(.callsInfo(strings.text("Call features are coming in a future update.", "Функции для звонков появятся в следующих обновлениях.")))
+        entries.append(.callsInfo(strings.text("Recordings are saved to your Saved Messages. When the record button is on, it appears on the call screen so you can start and stop recording manually.", "Записи сохраняются в «Избранное». Если кнопка записи включена, она появляется на экране звонка — можно начинать и останавливать запись вручную.")))
 
     case .appearance:
         entries.append(.appearanceHeader(telewhiteTabTitle(.appearance, strings: strings)))

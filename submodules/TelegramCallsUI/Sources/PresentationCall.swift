@@ -656,6 +656,12 @@ public final class PresentationCallImpl: PresentationCall {
         )
         let message: EnqueueMessage = .message(text: "", attributes: [], inlineStickers: [:], mediaReference: .standalone(media: file), threadId: nil, replyToMessageId: nil, replyToStoryId: nil, localGroupingKey: nil, correlationId: nil, bubbleUpEmojiOrStickersets: [])
         let _ = enqueueMessages(account: account, peerId: peerId, messages: [message]).start()
+        
+        // Telewhite: reset state so the user can start a fresh recording segment during the same call.
+        self.telewhiteDidStartRecording = false
+        self.telewhiteDidSaveRecording = false
+        self.telewhiteRecordingPath = nil
+        self.telewhiteRecordingStartTimestamp = nil
     }
     
     private func updateSessionState(sessionState: CallSession, callContextState: OngoingCallContextState?, reception: Int32?, audioSessionControl: ManagedAudioSessionControl?) {

@@ -102,7 +102,15 @@ final class ButtonGroupView: OverlayMaskContainerView {
         self.buttons = buttons
         
         let buttonSize: CGFloat = 56.0
-        let buttonSpacing: CGFloat = 36.0
+        var buttonSpacing: CGFloat = 36.0
+        // Telewhite: shrink spacing so extra buttons (e.g. the record button) still fit narrow screens.
+        let availableButtonWidth = size.width - insets.left - insets.right - 16.0 * 2.0
+        if buttons.count > 1 {
+            let requiredWidth = buttonSize * CGFloat(buttons.count) + buttonSpacing * CGFloat(buttons.count - 1)
+            if requiredWidth > availableButtonWidth {
+                buttonSpacing = max(12.0, floor((availableButtonWidth - buttonSize * CGFloat(buttons.count)) / CGFloat(buttons.count - 1)))
+            }
+        }
         
         let buttonNoticeSpacing: CGFloat = 16.0
         let controlsHiddenNoticeSpacing: CGFloat = 0.0
@@ -278,6 +286,11 @@ final class ButtonGroupView: OverlayMaskContainerView {
                 title = strings.Call_Mute
                 image = UIImage(bundleImageName: "Call/Mute")
                 isActive = isActiveValue
+            case let .record(isActiveValue):
+                title = isActiveValue ? "Stop" : "Record"
+                image = ButtonGroupView.telewhiteRecordIcon
+                isActive = isActiveValue
+                isDestructive = isActiveValue
             case .end:
                 title = strings.Call_End
                 image = UIImage(bundleImageName: "Call/End")
