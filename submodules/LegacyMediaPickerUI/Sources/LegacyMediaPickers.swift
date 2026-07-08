@@ -884,6 +884,31 @@ public func legacyAssetPickerEnqueueMessages(
                                 finalDimensions = TGMediaVideoConverter.dimensions(for: finalDimensions, adjustments: adjustments, preset: TGMediaVideoConversionPresetCompressedMedium)
                             }
                             
+                            // Telewhite: when "Upload Video Message" is enabled, send gallery
+                            // videos as round video messages — square center crop with the
+                            // video message conversion preset and the instantRoundVideo flag.
+                            let telewhiteRoundVideo = !asFile && !asAnimation && UserDefaults.standard.bool(forKey: "telewhite.mods.uploadVideoMessage")
+                            var adjustments = adjustments
+                            if telewhiteRoundVideo {
+                                var dict: [AnyHashable: Any] = (adjustments?.dictionary() as? [AnyHashable: Any]) ?? [:]
+                                let originalSize: CGSize
+                                if let existing = adjustments?.originalSize, existing.width > 0.0 && existing.height > 0.0 {
+                                    originalSize = existing
+                                } else {
+                                    originalSize = finalDimensions
+                                }
+                                let side = min(originalSize.width, originalSize.height)
+                                dict["originalSize"] = NSValue(cgSize: originalSize)
+                                dict["cropRect"] = NSValue(cgRect: CGRect(x: (originalSize.width - side) / 2.0, y: (originalSize.height - side) / 2.0, width: side, height: side))
+                                dict["preset"] = NSNumber(value: TGMediaVideoConversionPresetVideoMessage.rawValue)
+                                if let roundAdjustments = TGVideoEditAdjustments(dictionary: dict) {
+                                    adjustments = roundAdjustments
+                                }
+                                preset = TGMediaVideoConversionPresetVideoMessage
+                                let roundSide = TGMediaVideoConverter.dimensions(for: CGSize(width: side, height: side), adjustments: nil, preset: TGMediaVideoConversionPresetVideoMessage)
+                                finalDimensions = roundSide
+                            }
+                            
                             var resourceAdjustments: VideoMediaResourceAdjustments?
                             if let adjustments = adjustments {
                                 if adjustments.trimApplied() {
@@ -926,7 +951,10 @@ public func legacyAssetPickerEnqueueMessages(
                                 fileAttributes.append(.Animated)
                             }
                             if !asFile {
-                                let flags: TelegramMediaVideoFlags = [.supportsStreaming]
+                                var flags: TelegramMediaVideoFlags = [.supportsStreaming]
+                                if telewhiteRoundVideo {
+                                    flags.insert(.instantRoundVideo)
+                                }
                                 fileAttributes.append(.Video(duration: finalDuration, size: PixelDimensions(finalDimensions), flags: flags, preloadSize: nil, coverTime: nil, videoCodec: nil))
                                 if let adjustments = adjustments {
                                     if adjustments.sendAsGif {

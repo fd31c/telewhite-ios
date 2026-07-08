@@ -338,8 +338,7 @@ private func contentNodeMessagesAndClassesForItem(_ item: ChatMessageItem) -> ([
             }
         }
                 
-        let isTelewhiteDeleted = message.attributes.contains(where: { $0 is TelewhiteDeletedMessageAttribute })
-        if !messageText.isEmpty || isTelewhiteDeleted || (message.attributes.contains(where: { $0 is TypingDraftMessageAttribute }) && richText == nil) || isUnsupportedMedia || isStoryWithText {
+        if !messageText.isEmpty || (message.attributes.contains(where: { $0 is TypingDraftMessageAttribute }) && richText == nil) || isUnsupportedMedia || isStoryWithText {
             if !skipText {
                 if case .group = item.content, !isFile {
                     messageWithCaptionToAdd = (message, itemAttributes)
@@ -3825,8 +3824,11 @@ public class ChatMessageBubbleItemNode: ChatMessageItemView, ChatMessagePreviewI
         strongSelf.contentContainersWrapperNode.frame = CGRect(origin: CGPoint(), size: layout.contentSize)
         
         strongSelf.appliedItem = item
-        let isTelewhiteDeleted = item.content.firstMessage.attributes.contains(where: { $0 is TelewhiteDeletedMessageAttribute })
-        strongSelf.mainContainerNode.alpha = isTelewhiteDeleted ? 0.55 : 1.0
+        // Telewhite: locally preserved deleted messages are shown without any
+        // dimming — reducing the container alpha exposed the rectangular
+        // backdrop behind the bubble (square corners bleeding past the
+        // rounded bubble shape on some themes).
+        strongSelf.mainContainerNode.alpha = 1.0
         strongSelf.mainContextSourceNode.contentNode.alpha = 1.0
         strongSelf.appliedForwardInfo = (forwardSource, forwardAuthorSignature)
         strongSelf.updateAccessibilityData(accessibilityData)

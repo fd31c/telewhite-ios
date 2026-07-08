@@ -1087,6 +1087,8 @@ private func telewhiteEntryDescription(_ entry: TelewhiteModsEntry, presentation
         return text("Shows a translate bar at the top of foreign-language chats.", "Показывает панель перевода сверху в чатах на иностранном языке.")
     case .autoTranslateEnglish:
         return text("Automatically translates your messages before sending.", "Автоматически переводит ваши сообщения перед отправкой.")
+    case .uploadVideoMessage:
+        return text("Videos from the gallery are sent as round video messages.", "Видео из галереи отправляются как круглые видеосообщения.")
     case .oneTimeMediaUnlimited:
         return text("View-once photos and videos can be opened multiple times.", "Одноразовые фото и видео можно открывать сколько угодно раз.")
     case .downloadOneTimeMedia:
@@ -1137,6 +1139,7 @@ private func telewhiteModsEntries(tab: TelewhiteModsTab, settings: TelewhiteMods
         entries.append(.preserveDeletedMessages(strings.text("Keep Deleted Messages", "Сохранять удалённые сообщения"), settings.preserveDeletedMessages))
         entries.append(.oneTimeMediaUnlimited(strings.text("Unlimited One-Time View", "Одноразовый просмотр без ограничений"), settings.oneTimeMediaUnlimited))
         entries.append(.downloadOneTimeMedia(strings.text("Download One-Time Media", "Скачать одноразовые медиа"), settings.downloadOneTimeMedia))
+        entries.append(.uploadVideoMessage(strings.text("Upload Video Message", "Загрузить видеосообщение"), settings.uploadVideoMessage))
         entries.append(.translateMessages(strings.text("Show Translate Button", "Показывать кнопку перевода"), translationSettings.showTranslate))
         entries.append(.translateChats(strings.text("Translate Entire Chats", "Перевод чатов"), translationSettings.translateChats))
         entries.append(.autoTranslateEnglish(strings.text("Translate Before Sending", "Перевод перед отправкой"), settings.autoTranslateEnglish))
