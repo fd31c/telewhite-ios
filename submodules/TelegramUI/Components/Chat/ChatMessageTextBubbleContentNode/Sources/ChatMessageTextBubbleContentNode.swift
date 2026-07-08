@@ -82,15 +82,6 @@ private func findQuoteRange(string: String, quoteText: String, offset: Int?) -> 
     return currentRange
 }
 
-private func offsetTelewhiteDeletedMessageEntities(_ entities: [MessageTextEntity]?, by offset: Int) -> [MessageTextEntity]? {
-    guard let entities else {
-        return nil
-    }
-    return entities.map { entity in
-        return MessageTextEntity(range: (entity.range.lowerBound + offset)..<(entity.range.upperBound + offset), type: entity.type)
-    }
-}
-
 public class ChatMessageTextBubbleContentNode: ChatMessageBubbleContentNode {
     public final class ContainerNode: ASDisplayNode {
     }
@@ -453,18 +444,6 @@ public class ChatMessageTextBubbleContentNode: ChatMessageBubbleContentNode {
                     }
                 }
 
-                let isTelewhiteDeleted = item.message.attributes.contains(where: { $0 is TelewhiteDeletedMessageAttribute })
-                let telewhiteDeletedMarker = "Deleted locally"
-                let telewhiteDeletedPrefix: String?
-                if isTelewhiteDeleted {
-                    let prefix = rawText.isEmpty ? telewhiteDeletedMarker : "\(telewhiteDeletedMarker)\n"
-                    rawText = prefix + rawText
-                    messageEntities = offsetTelewhiteDeletedMessageEntities(messageEntities, by: (prefix as NSString).length)
-                    telewhiteDeletedPrefix = prefix
-                } else {
-                    telewhiteDeletedPrefix = nil
-                }
-                
                 
                 if incoming && item.associatedData.isSuspiciousPeer, let entities = messageEntities {
                     messageEntities = entities.filter { entity in
@@ -653,15 +632,6 @@ public class ChatMessageTextBubbleContentNode: ChatMessageBubbleContentNode {
                     attributedText = updatedString
                 }
 
-                if let telewhiteDeletedPrefix {
-                    let updatedString = NSMutableAttributedString(attributedString: attributedText)
-                    updatedString.addAttributes([
-                        .font: Font.semibold(max(12.0, textFont.pointSize - 1.0)),
-                        .foregroundColor: messageTheme.secondaryTextColor
-                    ], range: NSRange(location: 0, length: (telewhiteDeletedPrefix as NSString).length))
-                    attributedText = updatedString
-                }
-                                
                 var customTruncationToken: ((UIFont, Bool) -> NSAttributedString?)?
                 var maximumNumberOfLines: Int = 0
                 if item.presentationData.isPreview {

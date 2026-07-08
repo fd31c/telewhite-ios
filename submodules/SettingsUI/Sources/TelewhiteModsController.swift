@@ -1072,7 +1072,7 @@ private func telewhiteEntryDescription(_ entry: TelewhiteModsEntry, presentation
     case .uploadVoice:
         return text("Keeps the upload preference for sending local audio/video as voice messages.", "Сохраняет настройку отправки локальных аудио/видео как голосовых.")
     case .uploadVideoMessage:
-        return text("Keeps the upload preference for sending gallery video as a round video message.", "Сохраняет настро��ку отправки видео из галереи как круглого видеосообщения.")
+        return text("Keeps the upload preference for sending gallery video as a round video message.", "Сохраняет настройку отправки видео из галереи как круглого видеосообщения.")
     case .vpnEnabled:
         return text("Stores whether the Telegram-only VPN profile should be active.", "Сохраняет, должен ли Telegram-only VPN быть активен.")
     case .hideOnlineStatus:

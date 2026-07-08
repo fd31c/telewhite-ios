@@ -2193,7 +2193,7 @@ extension ChatControllerImpl {
                         if (isPremium || maybeSuggestPremium || hasAutoTranslate || telewhiteSettings.autoTranslateEnglish) && !isHidden {
                             return chatTranslationState(context: context, peerId: peerId, threadId: chatLocation.threadId)
                             |> map { translationState -> ChatPresentationTranslationState? in
-                                if let translationState, !translationState.fromLang.isEmpty && (translationState.fromLang != baseLanguageCode || translationState.isEnabled) {
+                                if let translationState, !translationState.fromLang.isEmpty && (translationState.fromLang != baseLanguageCode || translationState.isEnabled || translationState.toLang != nil) {
                                     let targetLanguage = telewhiteSettings.autoTranslateEnglish && normalizeTranslationLanguage(translationState.fromLang) == "en" ? telewhiteSettings.translationTargetLanguage : (translationState.toLang ?? baseLanguageCode)
                                     return ChatPresentationTranslationState(isEnabled: translationState.isEnabled, fromLang: translationState.fromLang, toLang: targetLanguage)
                                 } else {

@@ -251,14 +251,29 @@ public func chatTranslationState(context: AccountContext, peerId: EnginePeer.Id,
             return cachedChatTranslationState(engine: context.engine, peerId: peerId, threadId: threadId)
             |> mapToSignal { cached in
                 let currentTime = Int32(CFAbsoluteTimeGetCurrent() + kCFAbsoluteTimeIntervalSince1970)
+                // Telewhite: once translation has been used in this chat (a target
+                // language was picked or it is currently enabled), keep the panel
+                // sticky — don't let the "do not translate" language filter drop
+                // it right after the user taps "Show Original".
+                let isStickyState: (ChatTranslationState) -> Bool = { state in
+                    return state.isEnabled || state.toLang != nil
+                }
                 if let cached, let timestamp = cached.timestamp, cached.baseLang == baseLang && currentTime - timestamp < 60 * 60 {
-                    if !dontTranslateLanguages.contains(cached.fromLang) {
+                    if !dontTranslateLanguages.contains(cached.fromLang) || isStickyState(cached) {
                         return .single(cached)
                     } else {
                         return .single(nil)
                     }
                 } else {
-                    return .single(nil)
+                    // Keep showing the last known state while language re-detection
+                    // runs, instead of blinking the panel out with nil.
+                    var initialState: ChatTranslationState?
+                    if let cached, cached.baseLang == baseLang, !cached.fromLang.isEmpty {
+                        if !dontTranslateLanguages.contains(cached.fromLang) || isStickyState(cached) {
+                            initialState = cached
+                        }
+                    }
+                    return .single(initialState)
                     |> then(
                         context.account.viewTracker.aroundMessageHistoryViewForLocation(.peer(peerId: peerId, threadId: threadId), index: .upperBound, anchorIndex: .upperBound, count: 32, fixedCombinedReadStates: nil)
                         |> filter { messageHistoryView -> Bool in
@@ -370,7 +385,7 @@ public func chatTranslationState(context: AccountContext, peerId: EnginePeer.Id,
                                 isEnabled: isEnabled
                             )
                             let _ = updateChatTranslationState(engine: context.engine, peerId: peerId, threadId: threadId, state: state).start()
-                            if !dontTranslateLanguages.contains(fromLang) {
+                            if !dontTranslateLanguages.contains(fromLang) || state.isEnabled || state.toLang != nil {
                                 return state
                             } else {
                                 return nil
