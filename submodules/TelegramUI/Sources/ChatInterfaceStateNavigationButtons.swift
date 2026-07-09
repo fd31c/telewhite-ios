@@ -50,6 +50,75 @@ private func telewhiteTranslateIcon(theme: PresentationTheme, isEnabled: Bool) -
     return generateTintedImage(image: UIImage(bundleImageName: "Chat/Title Panels/Translate"), color: foregroundColor)
 }
 
+private func telewhiteOutgoingTranslationIcon(theme: PresentationTheme, isEnabled: Bool) -> UIImage? {
+    let color = isEnabled ? theme.rootController.navigationBar.accentTextColor : theme.rootController.navigationBar.buttonColor
+    return generateImage(CGSize(width: 30.0, height: 30.0), rotatedContext: { size, context in
+        context.clear(CGRect(origin: CGPoint(), size: size))
+        
+        UIGraphicsPushContext(context)
+        let hanzi = NSAttributedString(string: "\u{6587}", attributes: [
+            NSAttributedString.Key.font: Font.medium(12.0),
+            NSAttributedString.Key.foregroundColor: color
+        ])
+        hanzi.draw(at: CGPoint(x: 2.0, y: 1.5))
+        let latin = NSAttributedString(string: "A", attributes: [
+            NSAttributedString.Key.font: Font.semibold(13.0),
+            NSAttributedString.Key.foregroundColor: color
+        ])
+        latin.draw(at: CGPoint(x: 18.5, y: 12.5))
+        UIGraphicsPopContext()
+        
+        context.setStrokeColor(color.cgColor)
+        context.setLineWidth(1.8)
+        context.setLineCap(.round)
+        context.setLineJoin(.round)
+        context.beginPath()
+        context.move(to: CGPoint(x: 5.5, y: 24.5))
+        context.addLine(to: CGPoint(x: 13.5, y: 24.5))
+        context.strokePath()
+        context.beginPath()
+        context.move(to: CGPoint(x: 10.5, y: 21.0))
+        context.addLine(to: CGPoint(x: 13.5, y: 24.5))
+        context.addLine(to: CGPoint(x: 10.5, y: 28.0))
+        context.strokePath()
+        
+        if isEnabled {
+            context.setFillColor(color.cgColor)
+            context.fillEllipse(in: CGRect(x: 23.5, y: 25.0, width: 4.5, height: 4.5))
+        }
+    })
+}
+
+final class TelewhiteOutgoingTranslationButtonNode: HighlightableButtonNode, NavigationButtonCustomDisplayNode {
+    var isHighlightable: Bool {
+        return true
+    }
+    
+    var longPressed: (() -> Void)?
+    
+    private var longPressRecognizer: UILongPressGestureRecognizer?
+    
+    override func didLoad() {
+        super.didLoad()
+        if self.longPressRecognizer == nil {
+            let recognizer = UILongPressGestureRecognizer(target: self, action: #selector(self.longPressGesture(_:)))
+            recognizer.minimumPressDuration = 0.35
+            self.longPressRecognizer = recognizer
+            self.view.addGestureRecognizer(recognizer)
+        }
+    }
+    
+    @objc private func longPressGesture(_ recognizer: UILongPressGestureRecognizer) {
+        if case .began = recognizer.state {
+            self.longPressed?()
+        }
+    }
+    
+    override func calculateSizeThatFits(_ constrainedSize: CGSize) -> CGSize {
+        return CGSize(width: 34.0, height: 44.0)
+    }
+}
+
 func leftNavigationButtonForChatInterfaceState(_ presentationInterfaceState: ChatPresentationInterfaceState, subject: ChatControllerSubject?, strings: PresentationStrings, currentButton: ChatNavigationButton?, target: Any?, selector: Selector?) -> ChatNavigationButton? {
     if let _ = presentationInterfaceState.interfaceState.selectionState {
         if case .messageOptions = presentationInterfaceState.subject {
