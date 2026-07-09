@@ -3880,6 +3880,13 @@ public class ChatMessageBubbleItemNode: ChatMessageItemView, ChatMessagePreviewI
         strongSelf.backgroundWallpaperNode.setType(type: backgroundType, theme: item.presentationData.theme, essentialGraphics: graphics, maskMode: strongSelf.backgroundMaskMode, backgroundNode: presentationContext.backgroundNode)
         strongSelf.shadowNode.setType(type: backgroundType, hasWallpaper: hasWallpaper, graphics: graphics)
         
+        var isTelewhiteDeleted = false
+        for attribute in item.content.firstMessage.attributes {
+            if attribute is TelewhiteDeletedMessageAttribute {
+                isTelewhiteDeleted = true
+                break
+            }
+        }
         if isTelewhiteDeleted, !hideBackground {
             let telewhiteDeletedOverlayNode: ChatMessageBackground
             if let current = strongSelf.telewhiteDeletedOverlayNode {
