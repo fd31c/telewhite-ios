@@ -300,6 +300,7 @@ public final class ChatControllerImpl: TelegramBaseController, ChatController, G
     var rightNavigationButton: ChatNavigationButton?
     var secondaryRightNavigationButton: ChatNavigationButton?
     var tertiaryRightNavigationButton: ChatNavigationButton?
+    var quaternaryRightNavigationButton: ChatNavigationButton?
     var chatInfoNavigationButton: ChatNavigationButton?
     
     var moreBarButton: MoreHeaderButton
@@ -8326,6 +8327,18 @@ public final class ChatControllerImpl: TelegramBaseController, ChatController, G
     @objc func tertiaryRightNavigationButtonAction() {
         if let button = self.tertiaryRightNavigationButton {
             self.navigationButtonAction(button.action)
+        }
+    }
+    
+    @objc func quaternaryRightNavigationButtonAction() {
+        if let button = self.quaternaryRightNavigationButton {
+            self.navigationButtonAction(button.action)
+        }
+    }
+    
+    @objc func quaternaryRightNavigationButtonLongPressAction() {
+        if let button = self.quaternaryRightNavigationButton, case let .toggleOutgoingTranslation(peerId, _) = button.action {
+            self.presentOutgoingTranslationLanguageMenu(peerId: EnginePeer.Id(peerId))
         }
     }
     

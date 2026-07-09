@@ -38,6 +38,7 @@ import ChatMessageBubbleItemNode
 import ChatMessageSelectionNode
 import ManagedDiceAnimationNode
 import ChatMessageTransitionNode
+import SettingsUI
 import TextFieldComponent
 import ChatLoadingNode
 import ChatRecentActionsController
@@ -4678,6 +4679,76 @@ class ChatControllerNode: ASDisplayNode, ASScrollViewDelegate {
         }
     }
     
+    private func telewhiteTranslateOutgoingMessagesIfNeeded(_ messages: [EnqueueMessage], _ completion: @escaping ([EnqueueMessage]) -> Void) {
+        guard let peerId = self.chatPresentationInterfaceState.chatLocation.peerId, peerId.namespace == Namespaces.Peer.CloudUser else {
+            completion(messages)
+            return
+        }
+        let settings = TelewhiteModsSettings.current
+        guard settings.isOutgoingTranslationEnabled(for: peerId) else {
+            completion(messages)
+            return
+        }
+        let toLang = settings.outgoingTranslationLanguage(for: peerId)
+        
+        var translationSignals: [Signal<(Int, String, [MessageTextEntity])?, NoError>] = []
+        for (index, message) in messages.enumerated() {
+            guard case let .message(text, attributes, _, _, _, _, _, _, _, _) = message, !text.isEmpty else {
+                continue
+            }
+            var entities: [MessageTextEntity] = []
+            for attribute in attributes {
+                if let attribute = attribute as? TextEntitiesMessageAttribute {
+                    entities = attribute.entities
+                }
+            }
+            let signal: Signal<(Int, String, [MessageTextEntity])?, NoError> = self.context.engine.messages.translate(text: text, toLang: toLang, entities: entities)
+            |> map { result -> (Int, String, [MessageTextEntity])? in
+                guard let (translatedText, translatedEntities) = result else {
+                    return nil
+                }
+                return (index, translatedText, translatedEntities)
+            }
+            |> `catch` { _ -> Signal<(Int, String, [MessageTextEntity])?, NoError> in
+                return .single(nil)
+            }
+            |> timeout(10.0, queue: Queue.mainQueue(), alternate: .single(nil))
+            translationSignals.append(signal)
+        }
+        
+        guard !translationSignals.isEmpty else {
+            completion(messages)
+            return
+        }
+        
+        let _ = (combineLatest(translationSignals)
+        |> take(1)
+        |> deliverOnMainQueue).startStandalone(next: { [weak self] results in
+            var messages = messages
+            var failedCount = 0
+            for result in results {
+                guard let (index, translatedText, translatedEntities) = result else {
+                    failedCount += 1
+                    continue
+                }
+                guard case let .message(_, attributes, inlineStickers, mediaReference, threadId, replyToMessageId, replyToStoryId, localGroupingKey, correlationId, bubbleUpEmojiOrStickersets) = messages[index] else {
+                    continue
+                }
+                var updatedAttributes = attributes.filter { !($0 is TextEntitiesMessageAttribute) }
+                if !translatedEntities.isEmpty {
+                    updatedAttributes.append(TextEntitiesMessageAttribute(entities: translatedEntities))
+                }
+                messages[index] = .message(text: translatedText, attributes: updatedAttributes, inlineStickers: inlineStickers, mediaReference: mediaReference, threadId: threadId, replyToMessageId: replyToMessageId, replyToStoryId: replyToStoryId, localGroupingKey: localGroupingKey, correlationId: correlationId, bubbleUpEmojiOrStickersets: bubbleUpEmojiOrStickersets)
+            }
+            
+            if failedCount > 0, let self {
+                self.controllerInteraction.displayUndo(.info(title: nil, text: "Translation failed, message sent as typed", timeout: nil, customUndoText: nil))
+            }
+            
+            completion(messages)
+        })
+    }
+    
     func sendCurrentMessage(silentPosting: Bool? = nil, scheduleTime: Int32? = nil, repeatPeriod: Int32? = nil, postpone: Bool = false, messageEffect: ChatSendMessageEffect? = nil, completion: @escaping () -> Void = {}) {
         guard let textInputPanelNode = self.inputPanelNode as? ChatTextInputPanelNode else {
             return
@@ -5030,7 +5101,13 @@ class ChatControllerNode: ASDisplayNode, ASScrollViewDelegate {
                     }, usedCorrelationId)
                     completion()
                     
-                    self.sendMessages(messages, silentPosting, scheduleTime, repeatPeriod, messages.count > 1, postpone)
+                    let isGroupedMessages = messages.count > 1
+                    self.telewhiteTranslateOutgoingMessagesIfNeeded(messages, { [weak self] translatedMessages in
+                        guard let self else {
+                            return
+                        }
+                        self.sendMessages(translatedMessages, silentPosting, scheduleTime, repeatPeriod, isGroupedMessages, postpone)
+                    })
                 }
                 
                 var targetThreadId: Int64?

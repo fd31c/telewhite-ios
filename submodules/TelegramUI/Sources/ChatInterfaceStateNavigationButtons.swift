@@ -6,6 +6,7 @@ import AccountContext
 import ChatPresentationInterfaceState
 import ChatNavigationButton
 import Display
+import AsyncDisplayKit
 import SettingsUI
 
 private func telewhiteGhostModeIcon(theme: PresentationTheme, isEnabled: Bool) -> UIImage? {
@@ -51,7 +52,7 @@ private func telewhiteTranslateIcon(theme: PresentationTheme, isEnabled: Bool) -
 }
 
 private func telewhiteOutgoingTranslationIcon(theme: PresentationTheme, isEnabled: Bool) -> UIImage? {
-    let color = isEnabled ? theme.rootController.navigationBar.accentTextColor : theme.rootController.navigationBar.buttonColor
+    let color = UIColor.white
     return generateImage(CGSize(width: 30.0, height: 30.0), rotatedContext: { size, context in
         context.clear(CGRect(origin: CGPoint(), size: size))
         
@@ -94,9 +95,15 @@ final class TelewhiteOutgoingTranslationButtonNode: HighlightableButtonNode, Nav
         return true
     }
     
+    var pressed: (() -> Void)?
     var longPressed: (() -> Void)?
     
     private var longPressRecognizer: UILongPressGestureRecognizer?
+    
+    override init(pointerStyle: PointerStyle? = nil) {
+        super.init(pointerStyle: pointerStyle)
+        self.addTarget(self, action: #selector(self.tapAction), forControlEvents: .touchUpInside)
+    }
     
     override func didLoad() {
         super.didLoad()
@@ -106,6 +113,10 @@ final class TelewhiteOutgoingTranslationButtonNode: HighlightableButtonNode, Nav
             self.longPressRecognizer = recognizer
             self.view.addGestureRecognizer(recognizer)
         }
+    }
+    
+    @objc private func tapAction() {
+        self.pressed?()
     }
     
     @objc private func longPressGesture(_ recognizer: UILongPressGestureRecognizer) {
@@ -434,5 +445,46 @@ func tertiaryRightNavigationButtonForChatInterfaceState(context: AccountContext,
         let buttonItem = UIBarButtonItem(image: telewhiteTranslateIcon(theme: presentationInterfaceState.theme, isEnabled: isEnabled), style: .plain, target: target, action: selector)
         buttonItem.accessibilityLabel = isEnabled ? "Show original text" : "Translate English to Russian"
         return ChatNavigationButton(action: .toggleTranslation(isEnabled: isEnabled), buttonItem: buttonItem)
+    }
+}
+
+func quaternaryRightNavigationButtonForChatInterfaceState(context: AccountContext, presentationInterfaceState: ChatPresentationInterfaceState, currentButton: ChatNavigationButton?, target: Any?, selector: Selector?, longPressSelector: Selector?) -> ChatNavigationButton? {
+    if presentationInterfaceState.interfaceState.selectionState != nil {
+        return nil
+    }
+    guard case .standard(.default) = presentationInterfaceState.mode, presentationInterfaceState.subject == nil else {
+        return nil
+    }
+    guard let user = presentationInterfaceState.renderedPeer?.chatMainPeer as? TelegramUser, user.id != context.account.peerId, !user.id.isSecretChat, user.isGenericUser else {
+        return nil
+    }
+    let settings = TelewhiteModsSettings.current
+    guard settings.outgoingTranslateButtonEnabled else {
+        return nil
+    }
+    
+    let isEnabled = settings.isOutgoingTranslationEnabled(for: user.id)
+    let rawPeerId = user.id.toInt64()
+    
+    if currentButton?.action == .toggleOutgoingTranslation(peerId: rawPeerId, isEnabled: isEnabled) {
+        return currentButton
+    } else {
+        let buttonNode = TelewhiteOutgoingTranslationButtonNode()
+        buttonNode.setImage(telewhiteOutgoingTranslationIcon(theme: presentationInterfaceState.theme, isEnabled: isEnabled), for: [])
+        let buttonItem = UIBarButtonItem(customDisplayNode: buttonNode)
+        buttonItem.target = target as AnyObject?
+        buttonItem.action = selector
+        buttonNode.pressed = { [weak buttonItem] in
+            buttonItem?.performActionOnTarget()
+        }
+        if let targetObject = target as? NSObject {
+            buttonNode.longPressed = { [weak targetObject] in
+                if let targetObject, let longPressSelector {
+                    let _ = targetObject.perform(longPressSelector)
+                }
+            }
+        }
+        buttonItem.accessibilityLabel = isEnabled ? "Disable outgoing message translation for this chat" : "Enable outgoing message translation for this chat"
+        return ChatNavigationButton(action: .toggleOutgoingTranslation(peerId: rawPeerId, isEnabled: isEnabled), buttonItem: buttonItem)
     }
 }
