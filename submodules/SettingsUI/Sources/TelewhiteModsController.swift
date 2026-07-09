@@ -48,6 +48,9 @@ public struct TelewhiteModsSettings: Equatable {
     public var chatBackgroundColorOverride: Int64?
     public var chatBackgroundGradientOverride: [Int64]?
     public var bubbleCornerRadiusOverride: Int32?
+    public var outgoingTranslateButtonEnabled: Bool
+    public var outgoingTranslationPeerIds: Set<Int64>
+    public var outgoingTranslationLanguages: [Int64: String]
 
     private enum Key {
         static let vpnEnabled = "telewhite.mods.vpnEnabled"
@@ -84,6 +87,9 @@ public struct TelewhiteModsSettings: Equatable {
         static let chatBackgroundColor = "telewhite.mods.chatBackgroundColor"
         static let chatBackgroundGradient = "telewhite.mods.chatBackgroundGradient"
         static let bubbleCornerRadius = "telewhite.mods.bubbleCornerRadius"
+        static let outgoingTranslateButtonEnabled = "telewhite.mods.outgoingTranslateButtonEnabled"
+        static let outgoingTranslationPeerIds = "telewhite.mods.outgoingTranslationPeerIds"
+        static let outgoingTranslationLanguages = "telewhite.mods.outgoingTranslationLanguages"
     }
     
     public static var current: TelewhiteModsSettings {
@@ -122,7 +128,20 @@ public struct TelewhiteModsSettings: Equatable {
             bubbleColorOverride: (defaults.object(forKey: Key.bubbleColor) as? NSNumber)?.int64Value,
             chatBackgroundColorOverride: (defaults.object(forKey: Key.chatBackgroundColor) as? NSNumber)?.int64Value,
             chatBackgroundGradientOverride: (defaults.array(forKey: Key.chatBackgroundGradient) as? [NSNumber]).flatMap { numbers in numbers.count >= 2 ? numbers.map { $0.int64Value } : nil },
-            bubbleCornerRadiusOverride: (defaults.object(forKey: Key.bubbleCornerRadius) as? NSNumber)?.int32Value
+            bubbleCornerRadiusOverride: (defaults.object(forKey: Key.bubbleCornerRadius) as? NSNumber)?.int32Value,
+            outgoingTranslateButtonEnabled: defaults.object(forKey: Key.outgoingTranslateButtonEnabled) as? Bool ?? true,
+            outgoingTranslationPeerIds: Set((defaults.array(forKey: Key.outgoingTranslationPeerIds) as? [NSNumber] ?? []).map { $0.int64Value }),
+            outgoingTranslationLanguages: {
+                var result: [Int64: String] = [:]
+                if let stored = defaults.dictionary(forKey: Key.outgoingTranslationLanguages) as? [String: String] {
+                    for (key, value) in stored {
+                        if let rawId = Int64(key) {
+                            result[rawId] = value
+                        }
+                    }
+                }
+                return result
+            }()
         )
     }
 
@@ -141,6 +160,39 @@ public struct TelewhiteModsSettings: Equatable {
         } else {
             updated.ghostPeerIds.insert(rawId)
         }
+        return updated
+    }
+
+    public func isOutgoingTranslationEnabled(for peerId: EnginePeer.Id?) -> Bool {
+        guard let peerId else {
+            return false
+        }
+        return self.outgoingTranslationPeerIds.contains(peerId.toInt64())
+    }
+
+    public func outgoingTranslationLanguage(for peerId: EnginePeer.Id?) -> String {
+        guard let peerId else {
+            return "en"
+        }
+        return self.outgoingTranslationLanguages[peerId.toInt64()] ?? "en"
+    }
+
+    public func withToggledOutgoingTranslationPeer(_ peerId: EnginePeer.Id) -> TelewhiteModsSettings {
+        var updated = self
+        let rawId = peerId.toInt64()
+        if updated.outgoingTranslationPeerIds.contains(rawId) {
+            updated.outgoingTranslationPeerIds.remove(rawId)
+        } else {
+            updated.outgoingTranslationPeerIds.insert(rawId)
+        }
+        return updated
+    }
+
+    public func withOutgoingTranslationLanguage(_ language: String, for peerId: EnginePeer.Id) -> TelewhiteModsSettings {
+        var updated = self
+        let rawId = peerId.toInt64()
+        updated.outgoingTranslationLanguages[rawId] = language
+        updated.outgoingTranslationPeerIds.insert(rawId)
         return updated
     }
     
@@ -201,6 +253,9 @@ public struct TelewhiteModsSettings: Equatable {
         } else {
             defaults.removeObject(forKey: Key.bubbleCornerRadius)
         }
+        defaults.set(self.outgoingTranslateButtonEnabled, forKey: Key.outgoingTranslateButtonEnabled)
+        defaults.set(self.outgoingTranslationPeerIds.map { NSNumber(value: $0) }, forKey: Key.outgoingTranslationPeerIds)
+        defaults.set(Dictionary(uniqueKeysWithValues: self.outgoingTranslationLanguages.map { (String($0.key), $0.value) }), forKey: Key.outgoingTranslationLanguages)
         NotificationCenter.default.post(name: TelewhiteModsSettings.didChangeNotification, object: nil)
     }
 
@@ -296,6 +351,7 @@ private enum TelewhiteModsEntry: ItemListNodeEntry, Equatable {
     case translateChats(String, Bool)
     case autoTranslateEnglish(String, Bool)
     case translationTargetLanguage(String, String)
+    case outgoingTranslateButtonEnabled(String, Bool)
     case messengerInfo(String)
     case oneTimeMediaUnlimited(String, Bool)
     case downloadOneTimeMedia(String, Bool)
@@ -372,7 +428,7 @@ private enum TelewhiteModsEntry: ItemListNodeEntry, Equatable {
         switch self {
         case .menuItem:
             return TelewhiteModsSection.menu.rawValue
-        case .messengerHeader, .preserveDeletedMessages, .translateMessages, .translateChats, .autoTranslateEnglish, .translationTargetLanguage, .messengerInfo, .oneTimeMediaUnlimited, .downloadOneTimeMedia, .uploadVoice, .voiceChangeSettings, .uploadVideoMessage:
+        case .messengerHeader, .preserveDeletedMessages, .translateMessages, .translateChats, .autoTranslateEnglish, .translationTargetLanguage, .outgoingTranslateButtonEnabled, .messengerInfo, .oneTimeMediaUnlimited, .downloadOneTimeMedia, .uploadVoice, .voiceChangeSettings, .uploadVideoMessage:
             return TelewhiteModsSection.messenger.rawValue
         case .vpnHeader, .vpnEnabled, .vpnSubscription, .vpnStatus, .vpnStart, .vpnInfo:
             return TelewhiteModsSection.vpn.rawValue
@@ -427,8 +483,10 @@ private enum TelewhiteModsEntry: ItemListNodeEntry, Equatable {
             return 9
         case .translationTargetLanguage:
             return 10
-        case .messengerInfo:
+        case .outgoingTranslateButtonEnabled:
             return 11
+        case .messengerInfo:
+            return 12
         case .privacyHeader:
             return 100
         case .hideOnlineStatus:
@@ -664,6 +722,10 @@ private enum TelewhiteModsEntry: ItemListNodeEntry, Equatable {
             })
         case let .translationTargetLanguage(text, value):
             return ItemListDisclosureItem(presentationData: presentationData, systemStyle: .glass, title: text, label: value.uppercased(), labelStyle: .text, sectionId: self.section, style: .blocks, disclosureStyle: .none, action: nil)
+        case let .outgoingTranslateButtonEnabled(text, value):
+            return self.switchItem(presentationData: presentationData, arguments: arguments, text: text, value: value) { settings, value in
+                settings.outgoingTranslateButtonEnabled = value
+            }
         case let .oneTimeMediaUnlimited(text, value):
             return self.switchItem(presentationData: presentationData, arguments: arguments, text: text, value: value) { settings, value in
                 settings.oneTimeMediaUnlimited = value
@@ -1087,6 +1149,8 @@ private func telewhiteEntryDescription(_ entry: TelewhiteModsEntry, presentation
         return text("Shows a translate bar at the top of foreign-language chats.", "Показывает панель перевода сверху в чатах на иностранном языке.")
     case .autoTranslateEnglish:
         return text("Automatically translates your messages before sending.", "Автоматически переводит ваши сообщения перед отправкой.")
+    case .outgoingTranslateButtonEnabled:
+        return text("Shows the translator button in private chats; tap toggles per-chat outgoing translation, long press picks the language.", "Показывает кнопку переводчика в личных чатах: тап включает перевод исходящих для чата, долгий тап выбирает язык.")
     case .uploadVideoMessage:
         return text("Videos from the gallery are sent as round video messages.", "Видео из галереи отправляются как круглые видеосообщения.")
     case .oneTimeMediaUnlimited:
@@ -1144,6 +1208,7 @@ private func telewhiteModsEntries(tab: TelewhiteModsTab, settings: TelewhiteMods
         entries.append(.translateChats(strings.text("Translate Entire Chats", "Перевод чатов"), translationSettings.translateChats))
         entries.append(.autoTranslateEnglish(strings.text("Translate Before Sending", "Перевод перед отправкой"), settings.autoTranslateEnglish))
         entries.append(.translationTargetLanguage(strings.text("Translation Language", "Язык перевода"), settings.translationTargetLanguage))
+        entries.append(.outgoingTranslateButtonEnabled(strings.text("Per-Chat Translator Button", "Кнопка переводчика в чатах"), settings.outgoingTranslateButtonEnabled))
         entries.append(.messengerInfo(strings.text("Message features are split here: deleted messages, one-time media, uploads and translation.", "Здесь собраны функции сообщений: удалённые сообщения, одноразовые медиа, загрузка и перевод.")))
 
     case .privacy:

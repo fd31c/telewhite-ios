@@ -560,7 +560,21 @@ func updateChatPresentationInterfaceStateImpl(
         selfController.tertiaryRightNavigationButton = nil
     }
     
+    if let button = quaternaryRightNavigationButtonForChatInterfaceState(context: selfController.context, presentationInterfaceState: updatedChatPresentationInterfaceState, currentButton: selfController.quaternaryRightNavigationButton, target: selfController, selector: #selector(selfController.quaternaryRightNavigationButtonAction), longPressSelector: #selector(selfController.quaternaryRightNavigationButtonLongPressAction)) {
+        if selfController.quaternaryRightNavigationButton != button {
+            if let currentButton = selfController.quaternaryRightNavigationButton?.action, currentButton == button.action {
+                buttonsAnimated = false
+            }
+            selfController.quaternaryRightNavigationButton = button
+        }
+    } else if let _ = selfController.quaternaryRightNavigationButton {
+        selfController.quaternaryRightNavigationButton = nil
+    }
+    
     var rightBarButtons: [UIBarButtonItem] = []
+    if let quaternaryRightNavigationButton = selfController.quaternaryRightNavigationButton {
+        rightBarButtons.append(quaternaryRightNavigationButton.buttonItem)
+    }
     if let secondaryRightNavigationButton = selfController.secondaryRightNavigationButton, case .toggleGhostMode(_, _) = secondaryRightNavigationButton.action {
         rightBarButtons.append(secondaryRightNavigationButton.buttonItem)
     }

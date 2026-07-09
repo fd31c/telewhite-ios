@@ -33,6 +33,31 @@ sideload / fake-codesigning.
 
 ---
 
+## 2026-07-09
+
+- **[Добавлено]** Переводчик исходящих сообщений (пер-чат). В навбаре личных чатов появилась кнопка-переводчик
+  (рисованная иконка «文 → A», точка = включено): тап включает/выключает перевод исходящих для этого чата,
+  долгий тап (0.35s) открывает ActionSheet выбора языка (11 языков, по умолчанию English, язык запоминается пер-чат).
+  При включённом переводе текст молча переводится в `sendCurrentMessage` через `context.engine.messages.translate`
+  (entities сохраняются, таймаут 10s; при ошибке отправляется оригинал с тостом «Translation failed»).
+  Медиа-подписи, редактирование и секретные чаты не затрагиваются. Хранение: `outgoingTranslateButtonEnabled`
+  (тумблер видимости в Telewhite Mods → Messenger), `outgoingTranslationPeerIds`, `outgoingTranslationLanguages`
+  в `TelewhiteModsSettings` (UserDefaults). Реализация: новый кейс `toggleOutgoingTranslation` в `ChatNavigationButton`,
+  `quaternaryRightNavigationButtonForChatInterfaceState` + кастомная нода `TelewhiteOutgoingTranslationButtonNode`
+  (UIBarButtonItem(customDisplayNode:) с long-press распознавателем). Файлы: `TelewhiteModsController.swift`,
+  `ChatNavigationButton.swift`, `ChatInterfaceStateNavigationButtons.swift`, `UpdateChatPresentationInterfaceState.swift`,
+  `ChatControllerNavigationButtonAction.swift`, `ChatController.swift`, `ChatControllerNode.swift`.
+- **[Добавлено]** Тонировка удалённых сообщений. Сообщения с `TelewhiteDeletedMessageAttribute` теперь помечаются
+  визуально: поверх фона бабла (под контентом) добавляется overlay-нода `telewhiteDeletedOverlayNode` —
+  второй `ChatMessageBackground` с `customHighlightColor = black` (alpha 0.35), повторяющий
+  форму бабла вместе с хвостиком (по паттерну `backgroundHighlightNode`). Работает в паре с уже существующим
+  затемнением `mainContainerNode.alpha = 0.55`. Overlay создаётся/удаляется в apply рядом с `setType`
+  и синхронизирует frame во всех трёх ветках обновления layout (анимированная, extracted, статичная).
+  Файл: `submodules/TelegramUI/Components/Chat/ChatMessageBubbleItemNode/Sources/ChatMessageBubbleItemNode.swift`.
+- **[Инфра]** Слияние: фичи 2026-07-09 (переводчик исходящих + тонировка удалённых) изначально были
+  сделаны на ветке от старого `master` и слиты в `project-status-update` с разрешением конфликтов
+  в `TelewhiteModsController.swift` (настройки объединены с цветовыми оверрайдами) и `CHANGELOG.md`.
+
 ## 2026-07-08 (вечер — сессия «call-recording-analysis»)
 
 > Эти 4 коммита запушены в `project-status-update` поверх `f58e7df`.
@@ -89,7 +114,7 @@ sideload / fake-codesigning.
   «Настройки изменения голоса», «Загрузить видеосообщение», «Авто-запись
   звонков», «Кнопка записи звонка». Раздел Calls убран из меню до готовности.
 - **[Добавлено]** — Пункт «Меню отладки» в `Telewhite Mods → Developer` —
-  открывает скрытое Debug-меню Telegram (то, что открывалось многократным
+  ��ткрывает скрытое Debug-ме��ю Telegram (то, что открывалось многократным
   тапом по Settings).
 
 ## 2026-07-07 (вечер)
@@ -210,7 +235,6 @@ sideload / fake-codesigning.
 - **[Улучшено]** `52c0076` — Иконка призрака (Режим невидимки) перерисована точно под референс TeleDark:
   округлый купол, мя��кий волнистый низ из трёх выпуклостей, вертикальные овальные глаза,
   утолщённая линия 2.0 pt со скруглёнными концами.
-
 ## 2026-07-03
 
 - **[Добавлено]** Диагностика push-уведомлений. В `Telewhite Mods → Developer` добавлены строки

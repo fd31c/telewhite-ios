@@ -683,6 +683,7 @@ public class ChatMessageBubbleItemNode: ChatMessageItemView, ChatMessagePreviewI
     private let backgroundWallpaperNode: ChatMessageBubbleBackdrop
     private let backgroundNode: ChatMessageBackground
     private var backgroundHighlightNode: ChatMessageBackground?
+    private var telewhiteDeletedOverlayNode: ChatMessageBackground?
     private let shadowNode: ChatMessageShadowNode
     private var clippingNode: ChatMessageBubbleClippingNode
     
@@ -3879,6 +3880,25 @@ public class ChatMessageBubbleItemNode: ChatMessageItemView, ChatMessagePreviewI
         strongSelf.backgroundWallpaperNode.setType(type: backgroundType, theme: item.presentationData.theme, essentialGraphics: graphics, maskMode: strongSelf.backgroundMaskMode, backgroundNode: presentationContext.backgroundNode)
         strongSelf.shadowNode.setType(type: backgroundType, hasWallpaper: hasWallpaper, graphics: graphics)
         
+        if isTelewhiteDeleted, !hideBackground {
+            let telewhiteDeletedOverlayNode: ChatMessageBackground
+            if let current = strongSelf.telewhiteDeletedOverlayNode {
+                telewhiteDeletedOverlayNode = current
+            } else {
+                telewhiteDeletedOverlayNode = ChatMessageBackground()
+                telewhiteDeletedOverlayNode.isUserInteractionEnabled = false
+                strongSelf.mainContextSourceNode.contentNode.insertSubnode(telewhiteDeletedOverlayNode, aboveSubnode: strongSelf.backgroundNode)
+                strongSelf.telewhiteDeletedOverlayNode = telewhiteDeletedOverlayNode
+            }
+            telewhiteDeletedOverlayNode.customHighlightColor = UIColor.black.withAlphaComponent(0.35)
+            telewhiteDeletedOverlayNode.setType(type: backgroundType, highlighted: true, graphics: graphics, maskMode: true, hasWallpaper: true, transition: .immediate, backgroundNode: nil)
+            telewhiteDeletedOverlayNode.frame = backgroundFrame
+            telewhiteDeletedOverlayNode.updateLayout(size: backgroundFrame.size, transition: .immediate)
+        } else if let telewhiteDeletedOverlayNode = strongSelf.telewhiteDeletedOverlayNode {
+            strongSelf.telewhiteDeletedOverlayNode = nil
+            telewhiteDeletedOverlayNode.removeFromSupernode()
+        }
+        
         strongSelf.backgroundType = backgroundType
         
         let previousBackgroundFrame = strongSelf.backgroundNode.backgroundFrame
@@ -5279,6 +5299,10 @@ public class ChatMessageBubbleItemNode: ChatMessageItemView, ChatMessagePreviewI
                     animation.animator.updateFrame(layer: backgroundHighlightNode.layer, frame: backgroundFrame, completion: nil)
                     backgroundHighlightNode.updateLayout(size: backgroundFrame.size, transition: animation)
                 }
+                if let telewhiteDeletedOverlayNode = strongSelf.telewhiteDeletedOverlayNode {
+                    animation.animator.updateFrame(layer: telewhiteDeletedOverlayNode.layer, frame: backgroundFrame, completion: nil)
+                    telewhiteDeletedOverlayNode.updateLayout(size: backgroundFrame.size, transition: animation)
+                }
                 animation.animator.updatePosition(layer: strongSelf.clippingNode.layer, position: backgroundFrame.center, completion: nil)
                 strongSelf.clippingNode.clipsToBounds = shouldClipOnTransitions
                 animation.animator.updateBounds(layer: strongSelf.clippingNode.layer, bounds: CGRect(origin: CGPoint(x: backgroundFrame.minX, y: backgroundFrame.minY), size: backgroundFrame.size), completion: { [weak strongSelf] _ in
@@ -5416,6 +5440,10 @@ public class ChatMessageBubbleItemNode: ChatMessageItemView, ChatMessagePreviewI
                     legacyTransition.updateFrame(node: backgroundHighlightNode, frame: backgroundFrame, completion: nil)
                     backgroundHighlightNode.updateLayout(size: backgroundFrame.size, transition: legacyTransition)
                 }
+                if let telewhiteDeletedOverlayNode = strongSelf.telewhiteDeletedOverlayNode {
+                    legacyTransition.updateFrame(node: telewhiteDeletedOverlayNode, frame: backgroundFrame, completion: nil)
+                    telewhiteDeletedOverlayNode.updateLayout(size: backgroundFrame.size, transition: legacyTransition)
+                }
 
                 legacyTransition.updateFrame(node: strongSelf.clippingNode, frame: backgroundFrame)
                 legacyTransition.updateBounds(node: strongSelf.clippingNode, bounds: CGRect(origin: CGPoint(x: backgroundFrame.minX, y: backgroundFrame.minY), size: backgroundFrame.size))
@@ -5428,6 +5456,10 @@ public class ChatMessageBubbleItemNode: ChatMessageItemView, ChatMessagePreviewI
                 if let backgroundHighlightNode = strongSelf.backgroundHighlightNode {
                     backgroundHighlightNode.frame = backgroundFrame
                     backgroundHighlightNode.updateLayout(size: backgroundFrame.size, transition: .immediate)
+                }
+                if let telewhiteDeletedOverlayNode = strongSelf.telewhiteDeletedOverlayNode {
+                    telewhiteDeletedOverlayNode.frame = backgroundFrame
+                    telewhiteDeletedOverlayNode.updateLayout(size: backgroundFrame.size, transition: .immediate)
                 }
                 
                 strongSelf.clippingNode.frame = backgroundFrame
