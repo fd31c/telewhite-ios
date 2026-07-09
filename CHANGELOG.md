@@ -9,6 +9,18 @@
 
 ## 2026-07-09
 
+- **[Добавлено]** Переводчик исходящих сообщений (пер-чат). В навбаре личных чатов появилась кнопка-переводчик
+  (рисованная иконка «文 → A», точка = включено): тап включает/выключает перевод исходящих для этого чата,
+  долгий тап (0.35s) открывает ActionSheet выбора языка (11 языков, по умолчанию English, язык запоминается пер-чат).
+  При включённом переводе текст молча переводится в `sendCurrentMessage` через `context.engine.messages.translate`
+  (entities сохраняются, таймаут 10s; при ошибке отправляется оригинал с тостом «Translation failed»).
+  Медиа-подписи, редактирование и секретные чаты не затрагиваются. Хранение: `outgoingTranslateButtonEnabled`
+  (тумблер видимости в Telewhite Mods → Messenger), `outgoingTranslationPeerIds`, `outgoingTranslationLanguages`
+  в `TelewhiteModsSettings` (UserDefaults). Реализация: новый кейс `toggleOutgoingTranslation` в `ChatNavigationButton`,
+  `quaternaryRightNavigationButtonForChatInterfaceState` + кастомная нода `TelewhiteOutgoingTranslationButtonNode`
+  (UIBarButtonItem(customDisplayNode:) с long-press распознавателем). Файлы: `TelewhiteModsController.swift`,
+  `ChatNavigationButton.swift`, `ChatInterfaceStateNavigationButtons.swift`, `UpdateChatPresentationInterfaceState.swift`,
+  `ChatControllerNavigationButtonAction.swift`, `ChatController.swift`, `ChatControllerNode.swift`.
 - **[Добавлено]** Тонировка удалённых сообщений. Сообщения с `TelewhiteDeletedMessageAttribute` теперь помечаются
   визуально: поверх фона бабла (под контентом) добавляется overlay-нода `telewhiteDeletedOverlayNode` —
   второй `ChatMessageBackground` с `customHighlightColor = black` (alpha 0.35), повторяющий
