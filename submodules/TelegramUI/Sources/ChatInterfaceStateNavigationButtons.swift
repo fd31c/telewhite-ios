@@ -87,39 +87,31 @@ private func telewhiteTranslateIcon(theme: PresentationTheme, isEnabled: Bool) -
 
 private func telewhiteOutgoingTranslationIcon(theme: PresentationTheme, isEnabled: Bool) -> UIImage? {
     let color = UIColor.white
-    return generateImage(CGSize(width: 30.0, height: 30.0), rotatedContext: { size, context in
+    guard let baseImage = generateTintedImage(image: UIImage(bundleImageName: "Chat/Title Panels/Translate"), color: color) else {
+        return nil
+    }
+    let size = CGSize(width: 30.0, height: 30.0)
+    return generateImage(size, rotatedContext: { size, context in
         context.clear(CGRect(origin: CGPoint(), size: size))
         
         UIGraphicsPushContext(context)
-        let hanzi = NSAttributedString(string: "\u{6587}", attributes: [
-            NSAttributedString.Key.font: Font.medium(12.0),
-            NSAttributedString.Key.foregroundColor: color
-        ])
-        hanzi.draw(at: CGPoint(x: 2.0, y: 1.5))
-        let latin = NSAttributedString(string: "A", attributes: [
-            NSAttributedString.Key.font: Font.semibold(13.0),
-            NSAttributedString.Key.foregroundColor: color
-        ])
-        latin.draw(at: CGPoint(x: 18.5, y: 12.5))
+        let iconRect = CGRect(
+            x: floor((size.width - baseImage.size.width) / 2.0),
+            y: floor((size.height - baseImage.size.height) / 2.0),
+            width: baseImage.size.width,
+            height: baseImage.size.height
+        )
+        baseImage.draw(in: iconRect)
         UIGraphicsPopContext()
         
-        context.setStrokeColor(color.cgColor)
-        context.setLineWidth(1.8)
-        context.setLineCap(.round)
-        context.setLineJoin(.round)
-        context.beginPath()
-        context.move(to: CGPoint(x: 5.5, y: 24.5))
-        context.addLine(to: CGPoint(x: 13.5, y: 24.5))
-        context.strokePath()
-        context.beginPath()
-        context.move(to: CGPoint(x: 10.5, y: 21.0))
-        context.addLine(to: CGPoint(x: 13.5, y: 24.5))
-        context.addLine(to: CGPoint(x: 10.5, y: 28.0))
-        context.strokePath()
-        
         if isEnabled {
+            let dotSize: CGFloat = 6.0
+            let dotRect = CGRect(x: size.width - dotSize - 1.0, y: size.height - dotSize - 1.0, width: dotSize, height: dotSize)
+            context.setBlendMode(.clear)
+            context.fillEllipse(in: dotRect.insetBy(dx: -1.5, dy: -1.5))
+            context.setBlendMode(.normal)
             context.setFillColor(color.cgColor)
-            context.fillEllipse(in: CGRect(x: 23.5, y: 25.0, width: 4.5, height: 4.5))
+            context.fillEllipse(in: dotRect)
         }
     })
 }

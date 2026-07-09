@@ -176,4 +176,49 @@
         <key>UIPrerenderedIcon</key>
         <true/>
     </dict>
+    <key>TelewhiteRed</key>
+    <dict>
+        <key>CFBundleIconFiles</key>
+        <array>
+            <string>TelewhiteRed</string>
+        </array>
+        <key>UIPrerenderedIcon</key>
+        <true/>
+    </dict>
+    <key>TelewhiteGreen</key>
+    <dict>
+        <key>CFBundleIconFiles</key>
+        <array>
+            <string>TelewhiteGreen</string>
+        </array>
+        <key>UIPrerenderedIcon</key>
+        <true/>
+    </dict>
+    <key>TelewhiteOrange</key>
+    <dict>
+        <key>CFBundleIconFiles</key>
+        <array>
+            <string>TelewhiteOrange</string>
+        </array>
+        <key>UIPrerenderedIcon</key>
+        <true/>
+    </dict>
+    <key>TelewhitePurple</key>
+    <dict>
+        <key>CFBundleIconFiles</key>
+        <array>
+            <string>TelewhitePurple</string>
+        </array>
+        <key>UIPrerenderedIcon</key>
+        <true/>
+    </dict>
+    <key>TelewhitePink</key>
+    <dict>
+        <key>CFBundleIconFiles</key>
+        <array>
+            <string>TelewhitePink</string>
+        </array>
+        <key>UIPrerenderedIcon</key>
+        <true/>
+    </dict>
 </dict>

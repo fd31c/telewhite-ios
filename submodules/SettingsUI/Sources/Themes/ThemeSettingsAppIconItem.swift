@@ -390,8 +390,8 @@ class ThemeSettingsAppIconItemNode: ListViewItemNode, ItemListItemNode {
                                 case "BlackFilledIcon":
                                     name = item.strings.Appearance_AppIconFilledX
                                     bordered = false
-                                case "WhiteFilled":
-                                    name = "⍺ White"
+                                case "WhiteFilled", "WhiteFilledIcon":
+                                    name = "Yellow"
                                 case "FontAwesomeTelegramIcon":
                                     name = "Telegram"
                                     bordered = false
@@ -413,6 +413,16 @@ class ThemeSettingsAppIconItemNode: ListViewItemNode, ItemListItemNode {
                                 case "TelewhiteNeon":
                                     name = "Neon"
                                     bordered = false
+                                case "TelewhiteRed":
+                                    name = "Red"
+                                case "TelewhiteGreen":
+                                    name = "Green"
+                                case "TelewhiteOrange":
+                                    name = "Orange"
+                                case "TelewhitePurple":
+                                    name = "Purple"
+                                case "TelewhitePink":
+                                    name = "Pink"
                                 default:
                                     name = icon.name
                             }

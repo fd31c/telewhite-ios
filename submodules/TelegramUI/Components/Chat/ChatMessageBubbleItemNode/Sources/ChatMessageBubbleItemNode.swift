@@ -3897,7 +3897,7 @@ public class ChatMessageBubbleItemNode: ChatMessageItemView, ChatMessagePreviewI
                 strongSelf.mainContextSourceNode.contentNode.insertSubnode(telewhiteDeletedOverlayNode, aboveSubnode: strongSelf.backgroundNode)
                 strongSelf.telewhiteDeletedOverlayNode = telewhiteDeletedOverlayNode
             }
-            telewhiteDeletedOverlayNode.customHighlightColor = UIColor.black.withAlphaComponent(0.35)
+            telewhiteDeletedOverlayNode.customHighlightColor = UIColor.black.withAlphaComponent(0.5)
             telewhiteDeletedOverlayNode.setType(type: backgroundType, highlighted: true, graphics: graphics, maskMode: true, hasWallpaper: true, transition: .immediate, backgroundNode: nil)
             telewhiteDeletedOverlayNode.frame = backgroundFrame
             telewhiteDeletedOverlayNode.updateLayout(size: backgroundFrame.size, transition: .immediate)

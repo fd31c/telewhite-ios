@@ -349,6 +349,11 @@ alternate_icon_folders = [
     "TelewhiteGhost",
     "TelewhiteWhite",
     "TelewhiteNeon",
+    "TelewhiteRed",
+    "TelewhiteGreen",
+    "TelewhiteOrange",
+    "TelewhitePurple",
+    "TelewhitePink",
 ]
 
 composer_icon_folders = ["Telegram"]

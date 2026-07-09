@@ -33,6 +33,27 @@ sideload / fake-codesigning.
 
 ---
 
+## 2026-07-10
+
+- **[Изменено]** Тонировка удалённых сообщений усилена: alpha чёрного overlay поднята с 0.35 до 0.5
+  (`ChatMessageBubbleItemNode.swift`).
+- **[Изменено]** Иконка переводчика исходящих в навбаре перерисована: вместо кастомной отрисовки «文 → A»
+  теперь используется штатный ассет `Chat/Title Panels/Translate` (тот же, что у панели перевода),
+  отцентрованный в 30x30; индикатор включения — белая точка в правом нижнем углу с прозрачной обводкой
+  (`ChatInterfaceStateNavigationButtons.swift`).
+- **[Изменено]** Список языков переводчика расширен с 11 до 41: добавлены европейские (Dutch, Polish, Czech,
+  Slovak, Romanian, Hungarian, Greek, Swedish, Norwegian, Danish, Finnish, Serbian, Bulgarian), азиатские
+  (Japanese, Korean, Vietnamese, Thai, Indonesian, Malay, Hindi, Bengali, Urdu), ближневосточные (Hebrew,
+  Persian) и СНГ (Belarusian, Kazakh, Uzbek, Azerbaijani, Georgian, Armenian)
+  (`ChatControllerNavigationButtonAction.swift`).
+- **[Добавлено]** 5 новых альтернативных иконок приложения в стиле WhiteFilled (белый фон + цветной самолётик):
+  Red, Green, Orange, Purple, Pink. Сгенерированы перекраской `WhiteFilledIcon` (hue-shift, @2x/@3x).
+  Зарегистрированы в `Telegram/BUILD` (alternate_icon_folders), `AlternateIcons.plist`,
+  `AlternateIcons-iPad.plist`, `AppDelegate.swift` (getAvailableAlternateIcons) и
+  `ThemeSettingsAppIconItem.swift` (отображаемые имена: Red/Green/Orange/Purple/Pink).
+  Папки: `Telegram-iOS/Telewhite{Red,Green,Orange,Purple,Pink}.alticon`. Жёлтая уже существует
+  как WhiteFilled (видна в internal-сборках).
+
 ## 2026-07-09
 
 - **[Добавлено]** Переводчик исходящих сообщений (пер-чат). В навбаре личных чатов появилась кнопка-переводчик
@@ -76,7 +97,7 @@ sideload / fake-codesigning.
 - **[Добавлено]** `c577c65` — **Одноразовые медиа**: настройка
   `oneTimeMediaUnlimited` теперь реально работает — фото/видео «одноразового
   просмотра» не помечается просмотренным и не сгорает; `downloadOneTimeMedia`
-  снимает защиту захвата экрана, позволяя сохранить их
+  снимает защи��у захвата экрана, позволяя сохранить их
   (`SecretMediaPreviewController.swift`).
 - **[Добавлено]** `c577c65` — **Аудио как голосовое** (`uploadVoice`): выбранный
   через вложения аудиофайл отправляется как голосовое сообщение
@@ -162,7 +183,7 @@ sideload / fake-codesigning.
     Индиго, Коричневый);
   - цвет исходящих сообщений: 10 пресетов (добавлены Бирюзовый, Жёлтый, Розовый,
     Индиго, Тёмно-зелёный);
-  - в каждой из трёх секций (акцент, пузыри, фон) появился пункт
+  - �� каждой из трёх секций (акцент, пузыри, фон) появился пункт
     **«Свой цвет (HEX)»** — открывается диалог ввода кода (`#1E90FF`, `1E90FF`,
     `0x1E90FF`, короткая форма `#ABC`); выбранный кастомный цвет показывается
     свотчем и хексом прямо в названии пункта.

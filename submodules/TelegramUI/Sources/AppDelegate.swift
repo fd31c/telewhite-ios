@@ -963,6 +963,11 @@ private func extractAccountManagerState(records: AccountRecordsView<TelegramAcco
                     PresentationAppIcon(name: "TelewhiteGhost", imageName: "TelewhiteGhost"),
                     PresentationAppIcon(name: "TelewhiteWhite", imageName: "TelewhiteWhite"),
                     PresentationAppIcon(name: "TelewhiteNeon", imageName: "TelewhiteNeon"),
+                    PresentationAppIcon(name: "TelewhiteRed", imageName: "TelewhiteRed"),
+                    PresentationAppIcon(name: "TelewhiteGreen", imageName: "TelewhiteGreen"),
+                    PresentationAppIcon(name: "TelewhiteOrange", imageName: "TelewhiteOrange"),
+                    PresentationAppIcon(name: "TelewhitePurple", imageName: "TelewhitePurple"),
+                    PresentationAppIcon(name: "TelewhitePink", imageName: "TelewhitePink"),
                     PresentationAppIcon(name: "New2", imageName: "New2"),
                     PresentationAppIcon(name: "New1", imageName: "New1"),
                     PresentationAppIcon(name: "BlackIcon", imageName: "BlackIcon"),
@@ -972,9 +977,7 @@ private func extractAccountManagerState(records: AccountRecordsView<TelegramAcco
                     PresentationAppIcon(name: "BlackFilledIcon", imageName: "BlackFilledIcon"),
                     PresentationAppIcon(name: "FontAwesomeTelegramIcon", imageName: "FontAwesomeTelegramIcon")
                 ]
-                if buildConfig.isInternalBuild {
-                    icons.append(PresentationAppIcon(name: "WhiteFilledIcon", imageName: "WhiteFilledIcon"))
-                }
+                icons.append(PresentationAppIcon(name: "WhiteFilledIcon", imageName: "WhiteFilledIcon"))
                 
                 icons.append(PresentationAppIcon(name: "Premium", imageName: "Premium", isPremium: true))
                 icons.append(PresentationAppIcon(name: "PremiumTurbo", imageName: "PremiumTurbo", isPremium: true))
