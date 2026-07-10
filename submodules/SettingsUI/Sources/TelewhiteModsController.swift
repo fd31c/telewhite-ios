@@ -53,6 +53,7 @@ public struct TelewhiteModsSettings: Equatable {
     public var outgoingTranslationLanguages: [Int64: String]
     public var openRouterApiKey: String
     public var outgoingTranslationAutoEnabled: Bool
+    public var forwardHideNamesByDefault: Bool
 
     private enum Key {
         static let vpnEnabled = "telewhite.mods.vpnEnabled"
@@ -94,6 +95,7 @@ public struct TelewhiteModsSettings: Equatable {
         static let outgoingTranslationLanguages = "telewhite.mods.outgoingTranslationLanguages"
         static let openRouterApiKey = "telewhite.mods.openRouterApiKey"
         static let outgoingTranslationAutoEnabled = "telewhite.mods.outgoingTranslationAutoEnabled"
+        static let forwardHideNamesByDefault = "telewhite.mods.forwardHideNamesByDefault"
     }
     
     public static var current: TelewhiteModsSettings {
@@ -147,7 +149,8 @@ public struct TelewhiteModsSettings: Equatable {
                 return result
             }(),
             openRouterApiKey: defaults.string(forKey: Key.openRouterApiKey) ?? "",
-            outgoingTranslationAutoEnabled: defaults.bool(forKey: Key.outgoingTranslationAutoEnabled)
+            outgoingTranslationAutoEnabled: defaults.bool(forKey: Key.outgoingTranslationAutoEnabled),
+            forwardHideNamesByDefault: defaults.bool(forKey: Key.forwardHideNamesByDefault)
         )
     }
 
@@ -264,6 +267,7 @@ public struct TelewhiteModsSettings: Equatable {
         defaults.set(Dictionary(uniqueKeysWithValues: self.outgoingTranslationLanguages.map { (String($0.key), $0.value) }), forKey: Key.outgoingTranslationLanguages)
         defaults.set(self.openRouterApiKey, forKey: Key.openRouterApiKey)
         defaults.set(self.outgoingTranslationAutoEnabled, forKey: Key.outgoingTranslationAutoEnabled)
+        defaults.set(self.forwardHideNamesByDefault, forKey: Key.forwardHideNamesByDefault)
         NotificationCenter.default.post(name: TelewhiteModsSettings.didChangeNotification, object: nil)
     }
 
@@ -360,6 +364,7 @@ private enum TelewhiteModsEntry: ItemListNodeEntry, Equatable {
 
     case messengerHeader(String)
     case preserveDeletedMessages(String, Bool)
+    case forwardHideNamesByDefault(String, Bool)
     case translateMessages(String, Bool)
     case translateChats(String, Bool)
     case autoTranslateEnglish(String, Bool)
@@ -703,6 +708,10 @@ private enum TelewhiteModsEntry: ItemListNodeEntry, Equatable {
         case let .preserveDeletedMessages(text, value):
             return self.switchItem(presentationData: presentationData, arguments: arguments, text: text, value: value) { settings, value in
                 settings.preserveDeletedMessages = value
+            }
+        case let .forwardHideNamesByDefault(text, value):
+            return self.switchItem(presentationData: presentationData, arguments: arguments, text: text, value: value) { settings, value in
+                settings.forwardHideNamesByDefault = value
             }
         case let .translateMessages(text, value):
             return ItemListSwitchItem(presentationData: presentationData, systemStyle: .glass, title: text, text: telewhiteEntryDescription(self, presentationData: presentationData), value: value, maximumNumberOfLines: 3, sectionId: self.section, style: .blocks, updated: { value in
@@ -1186,6 +1195,8 @@ private func telewhiteEntryDescription(_ entry: TelewhiteModsEntry, presentation
     switch entry {
     case .preserveDeletedMessages:
         return text("Messages deleted by others stay visible on this device.", "Сообщения, удалённые собеседником, остаются видны на этом устройстве.")
+    case .forwardHideNamesByDefault:
+        return text("Forwarded messages are sent without the original author's name by default.", "Пересланные сообщения по умолчанию отправляются без имени исходного автора.")
     case .translateMessages:
         return text("Adds a Translate button to the message menu.", "Добавляет кнопку «Перевести» в меню сообщения.")
     case .translateChats:
@@ -1193,7 +1204,7 @@ private func telewhiteEntryDescription(_ entry: TelewhiteModsEntry, presentation
     case .autoTranslateEnglish:
         return text("Automatically translates your messages before sending.", "Автоматически переводит ваши сообщения перед отправкой.")
     case .outgoingTranslateButtonEnabled:
-        return text("Shows the translator button in private chats; tap toggles per-chat outgoing translation, long press picks the language.", "Показывает кнопку перевод��ика в личных чатах: тап включает перевод исходящих для чата, долгий тап выбирает язык.")
+        return text("Shows the translator button in private chats; tap toggles per-chat outgoing translation, long press picks the language.", "Показывает кнопку переводчика в личных чатах: тап включает перевод исходящих для чата, долгий тап выбирает язык.")
     case .outgoingTranslationAutoEnabled:
         return text("Automatically translates outgoing messages when your language differs from the chat partner's language (detected from their recent messages). No need to toggle translation manually per chat. Messages already in the target language are never touched.", "Автоматически переводит исходящие, когда ваш язык отличается от языка собеседника (определяется по его последним сообщениям). Не нужно вручную включать перевод в каждом чате. Сообщения уже на целевом языке не трогаются.")
     case .openRouterApiKey:
