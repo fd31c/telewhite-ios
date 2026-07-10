@@ -35,6 +35,21 @@ sideload / fake-codesigning.
 
 ## 2026-07-10
 
+- **[Добавлено]** Ещё 6 альтернативных иконок в стиле WhiteFilled: Blue, Cyan, Mint, Indigo, Brown, Graphite.
+  Сгенерированы перекраской `WhiteFilledIcon` (@2x/@3x), зарегистрированы в `Telegram/BUILD`,
+  `AlternateIcons.plist`, `AlternateIcons-iPad.plist`, `AppDelegate.swift`,
+  `ThemeSettingsAppIconItem.swift`. Итого 11 цветных Telewhite-иконок + жёлтая WhiteFilled.
+- **[Улучшено]** Кнопка призрака в чатах теперь работает и в группах (обычных и supergroup), не только в личках
+  (`ChatInterfaceStateNavigationButtons.swift`). Описание тумблера обновлено.
+- **[Изменено]** Описание «Режим невидимки (сообщения)»: теперь явно указано, что режим действует на всё
+  в Telegram — личные чаты, группы и каналы (`TelewhiteModsController.swift`).
+- **[Изменено]** Кнопка переводчика в навбаре: при включении иконка заливается (filled) вместо точки-индикатора
+  (`ChatInterfaceStateNavigationButtons.swift`).
+- **[Добавлено]** Перевод исходящих через OpenRouter: в Telewhite Mods → Messenger появилось поле
+  «OpenRouter API Key» (промпт с вводом ключа, маскируется как •••XXXX). Если ключ задан, перевод идёт
+  через OpenRouter (модель `google/gemini-2.0-flash-001`) вместо встроенного переводчика Telegram;
+  при ошибке — фолбэк на Telegram-переводчик (`openRouterApiKey` в `TelewhiteModsSettings`,
+  `ChatControllerNode.swift`).
 - **[Изменено]** Тонировка удалённых сообщений усилена: alpha чёрного overlay поднята с 0.35 до 0.5
   (`ChatMessageBubbleItemNode.swift`).
 - **[Изменено]** Иконка переводчика исходящих в навбаре перерисована: вместо кастомной отрисовки «文 → A»
@@ -82,7 +97,7 @@ sideload / fake-codesigning.
 ## 2026-07-08 (вечер — сессия «call-recording-analysis»)
 
 > Эти 4 коммита запушены в `project-status-update` поверх `f58e7df`.
-> Диапазон: `502891b..de947e0`. Собраны через GitHub Actions (workflow iOS IPA).
+> Диапа��он: `502891b..de947e0`. Собраны через GitHub Actions (workflow iOS IPA).
 
 - **[Улучшено]** `de947e0` — **Полный обход ограничений контента** (настройка
   «Обход ограничений»): раньше байпас работал только для пересылки и пункта Copy
@@ -162,7 +177,7 @@ sideload / fake-codesigning.
 - **[Добавлено]** — **Сплит чатов на iPhone** (как на десктопе/iPad): новый тоггл
   `Telewhite Mods → Внешний вид → «Сплит чатов (альбомная)»`. При включении и повороте
   телефона в альбомную ориентацию список чатов показывается слева (~320 pt),
-  а открытый чат — справа, в одном экране. В портрете возвращается обычный вид.
+  а открытый чат — справа, в одном экране. В портрете воз��ращается обычный вид.
   Реализация: используется родной iPad master-detail механизм
   (`NavigationController .automaticMasterDetail` + `NavigationSplitContainer`);
   в `NavigationLayout.swift` добавлен флаг `TelewhiteSplitViewSettings.splitInCompactLandscape`,

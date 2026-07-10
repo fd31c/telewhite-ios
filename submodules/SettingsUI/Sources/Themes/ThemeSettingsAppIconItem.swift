@@ -423,6 +423,18 @@ class ThemeSettingsAppIconItemNode: ListViewItemNode, ItemListItemNode {
                                     name = "Purple"
                                 case "TelewhitePink":
                                     name = "Pink"
+                                case "TelewhiteBlue":
+                                    name = "Blue"
+                                case "TelewhiteCyan":
+                                    name = "Cyan"
+                                case "TelewhiteMint":
+                                    name = "Mint"
+                                case "TelewhiteIndigo":
+                                    name = "Indigo"
+                                case "TelewhiteBrown":
+                                    name = "Brown"
+                                case "TelewhiteGraphite":
+                                    name = "Graphite"
                                 default:
                                     name = icon.name
                             }

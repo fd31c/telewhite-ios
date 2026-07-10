@@ -443,11 +443,21 @@ func secondaryRightNavigationButtonForChatInterfaceState(context: AccountContext
         return nil
     }
 
-    if case .standard(.default) = presentationInterfaceState.mode, presentationInterfaceState.subject == nil, let user = presentationInterfaceState.renderedPeer?.chatMainPeer as? TelegramUser, user.id != context.account.peerId, !user.id.isSecretChat, user.isGenericUser {
+    var telewhiteGhostPeerId: EnginePeer.Id?
+    if case .standard(.default) = presentationInterfaceState.mode, presentationInterfaceState.subject == nil, let mainPeer = presentationInterfaceState.renderedPeer?.chatMainPeer {
+        if let user = mainPeer as? TelegramUser, user.id != context.account.peerId, !user.id.isSecretChat, user.isGenericUser {
+            telewhiteGhostPeerId = user.id
+        } else if let group = mainPeer as? TelegramGroup {
+            telewhiteGhostPeerId = group.id
+        } else if let channel = mainPeer as? TelegramChannel, case .group = channel.info {
+            telewhiteGhostPeerId = channel.id
+        }
+    }
+    if let ghostPeerId = telewhiteGhostPeerId {
         let settings = TelewhiteModsSettings.current
         if settings.ghostChatButtonEnabled {
-            let isEnabled = settings.isGhostEnabled(for: user.id)
-            let rawPeerId = user.id.toInt64()
+            let isEnabled = settings.isGhostEnabled(for: ghostPeerId)
+            let rawPeerId = ghostPeerId.toInt64()
             if currentButton?.action == .toggleGhostMode(peerId: rawPeerId, isEnabled: isEnabled) {
                 return currentButton
             } else {

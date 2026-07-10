@@ -1164,7 +1164,7 @@ private func telewhiteEntryDescription(_ entry: TelewhiteModsEntry, presentation
     case .autoTranslateEnglish:
         return text("Automatically translates your messages before sending.", "Автоматически переводит ваши сообщения перед отправкой.")
     case .outgoingTranslateButtonEnabled:
-        return text("Shows the translator button in private chats; tap toggles per-chat outgoing translation, long press picks the language.", "Показывает кнопку переводчика в личных чатах: тап включает перевод исходящих для чата, долгий тап выбирает язык.")
+        return text("Shows the translator button in private chats; tap toggles per-chat outgoing translation, long press picks the language.", "Показывает кнопку перевод��ика в личных чатах: тап включает перевод исходящих для чата, долгий тап выбирает язык.")
     case .openRouterApiKey:
         return text("Free key from openrouter.ai for high-quality AI translation of outgoing messages. Without it the standard Telegram translator is used.", "Бесплатный ключ с openrouter.ai для качественного AI-перевода исходящих сообщений. Без него используется стандартный переводчик Telegram.")
     case .uploadVideoMessage:
@@ -1180,11 +1180,11 @@ private func telewhiteEntryDescription(_ entry: TelewhiteModsEntry, presentation
     case .ghostMode:
         return text("Full invisibility: hides reads, typing and online status.", "Полная невидимость: скрывает прочтение, набор текста и онлайн.")
     case .ghostChatButtonEnabled:
-        return text("Adds a ghost button inside private chats to go invisible in that chat only.", "Добавляет кнопку призрака в личных чатах — невидимость только в этом чате.")
+        return text("Adds a ghost button inside private chats and groups to go invisible in that chat only.", "Добавляет кнопку призрака в личных чатах и группах — невидимость только в этом чате.")
     case .hideTypingStatus:
         return text("Others won't see when you're typing or recording.", "Другие не увидят, что вы печатаете или записываете.")
     case .hideReadReceipts, .ghostMessages:
-        return text("Read messages and play voice/video notes without the sender seeing checkmarks.", "Читайте сообщения и слушайте голосовые/видео без галочек прочтения у отправителя.")
+        return text("Works everywhere in Telegram: private chats, groups and channels. Read messages and play voice/video notes without anyone seeing read checkmarks.", "Действует на всё в Telegram: личные чаты, группы и каналы. Читайте сообщения и слушайте голосовые/видео — никто не увидит галочки прочтения.")
     case .ghostStories:
         return text("Watch stories without the author knowing.", "Смотрите истории так, что автор об этом не узнает.")
     case .screenshotProtectionBypass:
@@ -1350,7 +1350,7 @@ private func telewhiteModsEntries(tab: TelewhiteModsTab, settings: TelewhiteMods
             entries.append(.cornerRadiusOption(Int32(index), preset.0, preset.1, settings.bubbleCornerRadiusOverride == preset.1))
         }
 
-        entries.append(.appearanceInfo(strings.text("Color and radius overrides apply on top of the selected Telegram theme and update instantly.", "Настройки цвета и скругления применяются поверх выбранной темы Telegram и обновляются мгновенно.")))
+        entries.append(.appearanceInfo(strings.text("Color and radius overrides apply on top of the selected Telegram theme and update instantly.", "Настройки цвета и скругления применяются поверх выбранной темы Telegram и обновл��ются мгновенно.")))
 
     case .developer:
         entries.append(.developerHeader(telewhiteTabTitle(.developer, strings: strings)))
