@@ -135,7 +135,7 @@ extension ChatControllerImpl {
                 settings.ghostPeerIds.insert(peerId)
             }
             settings.save()
-            self.context.account.shouldKeepOnlinePresence.set(.single(false))
+            self.context.account.shouldKeepOnlinePresence.set(.single(settings.ghostPeerIds.isEmpty && !settings.hideOnlineStatus))
 
             self.updateChatPresentationInterfaceState(transition: .immediate, interactive: false, force: true, { $0 })
 

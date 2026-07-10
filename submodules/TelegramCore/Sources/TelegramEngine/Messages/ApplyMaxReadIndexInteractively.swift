@@ -3,13 +3,17 @@ import Postbox
 import TelegramApi
 import SwiftSignalKit
 
-private func telewhiteHideReadReceiptsEnabled() -> Bool {
+private func telewhiteHideReadReceiptsEnabled(peerId: PeerId) -> Bool {
     let defaults = UserDefaults.standard
-    return defaults.bool(forKey: "telewhite.mods.ghostMode") || defaults.bool(forKey: "telewhite.mods.hideReadReceipts")
+    if defaults.bool(forKey: "telewhite.mods.ghostMode") || defaults.bool(forKey: "telewhite.mods.hideReadReceipts") {
+        return true
+    }
+    let ghostPeerIds = defaults.array(forKey: "telewhite.mods.ghostPeerIds") as? [NSNumber] ?? []
+    return ghostPeerIds.contains(NSNumber(value: peerId.toInt64()))
 }
 
 func _internal_applyMaxReadIndexInteractively(postbox: Postbox, stateManager: AccountStateManager, index: MessageIndex) -> Signal<Void, NoError> {
-    if telewhiteHideReadReceiptsEnabled() {
+    if telewhiteHideReadReceiptsEnabled(peerId: index.id.peerId) {
         return .complete()
     }
     return postbox.transaction { transaction -> Void in
@@ -18,7 +22,7 @@ func _internal_applyMaxReadIndexInteractively(postbox: Postbox, stateManager: Ac
 }
 
 func _internal_applyMaxReadIndexInteractively(transaction: Transaction, stateManager: AccountStateManager, index: MessageIndex) {
-    if telewhiteHideReadReceiptsEnabled() {
+    if telewhiteHideReadReceiptsEnabled(peerId: index.id.peerId) {
         return
     }
 

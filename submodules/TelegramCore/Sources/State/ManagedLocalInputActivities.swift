@@ -4,9 +4,13 @@ import SwiftSignalKit
 import TelegramApi
 import MtProtoKit
 
-private func telewhiteHideTypingStatusEnabled() -> Bool {
+private func telewhiteHideTypingStatusEnabled(peerId: PeerId) -> Bool {
     let defaults = UserDefaults.standard
-    return defaults.bool(forKey: "telewhite.mods.ghostMode") || defaults.bool(forKey: "telewhite.mods.hideTypingStatus")
+    if defaults.bool(forKey: "telewhite.mods.ghostMode") || defaults.bool(forKey: "telewhite.mods.hideTypingStatus") {
+        return true
+    }
+    let ghostPeerIds = defaults.array(forKey: "telewhite.mods.ghostPeerIds") as? [NSNumber] ?? []
+    return ghostPeerIds.contains(NSNumber(value: peerId.toInt64()))
 }
 
 public struct PeerActivitySpace: Hashable {
@@ -146,7 +150,7 @@ private func actionFromActivity(_ activity: PeerInputActivity?) -> Api.SendMessa
 }
 
 private func requestActivity(postbox: Postbox, network: Network, accountPeerId: PeerId, peerId: PeerId, threadId: Int64?, activity: PeerInputActivity?) -> Signal<Void, NoError> {
-    if activity != nil && telewhiteHideTypingStatusEnabled() {
+    if activity != nil && telewhiteHideTypingStatusEnabled(peerId: peerId) {
         return .complete()
     }
 

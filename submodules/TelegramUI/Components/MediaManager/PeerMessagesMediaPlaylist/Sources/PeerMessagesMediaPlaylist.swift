@@ -918,7 +918,10 @@ public final class PeerMessagesMediaPlaylist: SharedMediaPlaylist {
                     break
             }
             // Telewhite: when hiding read receipts, don't report voice/video messages as listened/watched.
-            if !UserDefaults.standard.bool(forKey: "telewhite.mods.hideReadReceipts") {
+            let defaults = UserDefaults.standard
+            let ghostPeerIds = defaults.array(forKey: "telewhite.mods.ghostPeerIds") as? [NSNumber] ?? []
+            let isGhostChat = ghostPeerIds.contains(NSNumber(value: item.message.id.peerId.toInt64()))
+            if !defaults.bool(forKey: "telewhite.mods.ghostMode") && !defaults.bool(forKey: "telewhite.mods.hideReadReceipts") && !isGhostChat {
                 let _ = self.context.engine.messages.markMessageContentAsConsumedInteractively(messageId: item.message.id).startStandalone()
             }
         }

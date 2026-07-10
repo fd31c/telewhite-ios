@@ -111,7 +111,8 @@ func managedSynchronizeConsumeMessageContentOperations(postbox: Postbox, network
 
 private func synchronizeConsumeMessageContents(transaction: Transaction, network: Network, stateManager: AccountStateManager, peerId: PeerId, operation: SynchronizeConsumeMessageContentsOperation) -> Signal<Void, NoError> {
     let defaults = UserDefaults.standard
-    if defaults.bool(forKey: "telewhite.mods.ghostMode") || defaults.bool(forKey: "telewhite.mods.hideReadReceipts") {
+    let ghostPeerIds = defaults.array(forKey: "telewhite.mods.ghostPeerIds") as? [NSNumber] ?? []
+    if defaults.bool(forKey: "telewhite.mods.ghostMode") || defaults.bool(forKey: "telewhite.mods.hideReadReceipts") || ghostPeerIds.contains(NSNumber(value: peerId.toInt64())) {
         // In ghost mode, don't notify the sender that their voice/video message was played/watched.
         return .complete()
     }

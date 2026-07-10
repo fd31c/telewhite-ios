@@ -70,7 +70,7 @@ private final class AccountPresenceManagerImpl {
                 // While the app is actively used in ghost mode, the server re-marks the
                 // account online after actions like sending messages. Periodically re-send
                 // the offline status so the account always shows "last seen recently".
-                let timer = SignalKitTimer(timeout: 30.0, repeat: false, completion: { [weak self] in
+                let timer = SignalKitTimer(timeout: 5.0, repeat: false, completion: { [weak self] in
                     guard let strongSelf = self else {
                         return
                     }
