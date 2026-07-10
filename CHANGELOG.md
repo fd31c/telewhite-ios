@@ -33,6 +33,22 @@ sideload / fake-codesigning.
 
 ---
 
+## 2026-07-10 (вечер)
+
+- **[Исправлено]** Иконка у строки «Telewhite Mods» в настройках теперь реально показывает выбранную
+  иконку приложения: загрузка через `UIImage(named:in:getAppBundle())` — тот же механизм, что в пикере
+  иконок (`PeerInfoSettingsItems.swift`). Раньше грузилась только синяя стандартная.
+- **[Исправлено]** Битые символы U+FFFD в русских текстах настроек («перевод��ика», «обновл��ются»,
+  «скопирова��ь») — заменены на нормальные буквы (`TelewhiteModsController.swift`).
+- **[Добавлено]** «Умный автоперевод» (Telewhite Mods → Сообщения): исходящие переводятся автоматически,
+  когда язык собеседника (детект по его последним 5 сообщениям через NaturalLanguage) отличается от языка
+  сообщения. Сообщения, уже написанные на целевом языке (например русские русскому), не трогаются вообще —
+  проверка языка выполняется и в ручном, и в авто-режиме (`ChatControllerNode.swift`).
+- **[Изменено]** Вкладка VPN убрана: кнопка VPN из шапки списка чатов удалена (`ChatListController.swift`),
+  вместо неё в главном меню Telewhite Mods появился раздел «Умный прокси» (иконка-глобус) — тот же движок
+  smart connect (пинг всех серверов, авто-выбор быстрейшего), но с русской локализацией и без VPN-брендинга.
+  `telewhiteVpnController` теперь просто открывает вкладку proxy (`TelewhiteModsController.swift`).
+
 ## 2026-07-10
 
 - **[Добавлено]** Ещё 6 альтернативных иконок в стиле WhiteFilled: Blue, Cyan, Mint, Indigo, Brown, Graphite.
@@ -78,7 +94,7 @@ sideload / fake-codesigning.
   (entities сохраняются, таймаут 10s; при ошибке отправляется оригинал с тостом «Translation failed»).
   Медиа-подписи, редактирование и секретные чаты не затрагиваются. Хранение: `outgoingTranslateButtonEnabled`
   (тумблер видимости в Telewhite Mods → Messenger), `outgoingTranslationPeerIds`, `outgoingTranslationLanguages`
-  в `TelewhiteModsSettings` (UserDefaults). Реализация: новый кейс `toggleOutgoingTranslation` в `ChatNavigationButton`,
+  в `TelewhiteModsSettings` (UserDefaults). Реали��ация: новый кейс `toggleOutgoingTranslation` в `ChatNavigationButton`,
   `quaternaryRightNavigationButtonForChatInterfaceState` + кастомная нода `TelewhiteOutgoingTranslationButtonNode`
   (UIBarButtonItem(customDisplayNode:) с long-press распознавателем). Файлы: `TelewhiteModsController.swift`,
   `ChatNavigationButton.swift`, `ChatInterfaceStateNavigationButtons.swift`, `UpdateChatPresentationInterfaceState.swift`,
@@ -160,7 +176,7 @@ sideload / fake-codesigning.
   «Connect» (или тумблеру) приложение берёт серверы из вашей подписки
   (URL со списком `tg://proxy`-ссылок, `t.me/proxy`, или `host:port:secret`,
   обычным текстом или base64) + встроенный резервный список, параллельно
-  TCP-пингует все, и активирует самый быстрый живой. Через сервер идёт только
+  TCP-пингует все, и активирует самый ��ыстрый живой. Через сервер идёт только
   трафик Telegram — остальные приложения не затрагиваются. Статус (сервер,
   задержка, число проверенных) показывается в разделе. Повторное нажатие —
   отключение. Новый файл: `SettingsUI/Sources/TelewhiteVpnEngine.swift`.
@@ -297,7 +313,7 @@ sideload / fake-codesigning.
   чтобы пересобранные sideload-сборки получали push-уведомления.
 - **[Улучшено]** `d9c553d` — Мгновенный релайаут списка чатов при переключении компактного режима.
 - **[Улучшено]** `f72a706` — При включённом `hidePhoneInSettings` вместо номера телефона показывается «—».
-- **[Улучшено]** `2a5d5a6` — Для строки настроек Mods используется стандартная иконка оформления Telegram.
+- **[Улучшено]** `2a5d5a6` — Для строки настроек Mods используется станда��тная иконка оформления Telegram.
 - **[Изменено]** `f0e137f` — Ghost mode стал **только per-chat** (убран глобальный ghost, двусторонний presence).
 - **[Исправлено]** `9936229` — Исправлена ориентация иконки ghost mode (перевёрнута вертикально).
 - **[Исправлено]** `8c9a36c` — Исправлена ориентация иконки VPN (перевёрнута вертикально).

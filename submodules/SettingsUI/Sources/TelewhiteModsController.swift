@@ -338,6 +338,7 @@ private enum TelewhiteModsTab: Int32, Equatable {
     case channels
     case media
     case calls
+    case proxy
     case appearance
     case developer
 }
@@ -349,6 +350,7 @@ private enum TelewhiteModsMenuIcon: Int32, Equatable {
     case groups
     case media
     case calls
+    case proxy
     case appearance
     case developer
 }
@@ -1100,6 +1102,19 @@ private func telewhiteMenuIcon(_ icon: TelewhiteModsMenuIcon, color: UIColor) ->
             let half = UIBezierPath(arcCenter: CGPoint(x: 14.5, y: 14.5), radius: 6.5, startAngle: -.pi / 2.0, endAngle: .pi / 2.0, clockwise: true)
             half.close()
             half.fill()
+        case .proxy:
+            // Globe: circle + vertical meridian ellipse + horizontal equator line
+            let circle = UIBezierPath(ovalIn: CGRect(x: 6.0, y: 6.0, width: 17.0, height: 17.0))
+            circle.lineWidth = lineWidth
+            circle.stroke()
+            let meridian = UIBezierPath(ovalIn: CGRect(x: 10.5, y: 6.0, width: 8.0, height: 17.0))
+            meridian.lineWidth = lineWidth
+            meridian.stroke()
+            let equator = UIBezierPath()
+            equator.move(to: CGPoint(x: 6.0, y: 14.5))
+            equator.addLine(to: CGPoint(x: 23.0, y: 14.5))
+            equator.lineWidth = lineWidth
+            equator.stroke()
         case .developer:
             // Angle brackets </> 
             let left = UIBezierPath()
@@ -1141,6 +1156,8 @@ private func telewhiteTabTitle(_ tab: TelewhiteModsTab, strings: TelewhiteModsSt
         return strings.text("Media and Stories", "\u{041c}\u{0435}\u{0434}\u{0438}\u{0430} \u{0438} \u{0438}\u{0441}\u{0442}\u{043e}\u{0440}\u{0438}\u{0438}")
     case .calls:
         return strings.text("Calls", "\u{0417}\u{0432}\u{043e}\u{043d}\u{043a}\u{0438}")
+    case .proxy:
+        return strings.text("Smart Proxy", "Умный прокси")
     case .appearance:
         return strings.text("Look", "\u{0412}\u{043d}\u{0435}\u{0448}\u{043d}\u{0438}\u{0439} \u{0432}\u{0438}\u{0434}")
     case .developer:
@@ -1155,8 +1172,9 @@ private func telewhiteMenuEntries(strings: TelewhiteModsStrings) -> [TelewhiteMo
         .menuItem(2, .messages, telewhiteTabTitle(.messenger, strings: strings), strings.text("Deleted messages, one-time media, uploads and translation.", "\u{0423}\u{0434}\u{0430}\u{043b}\u{0451}\u{043d}\u{043d}\u{044b}\u{0435} \u{0441}\u{043e}\u{043e}\u{0431}\u{0449}\u{0435}\u{043d}\u{0438}\u{044f}, \u{043e}\u{0434}\u{043d}\u{043e}\u{0440}\u{0430}\u{0437}\u{043e}\u{0432}\u{044b}\u{0435} \u{043c}\u{0435}\u{0434}\u{0438}\u{0430}, \u{0437}\u{0430}\u{0433}\u{0440}\u{0443}\u{0437}\u{043a}\u{0438} \u{0438} \u{043f}\u{0435}\u{0440}\u{0435}\u{0432}\u{043e}\u{0434}."), .messenger),
         .menuItem(3, .groups, telewhiteTabTitle(.channels, strings: strings), strings.text("Channel and group content controls.", "\u{0424}\u{0443}\u{043d}\u{043a}\u{0446}\u{0438}\u{0438} \u{0434}\u{043b}\u{044f} \u{043a}\u{0430}\u{043d}\u{0430}\u{043b}\u{043e}\u{0432} \u{0438} \u{0433}\u{0440}\u{0443}\u{043f}\u{043f}."), .channels),
         .menuItem(4, .media, telewhiteTabTitle(.media, strings: strings), strings.text("Stories, downloads and media actions.", "\u{0418}\u{0441}\u{0442}\u{043e}\u{0440}\u{0438}\u{0438}, \u{0441}\u{043a}\u{0430}\u{0447}\u{0438}\u{0432}\u{0430}\u{043d}\u{0438}\u{0435} \u{0438} \u{043c}\u{0435}\u{0434}\u{0438}\u{0430}-\u{0434}\u{0435}\u{0439}\u{0441}\u{0442}\u{0432}\u{0438}\u{044f}."), .media),
-        .menuItem(5, .appearance, telewhiteTabTitle(.appearance, strings: strings), strings.text("Colors, chat list and split view.", "Цвета, список чатов и сплит-режим."), .appearance),
-        .menuItem(6, .developer, telewhiteTabTitle(.developer, strings: strings), strings.text("IDs and technical tools.", "ID и технические инструменты."), .developer)
+        .menuItem(5, .proxy, telewhiteTabTitle(.proxy, strings: strings), strings.text("Auto-picks the fastest working proxy server.", "Сам выбирает самый быстрый рабочий прокси-сервер."), .proxy),
+        .menuItem(6, .appearance, telewhiteTabTitle(.appearance, strings: strings), strings.text("Colors, chat list and split view.", "Цвета, список чатов и сплит-режим."), .appearance),
+        .menuItem(7, .developer, telewhiteTabTitle(.developer, strings: strings), strings.text("IDs and technical tools.", "ID и технические инструменты."), .developer)
     ]
 }
 
@@ -1274,6 +1292,22 @@ private func telewhiteModsEntries(tab: TelewhiteModsTab, settings: TelewhiteMods
         entries.append(.callsHeader(telewhiteTabTitle(.calls, strings: strings)))
         entries.append(.callsInfo(strings.text("Recordings are saved to your Saved Messages. When the record button is on, it appears on the call screen so you can start and stop recording manually.", "Записи сохраняются в «Избранное». Если кнопка записи включена, она появляется на экране звонка — можно начинать и останавливать запись вручную.")))
 
+    case .proxy:
+        let proxyStatus: String
+        if !TelewhiteVpnEngine.lastStatus.isEmpty {
+            proxyStatus = TelewhiteVpnEngine.lastStatus
+        } else if settings.vpnEnabled {
+            proxyStatus = strings.text("Connected", "Подключён")
+        } else {
+            proxyStatus = strings.text("Off", "Выключен")
+        }
+        entries.append(.vpnHeader(strings.text("Smart Proxy — Telegram only", "Умный прокси — только Telegram")))
+        entries.append(.vpnEnabled(strings.text("Smart Proxy", "Умный прокси"), settings.vpnEnabled))
+        entries.append(.vpnSubscription(strings.text("Server list URL (optional)", "Ссылка на список серверов (опц.)"), settings.vpnSubscription))
+        entries.append(.vpnStatus(strings.text("Status", "Статус"), proxyStatus))
+        entries.append(.vpnStart(settings.vpnEnabled ? strings.text("Disconnect", "Отключить") : strings.text("Connect", "Подключить")))
+        entries.append(.vpnInfo(strings.text("Telewhite pings every server (your list plus built-in ones) and automatically connects to the fastest working proxy. Only Telegram traffic goes through it. Formats: tg://proxy or t.me/proxy links, or host:port:secret, one per line.", "Telewhite пингует все серверы (ваш список плюс встроенные) и автоматически подключается к самому быстрому рабочему прокси. Через него идёт только трафик Telegram. Форматы: ссылки tg://proxy или t.me/proxy, либо host:port:secret, по одному в строке.")))
+
     case .appearance:
         entries.append(.appearanceHeader(telewhiteTabTitle(.appearance, strings: strings)))
         entries.append(.compactChatList(strings.text("Compact Chat List", "Компактный список чатов"), settings.compactChatList))
@@ -1389,28 +1423,6 @@ private func telewhiteModsEntries(tab: TelewhiteModsTab, settings: TelewhiteMods
         entries.append(.developerInfo(strings.text("If push status is not \"Registered\", Apple did not issue a token for this signing profile — messages will not push. IDs are shown in profile/context surfaces when enabled.", "Если статус пушей не \"Registered\", Apple не выдал токен для этого профиля подписи — пуши работать не будут. ID отображаются в профилях и контекстных меню.")))
     }
 
-    return entries
-}
-
-private func telewhiteVpnEntries(settings: TelewhiteModsSettings) -> [TelewhiteModsEntry] {
-    let vpnStatus: String
-    if !TelewhiteVpnEngine.lastStatus.isEmpty {
-        vpnStatus = TelewhiteVpnEngine.lastStatus
-    } else if settings.vpnEnabled {
-        vpnStatus = "Connected"
-    } else if settings.vpnSubscription.isEmpty {
-        vpnStatus = "Off — built-in servers"
-    } else {
-        vpnStatus = "Off"
-    }
-
-    var entries: [TelewhiteModsEntry] = []
-    entries.append(.vpnHeader("Telewhite VPN — Telegram only"))
-    entries.append(.vpnEnabled("VPN Enabled", settings.vpnEnabled))
-    entries.append(.vpnSubscription("Subscription URL (optional)", settings.vpnSubscription))
-    entries.append(.vpnStatus("Status", vpnStatus))
-    entries.append(.vpnStart(settings.vpnEnabled ? "Disconnect" : "Connect"))
-    entries.append(.vpnInfo("Smart connect: Telewhite tests all servers from your subscription plus built-in ones, and picks the fastest working. Only Telegram traffic is routed through it — other apps are unaffected. Subscription formats: tg://proxy links, t.me/proxy links, or host:port:secret, one per line (plain or base64)."))
     return entries
 }
 
@@ -1560,6 +1572,7 @@ private func telewhiteModsSectionController(context: AccountContext, tab: Telewh
 }
 
 public func telewhiteVpnController(context: AccountContext) -> ViewController {
+    // The old standalone VPN screen is gone; open the Smart Proxy tab instead.
     let initialSettings = TelewhiteModsSettings.current
     let stateValue = Atomic(value: initialSettings)
     let statePromise = ValuePromise(initialSettings, ignoreRepeated: true)
@@ -1573,26 +1586,5 @@ public func telewhiteVpnController(context: AccountContext) -> ViewController {
         statePromise.set(updated)
     }
 
-    var presentControllerImpl: ((ViewController) -> Void)?
-
-    let arguments = TelewhiteModsControllerArguments(updateSettings: updateSettings, updateTranslationSettings: { _ in
-    }, startVpn: {
-        telewhiteRunVpnConnect(context: context, stateValue: stateValue, updateSettings: updateSettings, present: { c in
-            presentControllerImpl?(c)
-        })
-    })
-
-    let signal = combineLatest(context.sharedContext.presentationData, statePromise.get())
-    |> deliverOnMainQueue
-    |> map { presentationData, settings -> (ItemListControllerState, (ItemListNodeState, Any)) in
-        let controllerState = ItemListControllerState(presentationData: ItemListPresentationData(presentationData), title: .text("Telewhite VPN"), leftNavigationButton: nil, rightNavigationButton: nil, backNavigationButton: ItemListBackButton(title: presentationData.strings.Common_Back), animateChanges: false)
-        let listState = ItemListNodeState(presentationData: ItemListPresentationData(presentationData), entries: telewhiteVpnEntries(settings: settings), style: .blocks, animateChanges: false)
-        return (controllerState, (listState, arguments as Any))
-    }
-
-    let controller = ItemListController(context: context, state: signal)
-    presentControllerImpl = { [weak controller] c in
-        controller?.present(c, in: .window(.root))
-    }
-    return controller
+    return telewhiteModsSectionController(context: context, tab: .proxy, statePromise: statePromise, stateValue: stateValue, updateSettings: updateSettings)
 }

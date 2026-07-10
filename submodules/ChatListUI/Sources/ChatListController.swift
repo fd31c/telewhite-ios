@@ -7215,15 +7215,7 @@ private final class ChatListLocationContext {
                     self.storyButton = nil
                 }
 
-                self.vpnButton = AnyComponentWithIdentity(id: "telewhiteVpn", component: AnyComponent(NavigationButtonComponent(
-                    content: .vpn,
-                    pressed: { [weak self] _ in
-                        guard let self, let parentController = self.parentController else {
-                            return
-                        }
-                        (parentController.navigationController as? NavigationController)?.pushViewController(self.context.sharedContext.makeTelewhiteVpnController(context: self.context))
-                    }
-                )))
+                self.vpnButton = nil
             } else {
                 self.vpnButton = nil
                 let parentController = self.parentController
