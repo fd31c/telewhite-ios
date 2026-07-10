@@ -232,9 +232,8 @@ public func chatTranslationState(context: AccountContext, peerId: EnginePeer.Id,
             context.engine.data.subscribe(TelegramEngine.EngineData.Item.Peer.AutoTranslateEnabled(id: peerId))
         )
         |> mapToSignal { settings, autoTranslateEnabled in
-            let telewhiteAutoTranslateEnglish = UserDefaults.standard.bool(forKey: "telewhite.mods.autoTranslateEnglish")
-            let telewhiteTargetLanguage = UserDefaults.standard.string(forKey: "telewhite.mods.translationTargetLanguage") ?? "ru"
-            if !settings.translateChats && !autoTranslateEnabled && !telewhiteAutoTranslateEnglish {
+            let telewhiteIncomingTranslationEnabled = UserDefaults.standard.bool(forKey: "telewhite.mods.autoTranslateEnglish")
+            if !settings.translateChats && !autoTranslateEnabled && !telewhiteIncomingTranslationEnabled {
                 return .single(nil)
             }
             
@@ -361,27 +360,17 @@ public func chatTranslationState(context: AccountContext, peerId: EnginePeer.Id,
                                 Logger.shared.log("ChatTranslation", "Ended with: \(fromLang)")
                             }
 
-                            let telewhiteShouldAutoTranslate = telewhiteAutoTranslateEnglish && fromLang == "en"
-                            if telewhiteAutoTranslateEnglish && !settings.showTranslate && !telewhiteShouldAutoTranslate {
+                            if telewhiteIncomingTranslationEnabled && !settings.showTranslate && fromLang.isEmpty {
                                 return nil
                             }
-                            
-                            let isEnabled: Bool
-                            if let currentIsEnabled = cached?.isEnabled {
-                                isEnabled = currentIsEnabled
-                            } else if telewhiteShouldAutoTranslate {
-                                isEnabled = true
-                            } else if autoTranslateEnabled {
-                                isEnabled = true
-                            } else {
-                                isEnabled = false
-                            }
-                            
+
+                            let isEnabled = cached?.isEnabled ?? autoTranslateEnabled
+                            let targetLanguage = supportedTranslationLanguages.contains(baseLang) ? baseLang : "ru"
                             let state = ChatTranslationState(
                                 baseLang: baseLang,
                                 fromLang: fromLang,
                                 timestamp: currentTime,
-                                toLang: telewhiteShouldAutoTranslate ? (cached?.toLang ?? telewhiteTargetLanguage) : cached?.toLang,
+                                toLang: cached?.toLang ?? targetLanguage,
                                 isEnabled: isEnabled
                             )
                             let _ = updateChatTranslationState(engine: context.engine, peerId: peerId, threadId: threadId, state: state).start()

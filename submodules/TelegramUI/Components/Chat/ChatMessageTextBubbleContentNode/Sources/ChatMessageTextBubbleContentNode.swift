@@ -632,6 +632,15 @@ public class ChatMessageTextBubbleContentNode: ChatMessageBubbleContentNode {
                     attributedText = updatedString
                 }
 
+                let showPreviousEditedText = UserDefaults.standard.object(forKey: "telewhite.mods.showPreviousEditedText") as? Bool ?? true
+                if showPreviousEditedText, let previousText = item.message.attributes.first(where: { $0 is TelewhitePreviousTextMessageAttribute }) as? TelewhitePreviousTextMessageAttribute, !previousText.text.isEmpty {
+                    let isRussian = item.presentationData.strings.baseLanguageCode.lowercased().hasPrefix("ru")
+                    let previousLabel = isRussian ? "Было: " : "Before: "
+                    let updatedString = NSMutableAttributedString(attributedString: attributedText)
+                    updatedString.append(NSAttributedString(string: "\n\(previousLabel)\(previousText.text)", font: Font.regular(13.0), textColor: messageTheme.secondaryTextColor))
+                    attributedText = updatedString
+                }
+
                 var customTruncationToken: ((UIFont, Bool) -> NSAttributedString?)?
                 var maximumNumberOfLines: Int = 0
                 if item.presentationData.isPreview {

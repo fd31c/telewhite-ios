@@ -4548,7 +4548,15 @@ func replayFinalState(
                         return current
                     })
                     
+                    updatedAttributes.removeAll(where: { $0 is TelewhitePreviousTextMessageAttribute })
+                    if previousMessage.text != message.text && !previousMessage.text.isEmpty {
+                        updatedAttributes.append(TelewhitePreviousTextMessageAttribute(text: previousMessage.text))
+                    }
+
                     if previousMessage.text == message.text {
+                        if let previousText = previousMessage.attributes.first(where: { $0 is TelewhitePreviousTextMessageAttribute }) as? TelewhitePreviousTextMessageAttribute {
+                            updatedAttributes.append(previousText)
+                        }
                         let previousEntities = previousMessage.textEntitiesAttribute?.entities ?? []
                         let updatedEntities = (message.attributes.first(where: { $0 is TextEntitiesMessageAttribute }) as? TextEntitiesMessageAttribute)?.entities ?? []
                         if previousEntities == updatedEntities, let translation = previousMessage.attributes.first(where: { $0 is TranslationMessageAttribute }) as? TranslationMessageAttribute {

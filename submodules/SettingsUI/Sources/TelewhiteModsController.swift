@@ -54,6 +54,7 @@ public struct TelewhiteModsSettings: Equatable {
     public var openRouterApiKey: String
     public var outgoingTranslationAutoEnabled: Bool
     public var forwardHideNamesByDefault: Bool
+    public var showPreviousEditedText: Bool
 
     private enum Key {
         static let vpnEnabled = "telewhite.mods.vpnEnabled"
@@ -96,6 +97,7 @@ public struct TelewhiteModsSettings: Equatable {
         static let openRouterApiKey = "telewhite.mods.openRouterApiKey"
         static let outgoingTranslationAutoEnabled = "telewhite.mods.outgoingTranslationAutoEnabled"
         static let forwardHideNamesByDefault = "telewhite.mods.forwardHideNamesByDefault"
+        static let showPreviousEditedText = "telewhite.mods.showPreviousEditedText"
     }
     
     public static var current: TelewhiteModsSettings {
@@ -121,7 +123,7 @@ public struct TelewhiteModsSettings: Equatable {
             showChatIds: defaults.bool(forKey: Key.showChatIds),
             showMessageIds: defaults.bool(forKey: Key.showMessageIds),
             ghostPeerIds: Set((defaults.array(forKey: Key.ghostPeerIds) as? [NSNumber] ?? []).map { $0.int64Value }),
-            autoTranslateEnglish: defaults.bool(forKey: Key.autoTranslateEnglish),
+            autoTranslateEnglish: defaults.object(forKey: Key.autoTranslateEnglish) as? Bool ?? true,
             translationTargetLanguage: defaults.string(forKey: Key.translationTargetLanguage) ?? "ru",
             oneTimeMediaUnlimited: defaults.bool(forKey: Key.oneTimeMediaUnlimited),
             downloadOneTimeMedia: defaults.bool(forKey: Key.downloadOneTimeMedia),
@@ -150,7 +152,8 @@ public struct TelewhiteModsSettings: Equatable {
             }(),
             openRouterApiKey: defaults.string(forKey: Key.openRouterApiKey) ?? "",
             outgoingTranslationAutoEnabled: defaults.bool(forKey: Key.outgoingTranslationAutoEnabled),
-            forwardHideNamesByDefault: defaults.bool(forKey: Key.forwardHideNamesByDefault)
+            forwardHideNamesByDefault: defaults.bool(forKey: Key.forwardHideNamesByDefault),
+            showPreviousEditedText: defaults.object(forKey: Key.showPreviousEditedText) as? Bool ?? true
         )
     }
 
@@ -268,6 +271,7 @@ public struct TelewhiteModsSettings: Equatable {
         defaults.set(self.openRouterApiKey, forKey: Key.openRouterApiKey)
         defaults.set(self.outgoingTranslationAutoEnabled, forKey: Key.outgoingTranslationAutoEnabled)
         defaults.set(self.forwardHideNamesByDefault, forKey: Key.forwardHideNamesByDefault)
+        defaults.set(self.showPreviousEditedText, forKey: Key.showPreviousEditedText)
         NotificationCenter.default.post(name: TelewhiteModsSettings.didChangeNotification, object: nil)
     }
 
@@ -365,6 +369,7 @@ private enum TelewhiteModsEntry: ItemListNodeEntry, Equatable {
     case messengerHeader(String)
     case preserveDeletedMessages(String, Bool)
     case forwardHideNamesByDefault(String, Bool)
+    case showPreviousEditedText(String, Bool)
     case translateMessages(String, Bool)
     case translateChats(String, Bool)
     case autoTranslateEnglish(String, Bool)
@@ -448,7 +453,7 @@ private enum TelewhiteModsEntry: ItemListNodeEntry, Equatable {
         switch self {
         case .menuItem:
             return TelewhiteModsSection.menu.rawValue
-        case .messengerHeader, .preserveDeletedMessages, .translateMessages, .translateChats, .autoTranslateEnglish, .translationTargetLanguage, .outgoingTranslateButtonEnabled, .outgoingTranslationAutoEnabled, .openRouterApiKey, .messengerInfo, .oneTimeMediaUnlimited, .downloadOneTimeMedia, .uploadVoice, .voiceChangeSettings, .uploadVideoMessage:
+        case .messengerHeader, .preserveDeletedMessages, .forwardHideNamesByDefault, .showPreviousEditedText, .translateMessages, .translateChats, .autoTranslateEnglish, .translationTargetLanguage, .outgoingTranslateButtonEnabled, .outgoingTranslationAutoEnabled, .openRouterApiKey, .messengerInfo, .oneTimeMediaUnlimited, .downloadOneTimeMedia, .uploadVoice, .voiceChangeSettings, .uploadVideoMessage:
             return TelewhiteModsSection.messenger.rawValue
         case .vpnHeader, .vpnEnabled, .vpnSubscription, .vpnStatus, .vpnStart, .vpnInfo:
             return TelewhiteModsSection.vpn.rawValue
@@ -511,6 +516,10 @@ private enum TelewhiteModsEntry: ItemListNodeEntry, Equatable {
             return 13
         case .messengerInfo:
             return 14
+        case .forwardHideNamesByDefault:
+            return 15
+        case .showPreviousEditedText:
+            return 16
         case .privacyHeader:
             return 100
         case .hideOnlineStatus:
@@ -713,6 +722,10 @@ private enum TelewhiteModsEntry: ItemListNodeEntry, Equatable {
             return self.switchItem(presentationData: presentationData, arguments: arguments, text: text, value: value) { settings, value in
                 settings.forwardHideNamesByDefault = value
             }
+        case let .showPreviousEditedText(text, value):
+            return self.switchItem(presentationData: presentationData, arguments: arguments, text: text, value: value) { settings, value in
+                settings.showPreviousEditedText = value
+            }
         case let .translateMessages(text, value):
             return ItemListSwitchItem(presentationData: presentationData, systemStyle: .glass, title: text, text: telewhiteEntryDescription(self, presentationData: presentationData), value: value, maximumNumberOfLines: 3, sectionId: self.section, style: .blocks, updated: { value in
                 arguments.updateTranslationSettings { current in
@@ -738,13 +751,6 @@ private enum TelewhiteModsEntry: ItemListNodeEntry, Equatable {
                 arguments.updateSettings { current in
                     var updated = current
                     updated.autoTranslateEnglish = value
-                    return updated
-                }
-                arguments.updateTranslationSettings { current in
-                    var updated = current
-                    if value {
-                        updated = updated.withUpdatedIgnoredLanguages(["ru"])
-                    }
                     return updated
                 }
             })
@@ -1197,12 +1203,14 @@ private func telewhiteEntryDescription(_ entry: TelewhiteModsEntry, presentation
         return text("Messages deleted by others stay visible on this device.", "Сообщения, удалённые собеседником, остаются видны на этом устройстве.")
     case .forwardHideNamesByDefault:
         return text("Forwarded messages are sent without the original author's name by default.", "Пересланные сообщения по умолчанию отправляются без имени исходного автора.")
+    case .showPreviousEditedText:
+        return text("Shows the immediately previous text below an edited message. Stored only on this device.", "Показывает предыдущий текст прямо под отредактированным сообщением. Хранится только на этом устройстве.")
     case .translateMessages:
         return text("Adds a Translate button to the message menu.", "Добавляет кнопку «Перевести» в меню сообщения.")
     case .translateChats:
         return text("Shows a translate bar at the top of foreign-language chats.", "Показывает панель перевода сверху в чатах на иностранном языке.")
     case .autoTranslateEnglish:
-        return text("Automatically translates your messages before sending.", "Автоматически переводит ваши сообщения перед отправкой.")
+        return text("Detects the chat language automatically. Translation stays manual until you enable it for that chat in Telegram's translation bar.", "Сам определяет язык чата. Перевод остаётся ручным, пока вы не включите его для этого чата в панели перевода Telegram.")
     case .outgoingTranslateButtonEnabled:
         return text("Shows the translator button in private chats; tap toggles per-chat outgoing translation, long press picks the language.", "Показывает кнопку переводчика в личных чатах: тап включает перевод исходящих для чата, долгий тап выбирает язык.")
     case .outgoingTranslationAutoEnabled:
@@ -1260,12 +1268,13 @@ private func telewhiteModsEntries(tab: TelewhiteModsTab, settings: TelewhiteMods
         entries.append(.messengerHeader(telewhiteTabTitle(.messenger, strings: strings)))
         entries.append(.preserveDeletedMessages(strings.text("Keep Deleted Messages", "Сохранять удалённые сообщения"), settings.preserveDeletedMessages))
         entries.append(.forwardHideNamesByDefault(strings.text("Forward Without Author", "Пересылать без имени автора"), settings.forwardHideNamesByDefault))
+        entries.append(.showPreviousEditedText(strings.text("Show Previous Edited Text", "Показывать предыдущую версию"), settings.showPreviousEditedText))
         entries.append(.oneTimeMediaUnlimited(strings.text("Unlimited One-Time View", "Одноразовый просмотр без ограничений"), settings.oneTimeMediaUnlimited))
         entries.append(.downloadOneTimeMedia(strings.text("Download One-Time Media", "Скачать одноразовые медиа"), settings.downloadOneTimeMedia))
         entries.append(.uploadVideoMessage(strings.text("Upload Video Message", "Загрузить видеосообщение"), settings.uploadVideoMessage))
         entries.append(.translateMessages(strings.text("Show Translate Button", "Показывать кнопку перевода"), translationSettings.showTranslate))
         entries.append(.translateChats(strings.text("Translate Entire Chats", "Перевод чатов"), translationSettings.translateChats))
-        entries.append(.autoTranslateEnglish(strings.text("Translate Before Sending", "Перевод перед отправкой"), settings.autoTranslateEnglish))
+        entries.append(.autoTranslateEnglish(strings.text("Incoming Message Translation", "Перевод входящих сообщений"), settings.autoTranslateEnglish))
         entries.append(.translationTargetLanguage(strings.text("Translation Language", "Язык перевода"), settings.translationTargetLanguage))
         entries.append(.outgoingTranslateButtonEnabled(strings.text("Per-Chat Translator Button", "Кнопка переводчика в чатах"), settings.outgoingTranslateButtonEnabled))
         entries.append(.outgoingTranslationAutoEnabled(strings.text("Smart Auto-Translate", "Умный автоперевод"), settings.outgoingTranslationAutoEnabled))

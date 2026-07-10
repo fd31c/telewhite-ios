@@ -269,8 +269,14 @@ private func requestEditMessageInternal(accountPeerId: PeerId, postbox: Postbox,
                                                 if let previousPaidContent = previousMessage.media.first(where: { $0 is TelegramMediaPaidContent }) as? TelegramMediaPaidContent, case .full = previousPaidContent.extendedMedia.first {
                                                     updatedMedia = previousMessage.media
                                                 }
+                                                var updatedAttributes = message.attributes.filter { !($0 is TelewhitePreviousTextMessageAttribute) }
+                                                if previousMessage.text != message.text && !previousMessage.text.isEmpty {
+                                                    updatedAttributes.append(TelewhitePreviousTextMessageAttribute(text: previousMessage.text))
+                                                } else if let previousText = previousMessage.attributes.first(where: { $0 is TelewhitePreviousTextMessageAttribute }) as? TelewhitePreviousTextMessageAttribute {
+                                                    updatedAttributes.append(previousText)
+                                                }
 
-                                                return .update(message.withUpdatedLocalTags(updatedLocalTags).withUpdatedFlags(updatedFlags).withUpdatedMedia(updatedMedia))
+                                                return .update(message.withUpdatedLocalTags(updatedLocalTags).withUpdatedFlags(updatedFlags).withUpdatedAttributes(updatedAttributes).withUpdatedMedia(updatedMedia))
                                             })
                                         }
                                     case .updateNewMessage(let data):
@@ -321,8 +327,14 @@ private func requestEditMessageInternal(accountPeerId: PeerId, postbox: Postbox,
                                                 if let previousPaidContent = previousMessage.media.first(where: { $0 is TelegramMediaPaidContent }) as? TelegramMediaPaidContent, case .full = previousPaidContent.extendedMedia.first {
                                                     updatedMedia = previousMessage.media
                                                 }
+                                                var updatedAttributes = message.attributes.filter { !($0 is TelewhitePreviousTextMessageAttribute) }
+                                                if previousMessage.text != message.text && !previousMessage.text.isEmpty {
+                                                    updatedAttributes.append(TelewhitePreviousTextMessageAttribute(text: previousMessage.text))
+                                                } else if let previousText = previousMessage.attributes.first(where: { $0 is TelewhitePreviousTextMessageAttribute }) as? TelewhitePreviousTextMessageAttribute {
+                                                    updatedAttributes.append(previousText)
+                                                }
 
-                                                return .update(message.withUpdatedLocalTags(updatedLocalTags).withUpdatedFlags(updatedFlags).withUpdatedMedia(updatedMedia))
+                                                return .update(message.withUpdatedLocalTags(updatedLocalTags).withUpdatedFlags(updatedFlags).withUpdatedAttributes(updatedAttributes).withUpdatedMedia(updatedMedia))
                                             })
                                         }
                                     case .updateNewChannelMessage(let data):
