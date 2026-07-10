@@ -22,19 +22,35 @@ private func telewhiteCurrentAppIconImage() -> UIImage? {
         return cached.image
     }
     
-    // Alternate icon PNG files are copied into the app bundle root; try common variants.
-    let candidates = [
-        "\(iconName)_120x120",
+    // Alternate icon PNG files are copied into the app bundle root; resolve the file path
+    // explicitly because UIImage(named:) does not reliably find loose bundle-root PNGs.
+    let fileCandidates = [
         "\(iconName)@3x",
+        "\(iconName)_180x180",
+        "\(iconName)_120x120",
         "\(iconName)@2x",
         "\(iconName)_60x60",
         iconName
     ]
     var source: UIImage?
-    for candidate in candidates {
+    for candidate in fileCandidates {
+        if let path = Bundle.main.path(forResource: candidate, ofType: "png"), let image = UIImage(contentsOfFile: path) {
+            source = image
+            break
+        }
         if let image = UIImage(named: candidate) {
             source = image
             break
+        }
+    }
+    if source == nil {
+        // Fall back to the primary app icon from the asset catalog / Info.plist.
+        if let icons = Bundle.main.infoDictionary?["CFBundleIcons"] as? [String: Any],
+           let primary = icons["CFBundlePrimaryIcon"] as? [String: Any],
+           let files = primary["CFBundleIconFiles"] as? [String],
+           let lastFile = files.last,
+           let image = UIImage(named: lastFile) {
+            source = image
         }
     }
     guard let sourceImage = source else {
@@ -43,7 +59,9 @@ private func telewhiteCurrentAppIconImage() -> UIImage? {
     
     // Render at 29x29 with the standard iOS settings-icon corner radius.
     let size = CGSize(width: 29.0, height: 29.0)
-    let renderer = UIGraphicsImageRenderer(size: size)
+    let format = UIGraphicsImageRendererFormat()
+    format.opaque = false
+    let renderer = UIGraphicsImageRenderer(size: size, format: format)
     let result = renderer.image { _ in
         UIBezierPath(roundedRect: CGRect(origin: .zero, size: size), cornerRadius: 6.5).addClip()
         sourceImage.draw(in: CGRect(origin: .zero, size: size))

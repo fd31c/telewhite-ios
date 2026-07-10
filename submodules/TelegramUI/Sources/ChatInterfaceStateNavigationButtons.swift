@@ -86,34 +86,51 @@ private func telewhiteTranslateIcon(theme: PresentationTheme, isEnabled: Bool) -
 }
 
 private func telewhiteOutgoingTranslationIcon(theme: PresentationTheme, isEnabled: Bool) -> UIImage? {
-    let color = UIColor.white
-    guard let baseImage = generateTintedImage(image: UIImage(bundleImageName: "Chat/Title Panels/Translate"), color: color) else {
-        return nil
-    }
     let size = CGSize(width: 30.0, height: 30.0)
-    return generateImage(size, rotatedContext: { size, context in
-        context.clear(CGRect(origin: CGPoint(), size: size))
-        
-        UIGraphicsPushContext(context)
-        let iconRect = CGRect(
-            x: floor((size.width - baseImage.size.width) / 2.0),
-            y: floor((size.height - baseImage.size.height) / 2.0),
-            width: baseImage.size.width,
-            height: baseImage.size.height
-        )
-        baseImage.draw(in: iconRect)
-        UIGraphicsPopContext()
-        
-        if isEnabled {
-            let dotSize: CGFloat = 6.0
-            let dotRect = CGRect(x: size.width - dotSize - 1.0, y: size.height - dotSize - 1.0, width: dotSize, height: dotSize)
-            context.setBlendMode(.clear)
-            context.fillEllipse(in: dotRect.insetBy(dx: -1.5, dy: -1.5))
-            context.setBlendMode(.normal)
-            context.setFillColor(color.cgColor)
-            context.fillEllipse(in: dotRect)
+    if isEnabled {
+        let fillColor = theme.rootController.navigationBar.accentTextColor
+        guard let iconImage = generateTintedImage(image: UIImage(bundleImageName: "Chat/Title Panels/Translate"), color: .white) else {
+            return nil
         }
-    })
+        return generateImage(size, rotatedContext: { size, context in
+            context.clear(CGRect(origin: CGPoint(), size: size))
+            
+            context.setFillColor(fillColor.cgColor)
+            let backgroundRect = CGRect(origin: CGPoint(), size: size)
+            let path = UIBezierPath(roundedRect: backgroundRect, cornerRadius: 8.0)
+            context.addPath(path.cgPath)
+            context.fillPath()
+            
+            UIGraphicsPushContext(context)
+            let scale: CGFloat = 0.8
+            let iconSize = CGSize(width: iconImage.size.width * scale, height: iconImage.size.height * scale)
+            let iconRect = CGRect(
+                x: floor((size.width - iconSize.width) / 2.0),
+                y: floor((size.height - iconSize.height) / 2.0),
+                width: iconSize.width,
+                height: iconSize.height
+            )
+            iconImage.draw(in: iconRect)
+            UIGraphicsPopContext()
+        })
+    } else {
+        guard let iconImage = generateTintedImage(image: UIImage(bundleImageName: "Chat/Title Panels/Translate"), color: .white) else {
+            return nil
+        }
+        return generateImage(size, rotatedContext: { size, context in
+            context.clear(CGRect(origin: CGPoint(), size: size))
+            
+            UIGraphicsPushContext(context)
+            let iconRect = CGRect(
+                x: floor((size.width - iconImage.size.width) / 2.0),
+                y: floor((size.height - iconImage.size.height) / 2.0),
+                width: iconImage.size.width,
+                height: iconImage.size.height
+            )
+            iconImage.draw(in: iconRect, blendMode: .normal, alpha: 0.75)
+            UIGraphicsPopContext()
+        })
+    }
 }
 
 final class TelewhiteOutgoingTranslationButtonNode: HighlightableButtonNode, NavigationButtonCustomDisplayNode {
