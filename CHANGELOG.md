@@ -35,6 +35,11 @@ sideload / fake-codesigning.
 
 ## 2026-07-10 (вечер)
 
+- **[Добавлено]** Автопубликация обновлений: после каждой сборки воркфлоу создаёт GitHub Release
+  (тег `v12.8.<номер сборки>`) с IPA и генерирует `altstore.json` — источник для AltStore/SideStore.
+  Постоянные ссылки: `releases/latest/download/Telewhite-sideload-fake-signed.ipa` (для TrollStore)
+  и `releases/latest/download/altstore.json` (добавить как источник в AltStore — обновления будут
+  предлагаться автоматически). `.github/workflows/build.yml`.
 - **[Исправлено]** Иконка у строки «Telewhite Mods» в настройках теперь реально показывает выбранную
   иконку приложения: загрузка через `UIImage(named:in:getAppBundle())` — тот же механизм, что в пикере
   иконок (`PeerInfoSettingsItems.swift`). Раньше грузилась только синяя стандартная.
@@ -89,7 +94,7 @@ sideload / fake-codesigning.
 
 - **[Добавлено]** Переводчик исходящих сообщений (пер-чат). В навбаре личных чатов появилась кнопка-переводчик
   (рисованная иконка «文 → A», точка = включено): тап включает/выключает перевод исходящих для этого чата,
-  долгий тап (0.35s) открывает ActionSheet выбора языка (11 языков, по умолчанию English, язык запоминается пер-чат).
+  долгий ��ап (0.35s) открывает ActionSheet выбора языка (11 языков, по умолчанию English, язык запоминается пер-чат).
   При включённом переводе текст молча переводится в `sendCurrentMessage` через `context.engine.messages.translate`
   (entities сохраняются, таймаут 10s; при ошибке отправляется оригинал с тостом «Translation failed»).
   Медиа-подписи, редактирование и секретные чаты не затрагиваются. Хранение: `outgoingTranslateButtonEnabled`
@@ -296,8 +301,8 @@ sideload / fake-codesigning.
   без Xcode понять, выдал ли Apple токен для текущего профиля подписи — если статус не «Registered»,
   пуши работать не будут (причина в подписи/профиле, а не в коде). Файлы: `AppDelegate.swift`,
   `TelewhiteModsController.swift`.
-- **[Добавлено]** AMOLED-режим теперь реально работает. Раньше тумблер `amoledMode` сохранялся, но нигде не читался.
-  Добавлен `submodules/TelegramPresentationData/Sources/TelewhiteAmoledTheme.swift`, который превращает
+- **[Добавлено]** AMOLED-режим теперь реально работает. Ра��ьше тумблер `amoledMode` сохранялся, но нигде не читался.
+  Добавлен `submodules/TelegramPresentationData/Sources/TelewhiteAmoledTheme.swift`, который превр��щает
   тёмную тему в true-black: фо�� чатов, списка чатов, панелей и меню становится чистым чёрным (`0x000000`),
   карточки/ячейки — приглушённо-чёрными (`0x1c1c1e`). К светлым темам не применяется.
   Хук встроен в обе точки сборки темы в `PresentationData.swift`; тема пересобирается на лету при

@@ -15,7 +15,7 @@ on:
         default: telewhite
 
 permissions:
-  contents: read
+  contents: write
 
 # Only one build per branch at a time: a new push cancels queued/running
 # builds of the same branch, preventing runner memory exhaustion.
@@ -129,3 +129,71 @@ jobs:
           name: Telewhite-sideload-fake-signed-ipa
           path: /Users/Shared/telegram-ios/build/artifacts/Telewhite-sideload-fake-signed.ipa
           if-no-files-found: error
+
+      - name: Generate AltStore source
+        run: |
+          set -euo pipefail
+          cd /Users/Shared/telegram-ios
+
+          APP_VERSION="$(python3 -c 'import json; print(json.load(open("versions.json"))["app"])')"
+          IPA_PATH="build/artifacts/Telewhite-sideload-fake-signed.ipa"
+
+          python3 - "$APP_VERSION" "$IPA_PATH" "$GITHUB_RUN_NUMBER" <<'PY'
+          import json, os, sys, datetime
+
+          version, ipa_path, build_number = sys.argv[1], sys.argv[2], sys.argv[3]
+          repo = os.environ["GITHUB_REPOSITORY"]
+          download_url = f"https://github.com/{repo}/releases/latest/download/Telewhite-sideload-fake-signed.ipa"
+
+          source = {
+              "name": "Telewhite",
+              "identifier": "app.teledark.source",
+              "subtitle": "Telegram fork with Telewhite Mods",
+              "website": f"https://github.com/{repo}",
+              "apps": [
+                  {
+                      "name": "Telewhite",
+                      "bundleIdentifier": "app.teledark",
+                      "developerName": "Telewhite",
+                      "subtitle": "Telegram with mods: ghost mode, smart proxy, translator and more",
+                      "localizedDescription": "Telegram fork with Telewhite Mods: ghost mode, smart auto-translate, smart proxy, custom app icons and more.",
+                      "iconURL": f"https://raw.githubusercontent.com/{repo}/master/Telegram/Telegram-iOS/WhiteFilledIcon.alticon/WhiteFilledIcon%403x.png",
+                      "tintColor": "#2AABEE",
+                      "versions": [
+                          {
+                              "version": f"{version}.{build_number}",
+                              "date": datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+                              "downloadURL": download_url,
+                              "size": os.path.getsize(ipa_path),
+                              "localizedDescription": f"Build {build_number}. See CHANGELOG.md in the repo for details.",
+                              "minOSVersion": "13.0",
+                          }
+                      ],
+                  }
+              ],
+          }
+
+          with open("build/artifacts/altstore.json", "w", encoding="utf-8") as f:
+              json.dump(source, f, indent=2)
+              f.write("\n")
+          print(json.dumps(source, indent=2))
+          PY
+
+      - name: Publish GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          cd /Users/Shared/telegram-ios
+
+          APP_VERSION="$(python3 -c 'import json; print(json.load(open("versions.json"))["app"])')"
+          TAG="v${APP_VERSION}.${GITHUB_RUN_NUMBER}"
+
+          gh release create "$TAG" \
+            --repo "$GITHUB_REPOSITORY" \
+            --target "$GITHUB_SHA" \
+            --title "Telewhite $TAG" \
+            --notes "Automated build ${GITHUB_RUN_NUMBER} from \`${GITHUB_REF_NAME}\` (${GITHUB_SHA}). Install the IPA with TrollStore, AltStore or SideStore. AltStore source: https://github.com/${GITHUB_REPOSITORY}/releases/latest/download/altstore.json" \
+            --latest \
+            build/artifacts/Telewhite-sideload-fake-signed.ipa \
+            build/artifacts/altstore.json
