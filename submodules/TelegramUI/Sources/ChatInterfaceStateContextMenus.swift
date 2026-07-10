@@ -1464,6 +1464,11 @@ func contextMenuForChatPresentationInterfaceState(chatPresentationInterfaceState
                     mediaReference = FileMediaReference.standalone(media: file).abstract
                     isVideo = true
                     break
+                } else if let file = media as? TelegramMediaFile, file.isAnimated || file.mimeType.hasPrefix("video/") {
+                    // Telewhite: allow saving GIFs (animated mp4) and video stickers to the camera roll
+                    mediaReference = FileMediaReference.standalone(media: file).abstract
+                    isVideo = true
+                    break
                 }
             }
             if let mediaReference = mediaReference {
