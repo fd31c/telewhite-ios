@@ -1,5 +1,6 @@
 import Foundation
 import UIKit
+import NaturalLanguage
 import AsyncDisplayKit
 import Postbox
 import SwiftSignalKit
@@ -4730,22 +4731,67 @@ class ChatControllerNode: ASDisplayNode, ASScrollViewDelegate {
         }
     }
     
+    private static func telewhiteDetectLanguage(_ text: String) -> String? {
+        let recognizer = NLLanguageRecognizer()
+        recognizer.processString(String(text.prefix(400)))
+        guard let language = recognizer.dominantLanguage else {
+            return nil
+        }
+        // Normalize e.g. "pt-BR" -> "pt" to match ISO 639-1 target codes.
+        return language.rawValue.components(separatedBy: "-").first?.lowercased()
+    }
+    
+    private func telewhiteDetectPeerLanguage() -> String? {
+        guard let view = self.historyNode.originalHistoryView else {
+            return nil
+        }
+        var texts: [String] = []
+        for entry in view.entries.reversed() {
+            let message = entry.message
+            if message.flags.contains(.Incoming), !message.text.isEmpty {
+                texts.append(message.text)
+                if texts.count >= 5 {
+                    break
+                }
+            }
+        }
+        guard !texts.isEmpty else {
+            return nil
+        }
+        return ChatControllerNode.telewhiteDetectLanguage(texts.joined(separator: "\n"))
+    }
+    
     private func telewhiteTranslateOutgoingMessagesIfNeeded(_ messages: [EnqueueMessage], _ completion: @escaping ([EnqueueMessage]) -> Void) {
         guard let peerId = self.chatPresentationInterfaceState.chatLocation.peerId, peerId.namespace == Namespaces.Peer.CloudUser else {
             completion(messages)
             return
         }
         let settings = TelewhiteModsSettings.current
-        guard settings.isOutgoingTranslationEnabled(for: peerId) else {
+        let manuallyEnabled = settings.isOutgoingTranslationEnabled(for: peerId)
+        guard manuallyEnabled || settings.outgoingTranslationAutoEnabled else {
             completion(messages)
             return
         }
-        let toLang = settings.outgoingTranslationLanguage(for: peerId)
+        let toLang: String
+        if manuallyEnabled {
+            toLang = settings.outgoingTranslationLanguage(for: peerId)
+        } else {
+            // Auto mode: translate into the chat partner's language, detected from their recent messages.
+            guard let peerLang = self.telewhiteDetectPeerLanguage() else {
+                completion(messages)
+                return
+            }
+            toLang = peerLang
+        }
         let openRouterKey = settings.openRouterApiKey
         
         var translationSignals: [Signal<(Int, String, [MessageTextEntity])?, NoError>] = []
         for (index, message) in messages.enumerated() {
             guard case let .message(text, attributes, _, _, _, _, _, _, _, _) = message, !text.isEmpty else {
+                continue
+            }
+            // Never touch messages that are already in the target language.
+            if let detected = ChatControllerNode.telewhiteDetectLanguage(text), detected == toLang.lowercased() {
                 continue
             }
             var entities: [MessageTextEntity] = []

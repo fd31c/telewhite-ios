@@ -52,6 +52,7 @@ public struct TelewhiteModsSettings: Equatable {
     public var outgoingTranslationPeerIds: Set<Int64>
     public var outgoingTranslationLanguages: [Int64: String]
     public var openRouterApiKey: String
+    public var outgoingTranslationAutoEnabled: Bool
 
     private enum Key {
         static let vpnEnabled = "telewhite.mods.vpnEnabled"
@@ -92,6 +93,7 @@ public struct TelewhiteModsSettings: Equatable {
         static let outgoingTranslationPeerIds = "telewhite.mods.outgoingTranslationPeerIds"
         static let outgoingTranslationLanguages = "telewhite.mods.outgoingTranslationLanguages"
         static let openRouterApiKey = "telewhite.mods.openRouterApiKey"
+        static let outgoingTranslationAutoEnabled = "telewhite.mods.outgoingTranslationAutoEnabled"
     }
     
     public static var current: TelewhiteModsSettings {
@@ -144,7 +146,8 @@ public struct TelewhiteModsSettings: Equatable {
                 }
                 return result
             }(),
-            openRouterApiKey: defaults.string(forKey: Key.openRouterApiKey) ?? ""
+            openRouterApiKey: defaults.string(forKey: Key.openRouterApiKey) ?? "",
+            outgoingTranslationAutoEnabled: defaults.bool(forKey: Key.outgoingTranslationAutoEnabled)
         )
     }
 
@@ -260,6 +263,7 @@ public struct TelewhiteModsSettings: Equatable {
         defaults.set(self.outgoingTranslationPeerIds.map { NSNumber(value: $0) }, forKey: Key.outgoingTranslationPeerIds)
         defaults.set(Dictionary(uniqueKeysWithValues: self.outgoingTranslationLanguages.map { (String($0.key), $0.value) }), forKey: Key.outgoingTranslationLanguages)
         defaults.set(self.openRouterApiKey, forKey: Key.openRouterApiKey)
+        defaults.set(self.outgoingTranslationAutoEnabled, forKey: Key.outgoingTranslationAutoEnabled)
         NotificationCenter.default.post(name: TelewhiteModsSettings.didChangeNotification, object: nil)
     }
 
@@ -359,6 +363,7 @@ private enum TelewhiteModsEntry: ItemListNodeEntry, Equatable {
     case autoTranslateEnglish(String, Bool)
     case translationTargetLanguage(String, String)
     case outgoingTranslateButtonEnabled(String, Bool)
+    case outgoingTranslationAutoEnabled(String, Bool)
     case openRouterApiKey(String, String)
     case messengerInfo(String)
     case oneTimeMediaUnlimited(String, Bool)
@@ -436,7 +441,7 @@ private enum TelewhiteModsEntry: ItemListNodeEntry, Equatable {
         switch self {
         case .menuItem:
             return TelewhiteModsSection.menu.rawValue
-        case .messengerHeader, .preserveDeletedMessages, .translateMessages, .translateChats, .autoTranslateEnglish, .translationTargetLanguage, .outgoingTranslateButtonEnabled, .openRouterApiKey, .messengerInfo, .oneTimeMediaUnlimited, .downloadOneTimeMedia, .uploadVoice, .voiceChangeSettings, .uploadVideoMessage:
+        case .messengerHeader, .preserveDeletedMessages, .translateMessages, .translateChats, .autoTranslateEnglish, .translationTargetLanguage, .outgoingTranslateButtonEnabled, .outgoingTranslationAutoEnabled, .openRouterApiKey, .messengerInfo, .oneTimeMediaUnlimited, .downloadOneTimeMedia, .uploadVoice, .voiceChangeSettings, .uploadVideoMessage:
             return TelewhiteModsSection.messenger.rawValue
         case .vpnHeader, .vpnEnabled, .vpnSubscription, .vpnStatus, .vpnStart, .vpnInfo:
             return TelewhiteModsSection.vpn.rawValue
@@ -493,10 +498,12 @@ private enum TelewhiteModsEntry: ItemListNodeEntry, Equatable {
             return 10
         case .outgoingTranslateButtonEnabled:
             return 11
-        case .openRouterApiKey:
+        case .outgoingTranslationAutoEnabled:
             return 12
-        case .messengerInfo:
+        case .openRouterApiKey:
             return 13
+        case .messengerInfo:
+            return 14
         case .privacyHeader:
             return 100
         case .hideOnlineStatus:
@@ -735,6 +742,10 @@ private enum TelewhiteModsEntry: ItemListNodeEntry, Equatable {
         case let .outgoingTranslateButtonEnabled(text, value):
             return self.switchItem(presentationData: presentationData, arguments: arguments, text: text, value: value) { settings, value in
                 settings.outgoingTranslateButtonEnabled = value
+            }
+        case let .outgoingTranslationAutoEnabled(text, value):
+            return self.switchItem(presentationData: presentationData, arguments: arguments, text: text, value: value) { settings, value in
+                settings.outgoingTranslationAutoEnabled = value
             }
         case let .openRouterApiKey(text, value):
             return ItemListDisclosureItem(presentationData: presentationData, systemStyle: .glass, title: text, label: value.isEmpty ? "" : "•••" + String(value.suffix(4)), labelStyle: .text, sectionId: self.section, style: .blocks, disclosureStyle: .arrow, action: {
@@ -1165,6 +1176,8 @@ private func telewhiteEntryDescription(_ entry: TelewhiteModsEntry, presentation
         return text("Automatically translates your messages before sending.", "Автоматически переводит ваши сообщения перед отправкой.")
     case .outgoingTranslateButtonEnabled:
         return text("Shows the translator button in private chats; tap toggles per-chat outgoing translation, long press picks the language.", "Показывает кнопку перевод��ика в личных чатах: тап включает перевод исходящих для чата, долгий тап выбирает язык.")
+    case .outgoingTranslationAutoEnabled:
+        return text("Automatically translates outgoing messages when your language differs from the chat partner's language (detected from their recent messages). No need to toggle translation manually per chat. Messages already in the target language are never touched.", "Автоматически переводит исходящие, когда ваш язык отличается от языка собеседника (определяется по его последним сообщениям). Не нужно вручную включать перевод в каждом чате. Сообщения уже на целевом языке не трогаются.")
     case .openRouterApiKey:
         return text("Free key from openrouter.ai for high-quality AI translation of outgoing messages. Without it the standard Telegram translator is used.", "Бесплатный ключ с openrouter.ai для качественного AI-перевода исходящих сообщений. Без него используется стандартный переводчик Telegram.")
     case .uploadVideoMessage:
@@ -1225,6 +1238,7 @@ private func telewhiteModsEntries(tab: TelewhiteModsTab, settings: TelewhiteMods
         entries.append(.autoTranslateEnglish(strings.text("Translate Before Sending", "Перевод перед отправкой"), settings.autoTranslateEnglish))
         entries.append(.translationTargetLanguage(strings.text("Translation Language", "Язык перевода"), settings.translationTargetLanguage))
         entries.append(.outgoingTranslateButtonEnabled(strings.text("Per-Chat Translator Button", "Кнопка переводчика в чатах"), settings.outgoingTranslateButtonEnabled))
+        entries.append(.outgoingTranslationAutoEnabled(strings.text("Smart Auto-Translate", "Умный автоперевод"), settings.outgoingTranslationAutoEnabled))
         entries.append(.openRouterApiKey(strings.text("OpenRouter API Key", "Ключ OpenRouter API"), settings.openRouterApiKey))
         entries.append(.messengerInfo(strings.text("Message features are split here: deleted messages, one-time media, uploads and translation.", "Здесь собраны функции сообщений: удалённые сообщения, одноразовые медиа, загрузка и перевод.")))
 
@@ -1350,7 +1364,7 @@ private func telewhiteModsEntries(tab: TelewhiteModsTab, settings: TelewhiteMods
             entries.append(.cornerRadiusOption(Int32(index), preset.0, preset.1, settings.bubbleCornerRadiusOverride == preset.1))
         }
 
-        entries.append(.appearanceInfo(strings.text("Color and radius overrides apply on top of the selected Telegram theme and update instantly.", "Настройки цвета и скругления применяются поверх выбранной темы Telegram и обновл��ются мгновенно.")))
+        entries.append(.appearanceInfo(strings.text("Color and radius overrides apply on top of the selected Telegram theme and update instantly.", "Настройки цвета и скругления применяются поверх выбранной темы Telegram и обновляются мгновенно.")))
 
     case .developer:
         entries.append(.developerHeader(telewhiteTabTitle(.developer, strings: strings)))
@@ -1370,7 +1384,7 @@ private func telewhiteModsEntries(tab: TelewhiteModsTab, settings: TelewhiteMods
         } else {
             shortToken = pushToken
         }
-        entries.append(.pushToken(strings.text("APNs token", "APNs токен"), pushToken.isEmpty ? shortToken : "\(shortToken) — \(strings.text("tap to copy", "нажмите чтобы скопирова��ь"))"))
+        entries.append(.pushToken(strings.text("APNs token", "APNs токен"), pushToken.isEmpty ? shortToken : "\(shortToken) — \(strings.text("tap to copy", "нажмите чтобы скопировать"))"))
         entries.append(.debugMenu(strings.text("Debug Menu", "Меню отладки")))
         entries.append(.developerInfo(strings.text("If push status is not \"Registered\", Apple did not issue a token for this signing profile — messages will not push. IDs are shown in profile/context surfaces when enabled.", "Если статус пушей не \"Registered\", Apple не выдал токен для этого профиля подписи — пуши работать не будут. ID отображаются в профилях и контекстных меню.")))
     }

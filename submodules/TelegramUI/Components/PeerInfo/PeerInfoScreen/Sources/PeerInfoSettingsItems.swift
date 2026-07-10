@@ -13,6 +13,7 @@ import DeviceAccess
 import TelegramStringFormatting
 import PeerNameColorItem
 import SettingsUI
+import AppBundle
 
 private var telewhiteAppIconRowCache: (name: String, image: UIImage)?
 
@@ -22,38 +23,8 @@ private func telewhiteCurrentAppIconImage() -> UIImage? {
         return cached.image
     }
     
-    // Alternate icon PNG files are copied into the app bundle root; resolve the file path
-    // explicitly because UIImage(named:) does not reliably find loose bundle-root PNGs.
-    let fileCandidates = [
-        "\(iconName)@3x",
-        "\(iconName)_180x180",
-        "\(iconName)_120x120",
-        "\(iconName)@2x",
-        "\(iconName)_60x60",
-        iconName
-    ]
-    var source: UIImage?
-    for candidate in fileCandidates {
-        if let path = Bundle.main.path(forResource: candidate, ofType: "png"), let image = UIImage(contentsOfFile: path) {
-            source = image
-            break
-        }
-        if let image = UIImage(named: candidate) {
-            source = image
-            break
-        }
-    }
-    if source == nil {
-        // Fall back to the primary app icon from the asset catalog / Info.plist.
-        if let icons = Bundle.main.infoDictionary?["CFBundleIcons"] as? [String: Any],
-           let primary = icons["CFBundlePrimaryIcon"] as? [String: Any],
-           let files = primary["CFBundleIconFiles"] as? [String],
-           let lastFile = files.last,
-           let image = UIImage(named: lastFile) {
-            source = image
-        }
-    }
-    guard let sourceImage = source else {
+    // Same loading mechanism as the app icon picker in ThemeSettingsAppIconItem.
+    guard let sourceImage = UIImage(named: iconName, in: getAppBundle(), compatibleWith: nil) else {
         return nil
     }
     
