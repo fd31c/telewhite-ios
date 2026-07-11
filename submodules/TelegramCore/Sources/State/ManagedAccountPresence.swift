@@ -24,6 +24,7 @@ private final class AccountPresenceManagerImpl {
     private var onlineTimer: SignalKitTimer?
     
     private var wasOnline: Bool = false
+    private var ghostOfflineUpdateCount: Int = 0
     
     init(queue: Queue, shouldKeepOnlinePresence: Signal<Bool, NoError>, network: Network) {
         self.queue = queue
@@ -54,6 +55,7 @@ private final class AccountPresenceManagerImpl {
         let isOnline = isOnline && !ghostEnabled
         let request: Signal<Api.Bool, MTRpcError>
         if isOnline {
+            self.ghostOfflineUpdateCount = 0
             let timer = SignalKitTimer(timeout: 30.0, repeat: false, completion: { [weak self] in
                 guard let strongSelf = self else {
                     return
@@ -67,10 +69,16 @@ private final class AccountPresenceManagerImpl {
             self.onlineTimer?.invalidate()
             self.onlineTimer = nil
             if ghostEnabled && self.wasOnline {
-                // While the app is actively used in ghost mode, the server re-marks the
-                // account online after actions like sending messages. Periodically re-send
-                // the offline status so the account always shows "last seen recently".
-                let timer = SignalKitTimer(timeout: 5.0, repeat: false, completion: { [weak self] in
+                // Sending can briefly mark the account online on the server. Reassert
+                // offline quickly around the send, then keep a slower maintenance pulse.
+                let timeout: Double
+                if self.ghostOfflineUpdateCount < 8 {
+                    timeout = 0.25
+                    self.ghostOfflineUpdateCount += 1
+                } else {
+                    timeout = 3.0
+                }
+                let timer = SignalKitTimer(timeout: timeout, repeat: false, completion: { [weak self] in
                     guard let strongSelf = self else {
                         return
                     }
@@ -78,6 +86,8 @@ private final class AccountPresenceManagerImpl {
                 }, queue: self.queue)
                 self.onlineTimer = timer
                 timer.start()
+            } else {
+                self.ghostOfflineUpdateCount = 0
             }
             request = self.network.request(Api.functions.account.updateStatus(offline: .boolTrue))
         }
