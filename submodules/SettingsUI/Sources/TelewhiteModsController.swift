@@ -434,7 +434,6 @@ private enum TelewhiteModsEntry: ItemListNodeEntry, Equatable {
     case callsInfo(String)
 
     case appearanceHeader(String)
-    case hideStories(String, Bool)
     case compactChatList(String, Bool)
     case chatSplitLandscape(String, Bool)
     case amoledMode(String, Bool)
@@ -1271,7 +1270,7 @@ private func telewhiteEntryDescription(_ entry: TelewhiteModsEntry, presentation
     case .contentRestrictionBypass, .channelContentRestrictionBypass:
         return text("Lets you forward, copy and save from protected chats and channels.", "Позволяет пересылать, копировать и сохранять из защищённых чатов и каналов.")
     case .hidePhoneInSettings:
-        return text("Hides your phone number in Settings and your profile.", "Скрывает ваш номер телефона в настройках и профиле.")
+        return text("Hides your phone number in Settings and your profile.", "Скрывает ваш номер телефона в настройках и п��офиле.")
     case .showProfileIds, .showUserIds, .showChatIds, .showMessageIds:
         return text("Shows user and chat IDs in profiles. Tap an ID to copy it.", "Показывает ID пользователей и чатов в профилях. Нажмите на ID, чтобы скопировать.")
     case .downloadStories:
