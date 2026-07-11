@@ -528,8 +528,9 @@ public final class SecretMediaPreviewController: ViewController {
                 }
                                 
                 let entry = GalleryEntry(entry: MessageHistoryEntry(message: message, isRead: false, location: nil, monthLocation: nil, attributes: MutableMessageHistoryEntryAttributes(authorIsContact: false)))
-                // Telewhite: allow capturing one-time media (screenshots / screen recording) so it can be saved.
-                let telewhiteCopyProtected = !UserDefaults.standard.bool(forKey: "telewhite.mods.downloadOneTimeMedia")
+                // Telewhite: consistently honor both capture and content bypasses for locally available one-time media.
+                let defaults = UserDefaults.standard
+                let telewhiteCopyProtected = !defaults.bool(forKey: "telewhite.mods.downloadOneTimeMedia") && !defaults.bool(forKey: "telewhite.mods.screenshotProtectionBypass") && !defaults.bool(forKey: "telewhite.mods.contentRestrictionBypass")
                 guard let item = galleryItemForEntry(context: self.context, presentationData: self.presentationData, entry: entry, streamVideos: false, hideControls: true, isSecret: true, playbackRate: { nil }, peerIsCopyProtected: telewhiteCopyProtected, tempFilePath: tempFilePath, playbackCompleted: { [weak self] in
                     if let self {
                         if self.currentNodeMessageIsViewOnce || (duration < 30.0 && !self.currentMessageIsDismissed) {

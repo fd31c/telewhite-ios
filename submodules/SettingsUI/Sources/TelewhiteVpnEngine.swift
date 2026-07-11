@@ -187,8 +187,12 @@ public final class TelewhiteVpnEngine {
     public static func smartConnect(subscriptionUrl: String, accountManager: AccountManager<TelegramAccountManagerTypes>, completion: @escaping (ConnectResult) -> Void) {
         lastStatus = "Testing servers..."
 
+        var savedServers: [ProxyServerSettings] = []
         let proceed: ([ProxyServerSettings], String?) -> Void = { subscriptionServers, subscriptionError in
             var candidates: [ProxyServerSettings] = subscriptionServers
+            for server in savedServers where !candidates.contains(server) {
+                candidates.append(server)
+            }
             for link in builtInProxyLinks {
                 if let server = parseProxyLink(link), !candidates.contains(server) {
                     candidates.append(server)
@@ -237,14 +241,21 @@ public final class TelewhiteVpnEngine {
             }
         }
 
-        let trimmed = subscriptionUrl.trimmingCharacters(in: .whitespacesAndNewlines)
-        if trimmed.isEmpty {
-            proceed([], nil)
-        } else {
-            fetchSubscription(url: trimmed) { servers, error in
-                proceed(servers, error)
+        let startTesting: () -> Void = {
+            let trimmed = subscriptionUrl.trimmingCharacters(in: .whitespacesAndNewlines)
+            if trimmed.isEmpty {
+                proceed([], nil)
+            } else {
+                fetchSubscription(url: trimmed) { servers, error in
+                    proceed(servers, error)
+                }
             }
         }
+        let _ = (accountManager.sharedData(keys: [SharedDataKeys.proxySettings])
+        |> take(1)).start(next: { sharedData in
+            savedServers = sharedData.entries[SharedDataKeys.proxySettings]?.get(ProxySettings.self)?.servers ?? []
+            startTesting()
+        })
     }
 
     /// Disables the Telegram proxy (turns Telewhite VPN off).

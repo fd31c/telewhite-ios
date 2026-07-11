@@ -55,6 +55,8 @@ public struct TelewhiteModsSettings: Equatable {
     public var outgoingTranslationAutoEnabled: Bool
     public var forwardHideNamesByDefault: Bool
     public var showPreviousEditedText: Bool
+    public var autoCacheCleanup: Bool
+    public var cacheLimitGigabytes: Int32
 
     private enum Key {
         static let vpnEnabled = "telewhite.mods.vpnEnabled"
@@ -98,6 +100,8 @@ public struct TelewhiteModsSettings: Equatable {
         static let outgoingTranslationAutoEnabled = "telewhite.mods.outgoingTranslationAutoEnabled"
         static let forwardHideNamesByDefault = "telewhite.mods.forwardHideNamesByDefault"
         static let showPreviousEditedText = "telewhite.mods.showPreviousEditedText"
+        static let autoCacheCleanup = "telewhite.mods.autoCacheCleanup"
+        static let cacheLimitGigabytes = "telewhite.mods.cacheLimitGigabytes"
     }
     
     public static var current: TelewhiteModsSettings {
@@ -153,7 +157,9 @@ public struct TelewhiteModsSettings: Equatable {
             openRouterApiKey: defaults.string(forKey: Key.openRouterApiKey) ?? "",
             outgoingTranslationAutoEnabled: defaults.bool(forKey: Key.outgoingTranslationAutoEnabled),
             forwardHideNamesByDefault: defaults.bool(forKey: Key.forwardHideNamesByDefault),
-            showPreviousEditedText: defaults.object(forKey: Key.showPreviousEditedText) as? Bool ?? true
+            showPreviousEditedText: defaults.object(forKey: Key.showPreviousEditedText) as? Bool ?? true,
+            autoCacheCleanup: defaults.bool(forKey: Key.autoCacheCleanup),
+            cacheLimitGigabytes: max(1, (defaults.object(forKey: Key.cacheLimitGigabytes) as? NSNumber)?.int32Value ?? 5)
         )
     }
 
@@ -272,6 +278,8 @@ public struct TelewhiteModsSettings: Equatable {
         defaults.set(self.outgoingTranslationAutoEnabled, forKey: Key.outgoingTranslationAutoEnabled)
         defaults.set(self.forwardHideNamesByDefault, forKey: Key.forwardHideNamesByDefault)
         defaults.set(self.showPreviousEditedText, forKey: Key.showPreviousEditedText)
+        defaults.set(self.autoCacheCleanup, forKey: Key.autoCacheCleanup)
+        defaults.set(self.cacheLimitGigabytes, forKey: Key.cacheLimitGigabytes)
         NotificationCenter.default.post(name: TelewhiteModsSettings.didChangeNotification, object: nil)
     }
 
@@ -414,7 +422,11 @@ private enum TelewhiteModsEntry: ItemListNodeEntry, Equatable {
 
     case mediaHeader(String)
     case downloadStories(String, Bool)
+    case hideStories(String, Bool)
+    case autoCacheCleanup(String, Bool)
+    case cacheLimit(Int32, String, Int32, Bool)
     case mediaInfo(String)
+
 
     case callsHeader(String)
     case autoRecordCalls(String, Bool)
@@ -463,7 +475,7 @@ private enum TelewhiteModsEntry: ItemListNodeEntry, Equatable {
             return TelewhiteModsSection.stealth.rawValue
         case .channelsHeader, .channelContentRestrictionBypass, .channelsInfo:
             return TelewhiteModsSection.channels.rawValue
-        case .mediaHeader, .downloadStories, .hideStories, .mediaInfo:
+        case .mediaHeader, .downloadStories, .hideStories, .autoCacheCleanup, .cacheLimit, .mediaInfo:
             return TelewhiteModsSection.media.rawValue
         case .callsHeader, .autoRecordCalls, .callRecordButton, .callsInfo:
             return TelewhiteModsSection.calls.rawValue
@@ -574,6 +586,10 @@ private enum TelewhiteModsEntry: ItemListNodeEntry, Equatable {
             return 501
         case .mediaInfo:
             return 502
+        case .autoCacheCleanup:
+            return 503
+        case let .cacheLimit(index, _, _, _):
+            return 504 + index
         case .callsHeader:
             return 600
         case .autoRecordCalls:
@@ -865,6 +881,19 @@ private enum TelewhiteModsEntry: ItemListNodeEntry, Equatable {
             return self.switchItem(presentationData: presentationData, arguments: arguments, text: text, value: value) { settings, value in
                 settings.downloadStories = value
             }
+        case let .autoCacheCleanup(text, value):
+            return self.switchItem(presentationData: presentationData, arguments: arguments, text: text, value: value) { settings, value in
+                settings.autoCacheCleanup = value
+            }
+        case let .cacheLimit(_, text, value, selected):
+            return ItemListCheckboxItem(presentationData: presentationData, systemStyle: .glass, title: text, style: .right, checked: selected, zeroSeparatorInsets: false, sectionId: self.section, action: {
+                arguments.updateSettings { current in
+                    var updated = current
+                    updated.cacheLimitGigabytes = value
+                    updated.autoCacheCleanup = true
+                    return updated
+                }
+            })
         case let .autoRecordCalls(text, value):
             return self.switchItem(presentationData: presentationData, arguments: arguments, text: text, value: value) { settings, value in
                 settings.autoRecordCalls = value
@@ -1247,6 +1276,8 @@ private func telewhiteEntryDescription(_ entry: TelewhiteModsEntry, presentation
         return text("Shows user and chat IDs in profiles. Tap an ID to copy it.", "Показывает ID пользователей и чатов в профилях. Нажмите на ID, чтобы скопировать.")
     case .downloadStories:
         return text("Adds a save button to stories.", "Добавляет кнопку сохранения в истории.")
+    case .autoCacheCleanup:
+        return text("Automatically removes the oldest local media after the selected cache limit is reached. Cloud messages and files remain available.", "Автоматически удаляет самые старые локальные медиа после достижения выбранного лимита. Сообщения и облачные файлы остаются доступными.")
     case .hideStories:
         return text("Hides the stories row above the chat list.", "Скрывает ленту историй над списком чатов.")
     case .compactChatList:
@@ -1307,7 +1338,13 @@ private func telewhiteModsEntries(tab: TelewhiteModsTab, settings: TelewhiteMods
         entries.append(.mediaHeader(telewhiteTabTitle(.media, strings: strings)))
         entries.append(.downloadStories(strings.text("Download Stories", "Скачать истории"), settings.downloadStories))
         entries.append(.hideStories(strings.text("Hide Stories Row", "Скрыть блок историй"), settings.hideStories))
-        entries.append(.mediaInfo(strings.text("Story controls are separated from message controls.", "Настройки историй вынесены отдельно от сообщений.")))
+        entries.append(.autoCacheCleanup(strings.text("Automatic Cache Cleanup", "Автоматическая очистка кэша"), settings.autoCacheCleanup))
+        if settings.autoCacheCleanup {
+            for (index, limit) in [Int32(1), 2, 5, 10].enumerated() {
+                entries.append(.cacheLimit(Int32(index), strings.text("Up to \(limit) GB", "До \(limit) ГБ"), limit, settings.cacheLimitGigabytes == limit))
+            }
+        }
+        entries.append(.mediaInfo(strings.text("Old local media is removed automatically at the selected limit. Cloud messages and files stay available.", "Старые локальные медиа удаляются автоматически при выбранном лимите. Сообщения и облачные файлы остаются доступными.")))
 
     case .calls:
         entries.append(.callsHeader(telewhiteTabTitle(.calls, strings: strings)))
@@ -1460,6 +1497,17 @@ public func telewhiteModsController(context: AccountContext) -> ViewController {
         }
         let shouldHidePresence = updated.hideOnlineStatus || !updated.ghostPeerIds.isEmpty
         context.account.shouldKeepOnlinePresence.set(.single(!shouldHidePresence))
+        let cacheLimit = updated.autoCacheCleanup ? updated.cacheLimitGigabytes : Int32.max
+        let _ = updateCacheStorageSettingsInteractively(accountManager: context.sharedContext.accountManager, { current in
+            var current = current
+            current.defaultCacheStorageLimitGigabytes = cacheLimit
+            return current
+        }).start()
+        let _ = (context.sharedContext.accountManager.sharedData(keys: [SharedDataKeys.cacheStorageSettings])
+        |> take(1)).start(next: { sharedData in
+            let cacheSettings = sharedData.entries[SharedDataKeys.cacheStorageSettings]?.get(CacheStorageSettings.self) ?? CacheStorageSettings.defaultSettings
+            context.account.postbox.mediaBox.setMaxStoreTimes(general: cacheSettings.defaultCacheStorageTimeout, shortLived: 60 * 60, gigabytesLimit: cacheLimit)
+        })
         statePromise.set(updated)
     }
 
