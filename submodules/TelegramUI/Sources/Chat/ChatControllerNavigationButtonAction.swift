@@ -135,7 +135,11 @@ extension ChatControllerImpl {
                 settings.ghostPeerIds.insert(peerId)
             }
             settings.save()
-            self.context.account.shouldKeepOnlinePresence.set(.single(!settings.hideOnlineStatus && !settings.ghostMode))
+            let presenceBlocked = settings.hideOnlineStatus || settings.ghostMode || settings.hideReadReceipts
+            self.context.account.shouldKeepOnlinePresence.set(self.context.sharedContext.applicationBindings.applicationInForeground
+            |> map { inForeground in
+                return inForeground && !presenceBlocked
+            })
 
             let isEnabled = settings.ghostPeerIds.contains(peerId)
             if !isEnabled {

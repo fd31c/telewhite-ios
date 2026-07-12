@@ -133,13 +133,18 @@ func chatContextMenuItems(context: AccountContext, peerId: EnginePeer.Id, promoI
                         })
                     })))
                     if UserDefaults.standard.bool(forKey: "telewhite.hiddenChats.enabled") || metadata.isHidden {
-                        items.append(.action(ContextMenuActionItem(text: metadata.isHidden ? "Unhide Chat" : "Hide Chat", textColor: metadata.isHidden ? .primary : .destructive, icon: { theme in generateTintedImage(image: UIImage(bundleImageName: metadata.isHidden ? "Chat/Context Menu/Unhide" : "Chat/Context Menu/Hide"), color: metadata.isHidden ? theme.contextMenu.primaryColor : theme.contextMenu.destructiveColor) }, action: { _, f in
+                        items.append(.action(ContextMenuActionItem(text: metadata.isHidden ? "Unhide Chat" : "Hide Chat", textColor: metadata.isHidden ? .primary : .destructive, icon: { theme in generateTintedImage(image: UIImage(bundleImageName: metadata.isHidden ? "Chat/Context Menu/Eye" : "Chat/Context Menu/EyeLocked"), color: metadata.isHidden ? theme.contextMenu.primaryColor : theme.contextMenu.destructiveColor) }, action: { _, f in
                             if metadata.isHidden {
-                                let _ = LocalAuth.auth(reason: "Unlock hidden chat").start(next: { result in
-                                    if result.0 {
-                                        TelewhiteChatFeatures.update(accountPeerId: context.account.peerId, peerId: peerId) { $0.isHidden = false }
-                                    }
-                                })
+                                if LocalAuth.biometricAuthentication != nil {
+                                    let _ = LocalAuth.auth(reason: "Unlock hidden chat").start(next: { result in
+                                        if result.0 {
+                                            TelewhiteChatFeatures.update(accountPeerId: context.account.peerId, peerId: peerId) { $0.isHidden = false }
+                                        }
+                                    })
+                                } else {
+                                    // No biometrics available on this device: don't lock the user out of their hidden chats.
+                                    TelewhiteChatFeatures.update(accountPeerId: context.account.peerId, peerId: peerId) { $0.isHidden = false }
+                                }
                             } else {
                                 TelewhiteChatFeatures.update(accountPeerId: context.account.peerId, peerId: peerId) { $0.isHidden = true }
                             }

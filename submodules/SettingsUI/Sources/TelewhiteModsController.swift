@@ -1509,8 +1509,11 @@ public func telewhiteModsController(context: AccountContext) -> ViewController {
             updated.save()
             return updated
         }
-        let shouldHidePresence = updated.hideOnlineStatus || updated.ghostMode
-        context.account.shouldKeepOnlinePresence.set(.single(!shouldHidePresence))
+        let shouldHidePresence = updated.hideOnlineStatus || updated.ghostMode || updated.hideReadReceipts
+        context.account.shouldKeepOnlinePresence.set(context.sharedContext.applicationBindings.applicationInForeground
+        |> map { inForeground in
+            return inForeground && !shouldHidePresence
+        })
         let cacheLimit = updated.autoCacheCleanup ? updated.cacheLimitGigabytes : Int32.max
         let _ = updateCacheStorageSettingsInteractively(accountManager: context.sharedContext.accountManager, { current in
             var current = current
