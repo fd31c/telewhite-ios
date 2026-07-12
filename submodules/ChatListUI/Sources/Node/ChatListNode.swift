@@ -2143,9 +2143,10 @@ public final class ChatListNode: ListViewImpl {
             self.statePromise.get(),
             contacts,
             chatListFilters,
-            accountIsPremium
+            accountIsPremium,
+            TelewhiteChatFeatures.version.get()
         )
-        |> mapToQueue { (hideArchivedFolderByDefault, displayArchiveIntro, storageInfo, savedMessagesPeer, updateAndFilter, state, contacts, chatListFilters, accountIsPremium) -> Signal<ChatListNodeListViewTransition, NoError> in
+        |> mapToQueue { (hideArchivedFolderByDefault, displayArchiveIntro, storageInfo, savedMessagesPeer, updateAndFilter, state, contacts, chatListFilters, accountIsPremium, _) -> Signal<ChatListNodeListViewTransition, NoError> in
             let (update, filter) = updateAndFilter
             
             let previousHideArchivedFolderByDefaultValue = previousHideArchivedFolderByDefault.swap(hideArchivedFolderByDefault)

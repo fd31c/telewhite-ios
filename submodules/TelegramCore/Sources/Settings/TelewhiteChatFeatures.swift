@@ -1,5 +1,6 @@
 import Foundation
 import Postbox
+import SwiftSignalKit
 
 public struct TelewhiteChatMetadata: Codable, Equatable {
     public var note: String
@@ -15,6 +16,10 @@ public struct TelewhiteChatMetadata: Codable, Equatable {
 
 public enum TelewhiteChatFeatures {
     private static let lock = NSLock()
+
+    // Bumped on every change so list UIs (e.g. the chat list) can re-filter hidden chats immediately.
+    public static let version = ValuePromise<Int>(0, ignoreRepeated: true)
+    private static var versionValue: Int = 0
 
     private static func key(accountPeerId: PeerId) -> String {
         return "telewhite.chatFeatures.\(accountPeerId.toInt64())"
@@ -53,6 +58,8 @@ public enum TelewhiteChatFeatures {
         if let data = try? JSONEncoder().encode(values) {
             UserDefaults.standard.set(data, forKey: storageKey)
         }
+        versionValue += 1
+        version.set(versionValue)
         NotificationCenter.default.post(name: Notification.Name("TelewhiteChatFeaturesChanged"), object: nil)
     }
 
