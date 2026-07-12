@@ -18,6 +18,7 @@ public struct TelewhiteModsSettings: Equatable {
     public var vpnSubscription: String
     public var ghostMode: Bool
     public var ghostChatButtonEnabled: Bool
+    public var hiddenChatsEnabled: Bool
     public var preserveDeletedMessages: Bool
     public var hideOnlineStatus: Bool
     public var hideTypingStatus: Bool
@@ -63,6 +64,7 @@ public struct TelewhiteModsSettings: Equatable {
         static let vpnSubscription = "telewhite.mods.vpnSubscription"
         static let ghostMode = "telewhite.mods.ghostMode"
         static let ghostChatButtonEnabled = "telewhite.mods.ghostChatButtonEnabled"
+        static let hiddenChatsEnabled = "telewhite.hiddenChats.enabled"
         static let preserveDeletedMessages = "telewhite.mods.preserveDeletedMessages"
         static let hideOnlineStatus = "telewhite.mods.hideOnlineStatus"
         static let hideTypingStatus = "telewhite.mods.hideTypingStatus"
@@ -111,6 +113,7 @@ public struct TelewhiteModsSettings: Equatable {
             vpnSubscription: defaults.string(forKey: Key.vpnSubscription) ?? "",
             ghostMode: defaults.bool(forKey: Key.ghostMode),
             ghostChatButtonEnabled: defaults.object(forKey: Key.ghostChatButtonEnabled) as? Bool ?? true,
+            hiddenChatsEnabled: defaults.bool(forKey: Key.hiddenChatsEnabled),
             preserveDeletedMessages: defaults.bool(forKey: Key.preserveDeletedMessages),
             hideOnlineStatus: defaults.bool(forKey: Key.hideOnlineStatus),
             hideTypingStatus: defaults.bool(forKey: Key.hideTypingStatus),
@@ -220,6 +223,7 @@ public struct TelewhiteModsSettings: Equatable {
         defaults.set(self.vpnSubscription, forKey: Key.vpnSubscription)
         defaults.set(self.ghostMode, forKey: Key.ghostMode)
         defaults.set(self.ghostChatButtonEnabled, forKey: Key.ghostChatButtonEnabled)
+        defaults.set(self.hiddenChatsEnabled, forKey: Key.hiddenChatsEnabled)
         defaults.set(self.preserveDeletedMessages, forKey: Key.preserveDeletedMessages)
         defaults.set(self.hideOnlineStatus, forKey: Key.hideOnlineStatus)
         defaults.set(self.hideTypingStatus, forKey: Key.hideTypingStatus)
@@ -403,6 +407,7 @@ private enum TelewhiteModsEntry: ItemListNodeEntry, Equatable {
     case hideOnlineStatus(String, Bool)
     case ghostMode(String, Bool)
     case ghostChatButtonEnabled(String, Bool)
+    case hiddenChatsEnabled(String, Bool)
     case hideTypingStatus(String, Bool)
     case hideReadReceipts(String, Bool)
     case screenshotProtectionBypass(String, Bool)
@@ -468,7 +473,7 @@ private enum TelewhiteModsEntry: ItemListNodeEntry, Equatable {
             return TelewhiteModsSection.messenger.rawValue
         case .vpnHeader, .vpnEnabled, .vpnSubscription, .vpnStatus, .vpnStart, .vpnInfo:
             return TelewhiteModsSection.vpn.rawValue
-        case .privacyHeader, .hideOnlineStatus, .ghostMode, .ghostChatButtonEnabled, .hideTypingStatus, .hideReadReceipts, .screenshotProtectionBypass, .contentRestrictionBypass, .hidePhoneInSettings, .showProfileIds, .privacyInfo:
+        case .privacyHeader, .hideOnlineStatus, .ghostMode, .ghostChatButtonEnabled, .hiddenChatsEnabled, .hideTypingStatus, .hideReadReceipts, .screenshotProtectionBypass, .contentRestrictionBypass, .hidePhoneInSettings, .showProfileIds, .privacyInfo:
             return TelewhiteModsSection.privacy.rawValue
         case .stealthHeader, .ghostMessages, .ghostStories, .stealthInfo:
             return TelewhiteModsSection.stealth.rawValue
@@ -553,6 +558,8 @@ private enum TelewhiteModsEntry: ItemListNodeEntry, Equatable {
             return 109
         case .privacyInfo:
             return 110
+        case .hiddenChatsEnabled:
+            return 111
         case .vpnHeader:
             return 200
         case .vpnEnabled:
@@ -838,6 +845,10 @@ private enum TelewhiteModsEntry: ItemListNodeEntry, Equatable {
         case let .ghostChatButtonEnabled(text, value):
             return self.switchItem(presentationData: presentationData, arguments: arguments, text: text, value: value) { settings, value in
                 settings.ghostChatButtonEnabled = value
+            }
+        case let .hiddenChatsEnabled(text, value):
+            return self.switchItem(presentationData: presentationData, arguments: arguments, text: text, value: value) { settings, value in
+                settings.hiddenChatsEnabled = value
             }
         case let .hideTypingStatus(text, value):
             return self.switchItem(presentationData: presentationData, arguments: arguments, text: text, value: value) { settings, value in
@@ -1259,6 +1270,8 @@ private func telewhiteEntryDescription(_ entry: TelewhiteModsEntry, presentation
         return text("Full invisibility: hides reads, typing and online status.", "Полная невидимость: скрывает прочтение, набор текста и онлайн.")
     case .ghostChatButtonEnabled:
         return text("Adds a per-chat ghost button that hides read, voice/video play and typing receipts. Telegram cannot hide online from only one contact; use global Ghost Mode for that.", "Добавляет кнопку призрака для выбранного чата: скрывает прочтение, прослушивание голосовых/кружков и набор текста. Telegram не позволяет скрыть онлайн только от одного контакта — для этого используйте глобальную невидимку.")
+    case .hiddenChatsEnabled:
+        return text("Enables the Hide Chat action. Hidden chat data stays on this device.", "Включает действие «Скрыть чат». Данные скрытых чатов хранятся только на этом устройстве.")
     case .hideTypingStatus:
         return text("Others won't see when you're typing or recording.", "Другие не увидят, что вы печатаете или записываете.")
     case .hideReadReceipts, .ghostMessages:
@@ -1319,6 +1332,7 @@ private func telewhiteModsEntries(tab: TelewhiteModsTab, settings: TelewhiteMods
         entries.append(.hidePhoneInSettings(strings.text("Hide Phone in Settings", "Скрыть номер в настройках"), settings.hidePhoneInSettings))
         entries.append(.showProfileIds(strings.text("Show Profile ID", "Показать ID профиля"), settings.showUserIds && settings.showChatIds))
         entries.append(.ghostChatButtonEnabled(strings.text("Per-Chat Ghost Button", "Кнопка невидимки в чатах"), settings.ghostChatButtonEnabled))
+        entries.append(.hiddenChatsEnabled(strings.text("Hidden Chats", "Скрытые чаты"), settings.hiddenChatsEnabled))
         entries.append(.privacyInfo(strings.text("Online, screenshot and content controls live here.", "Здесь находятся настройки онлайна, скриншотов и ограничений контента.")))
 
     case .stealth:

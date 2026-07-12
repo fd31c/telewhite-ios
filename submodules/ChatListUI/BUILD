@@ -22,6 +22,8 @@ swift_library(
         "//submodules/OverlayStatusController:OverlayStatusController",
         "//submodules/AlertUI:AlertUI",
         "//submodules/PresentationDataUtils:PresentationDataUtils",
+        "//submodules/PromptUI:PromptUI",
+        "//submodules/LocalAuth:LocalAuth",
         "//submodules/UndoUI:UndoUI",
         "//submodules/TelegramNotices:TelegramNotices",
         "//submodules/SearchUI:SearchUI",
