@@ -17,14 +17,23 @@ import AppBundle
 
 private var telewhiteAppIconRowCache: (name: String, image: UIImage)?
 
-private func telewhiteCurrentAppIconImage() -> UIImage? {
-    let iconName = UIApplication.shared.alternateIconName ?? "BlueIcon"
-    if let cached = telewhiteAppIconRowCache, cached.name == iconName {
+private func telewhiteCurrentAppIconImage(context: AccountContext) -> UIImage? {
+    let icons = context.sharedContext.applicationBindings.getAvailableAlternateIcons()
+    let selectedIcon: PresentationAppIcon?
+    if let alternateIconName = context.sharedContext.applicationBindings.getAlternateIconName() {
+        selectedIcon = icons.first(where: { $0.name == alternateIconName })
+    } else {
+        selectedIcon = icons.first(where: { $0.isDefault })
+    }
+    guard let selectedIcon else {
+        return nil
+    }
+    if let cached = telewhiteAppIconRowCache, cached.name == selectedIcon.name {
         return cached.image
     }
     
-    // Same loading mechanism as the app icon picker in ThemeSettingsAppIconItem.
-    guard let sourceImage = UIImage(named: iconName, in: getAppBundle(), compatibleWith: nil) else {
+    // Alternate icon identity and its bundle image name are not always the same.
+    guard let sourceImage = UIImage(named: selectedIcon.imageName, in: getAppBundle(), compatibleWith: nil) else {
         return nil
     }
     
@@ -37,7 +46,7 @@ private func telewhiteCurrentAppIconImage() -> UIImage? {
         UIBezierPath(roundedRect: CGRect(origin: .zero, size: size), cornerRadius: 6.5).addClip()
         sourceImage.draw(in: CGRect(origin: .zero, size: size))
     }
-    telewhiteAppIconRowCache = (iconName, result)
+    telewhiteAppIconRowCache = (selectedIcon.name, result)
     return result
 }
 
@@ -179,7 +188,7 @@ func settingsItems(data: PeerInfoScreenData?, context: AccountContext, presentat
         items[.myProfile]!.append(PeerInfoScreenDisclosureItem(id: 0, text: presentationData.strings.Settings_MyProfile, icon: PresentationResourcesSettings.myProfile, action: {
             interaction.openSettings(.profile)
         }))
-        items[.telewhite]!.append(PeerInfoScreenDisclosureItem(id: 0, label: .titleBadge("MOD", presentationData.theme.list.itemAccentColor), text: "Telewhite Mods", icon: telewhiteCurrentAppIconImage() ?? PresentationResourcesSettings.appearance, action: {
+        items[.telewhite]!.append(PeerInfoScreenDisclosureItem(id: 0, label: .titleBadge("MOD", presentationData.theme.list.itemAccentColor), text: "Telewhite Mods", icon: telewhiteCurrentAppIconImage(context: context) ?? PresentationResourcesSettings.appearance, action: {
             interaction.openSettings(.telewhiteMods)
         }))
         
