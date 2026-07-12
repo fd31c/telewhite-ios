@@ -79,6 +79,11 @@ func managedSynchronizeConsumeMessageContentOperations(postbox: Postbox, network
             }
             
             for (entry, disposable) in beginOperations {
+                let defaults = UserDefaults.standard
+                let ghostPeerIds = defaults.array(forKey: "telewhite.mods.ghostPeerIds") as? [NSNumber] ?? []
+                if defaults.bool(forKey: "telewhite.mods.ghostMode") || defaults.bool(forKey: "telewhite.mods.hideReadReceipts") || ghostPeerIds.contains(NSNumber(value: entry.peerId.toInt64())) {
+                    continue
+                }
                 let signal = withTakenOperation(postbox: postbox, peerId: entry.peerId, tagLocalIndex: entry.tagLocalIndex, { transaction, entry -> Signal<Void, NoError> in
                     if let entry = entry {
                         if let operation = entry.contents as? SynchronizeConsumeMessageContentsOperation {
@@ -110,12 +115,6 @@ func managedSynchronizeConsumeMessageContentOperations(postbox: Postbox, network
 }
 
 private func synchronizeConsumeMessageContents(transaction: Transaction, network: Network, stateManager: AccountStateManager, peerId: PeerId, operation: SynchronizeConsumeMessageContentsOperation) -> Signal<Void, NoError> {
-    let defaults = UserDefaults.standard
-    let ghostPeerIds = defaults.array(forKey: "telewhite.mods.ghostPeerIds") as? [NSNumber] ?? []
-    if defaults.bool(forKey: "telewhite.mods.ghostMode") || defaults.bool(forKey: "telewhite.mods.hideReadReceipts") || ghostPeerIds.contains(NSNumber(value: peerId.toInt64())) {
-        // In ghost mode, don't notify the sender that their voice/video message was played/watched.
-        return .complete()
-    }
     if peerId.namespace == Namespaces.Peer.CloudUser || peerId.namespace == Namespaces.Peer.CloudGroup {
         return network.request(Api.functions.messages.readMessageContents(id: operation.messageIds.map { $0.id }))
         |> map(Optional.init)

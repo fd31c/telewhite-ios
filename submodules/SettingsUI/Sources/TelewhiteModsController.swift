@@ -1258,7 +1258,7 @@ private func telewhiteEntryDescription(_ entry: TelewhiteModsEntry, presentation
     case .ghostMode:
         return text("Full invisibility: hides reads, typing and online status.", "Полная невидимость: скрывает прочтение, набор текста и онлайн.")
     case .ghostChatButtonEnabled:
-        return text("Adds a ghost button inside private chats and groups to go invisible in that chat only.", "Добавляет кнопку призрака в личных чатах и группах — невидимость только в этом чате.")
+        return text("Adds a per-chat ghost button that hides read, voice/video play and typing receipts. Telegram cannot hide online from only one contact; use global Ghost Mode for that.", "Добавляет кнопку призрака для выбранного чата: скрывает прочтение, прослушивание голосовых/кружков и набор текста. Telegram не позволяет скрыть онлайн только от одного контакта — для этого используйте глобальную невидимку.")
     case .hideTypingStatus:
         return text("Others won't see when you're typing or recording.", "Другие не увидят, что вы печатаете или записываете.")
     case .hideReadReceipts, .ghostMessages:
@@ -1309,7 +1309,7 @@ private func telewhiteModsEntries(tab: TelewhiteModsTab, settings: TelewhiteMods
         entries.append(.outgoingTranslateButtonEnabled(strings.text("Per-Chat Translator Button", "Кнопка переводчика в чатах"), settings.outgoingTranslateButtonEnabled))
         entries.append(.outgoingTranslationAutoEnabled(strings.text("Smart Auto-Translate", "Умный автоперевод"), settings.outgoingTranslationAutoEnabled))
         entries.append(.openRouterApiKey(strings.text("OpenRouter API Key", "Ключ OpenRouter API"), settings.openRouterApiKey))
-        entries.append(.messengerInfo(strings.text("Message features are split here: deleted messages, one-time media, uploads and translation.", "Здесь собраны функции сообщений: удалённые сообщения, одноразовые медиа, загрузка и перевод.")))
+        entries.append(.messengerInfo(strings.text("Message features are split here: deleted messages, one-time media, uploads and translation.", "Здесь собраны функции сообщений: удалённые сообщения, одноразовые медиа, за��рузка и перевод.")))
 
     case .privacy:
         entries.append(.privacyHeader(telewhiteTabTitle(.privacy, strings: strings)))
@@ -1494,7 +1494,7 @@ public func telewhiteModsController(context: AccountContext) -> ViewController {
             updated.save()
             return updated
         }
-        let shouldHidePresence = updated.hideOnlineStatus || !updated.ghostPeerIds.isEmpty
+        let shouldHidePresence = updated.hideOnlineStatus || updated.ghostMode
         context.account.shouldKeepOnlinePresence.set(.single(!shouldHidePresence))
         let cacheLimit = updated.autoCacheCleanup ? updated.cacheLimitGigabytes : Int32.max
         let _ = updateCacheStorageSettingsInteractively(accountManager: context.sharedContext.accountManager, { current in

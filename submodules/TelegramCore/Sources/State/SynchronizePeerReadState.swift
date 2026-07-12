@@ -3,9 +3,12 @@ import Postbox
 import TelegramApi
 import SwiftSignalKit
 
-private func telewhiteHideReadReceiptsEnabled() -> Bool {
+private func telewhiteHideReadReceiptsEnabled(peerId: PeerId) -> Bool {
     let defaults = UserDefaults.standard
-    return defaults.bool(forKey: "telewhite.mods.ghostMode") || defaults.bool(forKey: "telewhite.mods.hideReadReceipts")
+    if defaults.bool(forKey: "telewhite.mods.ghostMode") || defaults.bool(forKey: "telewhite.mods.hideReadReceipts") {
+        return true
+    }
+    return (defaults.array(forKey: "telewhite.mods.ghostPeerIds") as? [NSNumber] ?? []).contains(NSNumber(value: peerId.toInt64()))
 }
 
 private enum PeerReadStateMarker: Equatable {
@@ -379,7 +382,7 @@ private func pushPeerReadState(network: Network, postbox: Postbox, stateManager:
 
 func synchronizePeerReadState(network: Network, postbox: Postbox, stateManager: AccountStateManager, peerId: PeerId, push: Bool, validate: Bool) -> Signal<Never, PeerReadStateValidationError> {
     var signal: Signal<Never, PeerReadStateValidationError> = .complete()
-    if push && !telewhiteHideReadReceiptsEnabled() {
+    if push && !telewhiteHideReadReceiptsEnabled(peerId: peerId) {
         signal = signal
         |> then(pushPeerReadState(network: network, postbox: postbox, stateManager: stateManager, peerId: peerId))
     }

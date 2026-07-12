@@ -135,14 +135,24 @@ extension ChatControllerImpl {
                 settings.ghostPeerIds.insert(peerId)
             }
             settings.save()
-            self.context.account.shouldKeepOnlinePresence.set(.single(settings.ghostPeerIds.isEmpty && !settings.hideOnlineStatus))
+            self.context.account.shouldKeepOnlinePresence.set(.single(!settings.hideOnlineStatus && !settings.ghostMode))
+
+            let isEnabled = settings.ghostPeerIds.contains(peerId)
+            if !isEnabled {
+                let _ = (self.context.engine.data.get(TelegramEngine.EngineData.Item.Messages.TopMessage(id: EnginePeer.Id(peerId)))
+                |> mapToSignal { [weak self] message -> Signal<Void, NoError> in
+                    guard let self, let message else {
+                        return .complete()
+                    }
+                    return self.context.engine.messages.applyMaxReadIndexInteractively(index: message.index)
+                }).start()
+            }
 
             self.updateChatPresentationInterfaceState(transition: .immediate, interactive: false, force: true, { $0 })
 
-            let isEnabled = settings.ghostPeerIds.contains(peerId)
             self.present(UndoOverlayController(
                 presentationData: self.presentationData,
-                content: .info(title: nil, text: isEnabled ? "Ghost Mode enabled for this chat" : "Ghost Mode disabled for this chat", timeout: nil, customUndoText: nil),
+                content: .info(title: nil, text: isEnabled ? "Ghost Mode: read and typing receipts are hidden in this chat" : "Ghost Mode disabled: viewed messages will be marked as read", timeout: nil, customUndoText: nil),
                 elevatedLayout: false,
                 action: { _ in
                     return false
