@@ -473,9 +473,9 @@ private enum TelewhiteModsEntry: ItemListNodeEntry, Equatable {
             return TelewhiteModsSection.messenger.rawValue
         case .vpnHeader, .vpnEnabled, .vpnSubscription, .vpnStatus, .vpnStart, .vpnInfo:
             return TelewhiteModsSection.vpn.rawValue
-        case .privacyHeader, .hideOnlineStatus, .ghostMode, .ghostChatButtonEnabled, .hiddenChatsEnabled, .hideTypingStatus, .hideReadReceipts, .screenshotProtectionBypass, .contentRestrictionBypass, .hidePhoneInSettings, .showProfileIds, .privacyInfo:
+        case .privacyHeader, .hiddenChatsEnabled, .screenshotProtectionBypass, .contentRestrictionBypass, .hidePhoneInSettings, .showProfileIds, .showUserIds, .showChatIds, .showMessageIds, .privacyInfo:
             return TelewhiteModsSection.privacy.rawValue
-        case .stealthHeader, .ghostMessages, .ghostStories, .stealthInfo:
+        case .stealthHeader, .ghostMode, .hideOnlineStatus, .ghostMessages, .hideReadReceipts, .hideTypingStatus, .ghostChatButtonEnabled, .ghostStories, .stealthInfo:
             return TelewhiteModsSection.stealth.rawValue
         case .channelsHeader, .channelContentRestrictionBypass, .channelsInfo:
             return TelewhiteModsSection.channels.rawValue
@@ -493,7 +493,7 @@ private enum TelewhiteModsEntry: ItemListNodeEntry, Equatable {
             return TelewhiteModsSection.backgroundColor.rawValue
         case .cornerRadiusHeader, .cornerRadiusOption, .appearanceInfo:
             return TelewhiteModsSection.cornerRadius.rawValue
-        case .developerHeader, .showUserIds, .showChatIds, .showMessageIds, .pushStatus, .pushToken, .debugMenu, .developerInfo:
+        case .developerHeader, .pushStatus, .pushToken, .debugMenu, .developerInfo:
             return TelewhiteModsSection.developer.rawValue
         }
     }
@@ -1221,14 +1221,14 @@ private func telewhiteTabTitle(_ tab: TelewhiteModsTab, strings: TelewhiteModsSt
 
 private func telewhiteMenuEntries(strings: TelewhiteModsStrings) -> [TelewhiteModsEntry] {
     return [
-        .menuItem(0, .privacy, telewhiteTabTitle(.privacy, strings: strings), strings.text("Online, screenshots, restrictions, phone and profile ID.", "\u{041e}\u{043d}\u{043b}\u{0430}\u{0439}\u{043d}, \u{0441}\u{043a}\u{0440}\u{0438}\u{043d}\u{0448}\u{043e}\u{0442}\u{044b}, \u{043e}\u{0433}\u{0440}\u{0430}\u{043d}\u{0438}\u{0447}\u{0435}\u{043d}\u{0438}\u{044f}, \u{043d}\u{043e}\u{043c}\u{0435}\u{0440} \u{0438} ID."), .privacy),
-        .menuItem(1, .ghost, telewhiteTabTitle(.stealth, strings: strings), strings.text("Messages, stories, per-chat ghost and typing status.", "\u{0421}\u{043e}\u{043e}\u{0431}\u{0449}\u{0435}\u{043d}\u{0438}\u{044f}, \u{0438}\u{0441}\u{0442}\u{043e}\u{0440}\u{0438}\u{0438}, \u{043f}\u{0440}\u{0438}\u{0437}\u{0440}\u{0430}\u{043a} \u{0434}\u{043b}\u{044f} \u{0447}\u{0430}\u{0442}\u{0430} \u{0438} \u{043d}\u{0430}\u{0431}\u{043e}\u{0440}."), .stealth),
+        .menuItem(0, .privacy, telewhiteTabTitle(.privacy, strings: strings), strings.text("Hidden chats, content protection, phone and technical IDs.", "Скрытые чаты, защита контента, номер и технические ID."), .privacy),
+        .menuItem(1, .ghost, telewhiteTabTitle(.stealth, strings: strings), strings.text("Online, read receipts, typing, stories and per-chat ghost.", "Онлайн, прочтение, набор текста, истории и невидимка для чата."), .stealth),
         .menuItem(2, .messages, telewhiteTabTitle(.messenger, strings: strings), strings.text("Deleted messages, one-time media, uploads and translation.", "\u{0423}\u{0434}\u{0430}\u{043b}\u{0451}\u{043d}\u{043d}\u{044b}\u{0435} \u{0441}\u{043e}\u{043e}\u{0431}\u{0449}\u{0435}\u{043d}\u{0438}\u{044f}, \u{043e}\u{0434}\u{043d}\u{043e}\u{0440}\u{0430}\u{0437}\u{043e}\u{0432}\u{044b}\u{0435} \u{043c}\u{0435}\u{0434}\u{0438}\u{0430}, \u{0437}\u{0430}\u{0433}\u{0440}\u{0443}\u{0437}\u{043a}\u{0438} \u{0438} \u{043f}\u{0435}\u{0440}\u{0435}\u{0432}\u{043e}\u{0434}."), .messenger),
         .menuItem(3, .groups, telewhiteTabTitle(.channels, strings: strings), strings.text("Channel and group content controls.", "\u{0424}\u{0443}\u{043d}\u{043a}\u{0446}\u{0438}\u{0438} \u{0434}\u{043b}\u{044f} \u{043a}\u{0430}\u{043d}\u{0430}\u{043b}\u{043e}\u{0432} \u{0438} \u{0433}\u{0440}\u{0443}\u{043f}\u{043f}."), .channels),
         .menuItem(4, .media, telewhiteTabTitle(.media, strings: strings), strings.text("Stories, downloads and media actions.", "\u{0418}\u{0441}\u{0442}\u{043e}\u{0440}\u{0438}\u{0438}, \u{0441}\u{043a}\u{0430}\u{0447}\u{0438}\u{0432}\u{0430}\u{043d}\u{0438}\u{0435} \u{0438} \u{043c}\u{0435}\u{0434}\u{0438}\u{0430}-\u{0434}\u{0435}\u{0439}\u{0441}\u{0442}\u{0432}\u{0438}\u{044f}."), .media),
         .menuItem(5, .proxy, telewhiteTabTitle(.proxy, strings: strings), strings.text("Auto-picks the fastest working proxy server.", "Сам выбирает самый быстрый рабочий прокси-сервер."), .proxy),
         .menuItem(6, .appearance, telewhiteTabTitle(.appearance, strings: strings), strings.text("Colors, chat list and split view.", "Цвета, список чатов и сплит-режим."), .appearance),
-        .menuItem(7, .developer, telewhiteTabTitle(.developer, strings: strings), strings.text("IDs and technical tools.", "ID и технические инструменты."), .developer)
+        .menuItem(7, .developer, telewhiteTabTitle(.developer, strings: strings), strings.text("Push diagnostics and technical tools.", "Диагностика push и технические инструменты."), .developer)
     ]
 }
 
@@ -1263,7 +1263,7 @@ private func telewhiteEntryDescription(_ entry: TelewhiteModsEntry, presentation
     case .downloadOneTimeMedia:
         return text("Lets you save view-once photos and videos.", "Позволяет сохранять одноразовые фото и видео.")
     case .vpnEnabled:
-        return text("Routes Telegram traffic through a proxy server. Other apps are not affected.", "Пропускает трафик Telegram через прокси-сервер. Другие приложения не затрагиваются.")
+        return text("Routes Telegram traffic through a proxy server. Other apps are not affected.", "Пропускает трафик Telegram через прокси-сервер. Другие приложения не затр��гиваются.")
     case .hideOnlineStatus:
         return text("Others won't see you online.", "Другие не будут видеть вас в сети.")
     case .ghostMode:
@@ -1326,21 +1326,25 @@ private func telewhiteModsEntries(tab: TelewhiteModsTab, settings: TelewhiteMods
 
     case .privacy:
         entries.append(.privacyHeader(telewhiteTabTitle(.privacy, strings: strings)))
-        entries.append(.hideOnlineStatus(strings.text("Hide Online Status", "Скрыть статус онлайн"), settings.hideOnlineStatus))
+        entries.append(.hiddenChatsEnabled(strings.text("Hidden Chats", "Скрытые чаты"), settings.hiddenChatsEnabled))
         entries.append(.screenshotProtectionBypass(strings.text("Screenshot Protection Bypass", "Обход защиты скриншотов"), settings.screenshotProtectionBypass))
         entries.append(.contentRestrictionBypass(strings.text("Content Restriction Bypass", "Обход ограничений контента"), settings.contentRestrictionBypass))
         entries.append(.hidePhoneInSettings(strings.text("Hide Phone in Settings", "Скрыть номер в настройках"), settings.hidePhoneInSettings))
         entries.append(.showProfileIds(strings.text("Show Profile ID", "Показать ID профиля"), settings.showUserIds && settings.showChatIds))
-        entries.append(.ghostChatButtonEnabled(strings.text("Per-Chat Ghost Button", "Кнопка невидимки в чатах"), settings.ghostChatButtonEnabled))
-        entries.append(.hiddenChatsEnabled(strings.text("Hidden Chats", "Скрытые чаты"), settings.hiddenChatsEnabled))
-        entries.append(.privacyInfo(strings.text("Online, screenshot and content controls live here.", "Здесь находятся настройки онлайна, скриншотов и ограничений контента.")))
+        entries.append(.showUserIds(strings.text("Show User IDs", "Показывать ID пользователей"), settings.showUserIds))
+        entries.append(.showChatIds(strings.text("Show Chat IDs", "Показывать ID чатов"), settings.showChatIds))
+        entries.append(.showMessageIds(strings.text("Show Message IDs", "Показывать ID сообщений"), settings.showMessageIds))
+        entries.append(.privacyInfo(strings.text("Hidden chats, content protection and optional technical IDs are managed here.", "Здесь собраны скрытые чаты, защита контента и показ технических ID.")))
 
     case .stealth:
         entries.append(.stealthHeader(telewhiteTabTitle(.stealth, strings: strings)))
-        entries.append(.ghostMessages(strings.text("Ghost Mode (Messages)", "Режим невидимки (сообщения)"), settings.hideReadReceipts))
-        entries.append(.ghostStories(strings.text("Ghost Mode (Stories)", "Режим невидимки (истории)"), settings.ghostStories))
+        entries.append(.ghostMode(strings.text("Global Ghost Mode", "Общая невидимка"), settings.ghostMode))
+        entries.append(.hideOnlineStatus(strings.text("Hide Online Status", "Скрыть статус онлайн"), settings.hideOnlineStatus))
+        entries.append(.ghostMessages(strings.text("Hide Read Receipts", "Скрыть прочтение сообщений"), settings.hideReadReceipts))
         entries.append(.hideTypingStatus(strings.text("Hide Typing Status", "Скрыть набор текста"), settings.hideTypingStatus))
-        entries.append(.stealthInfo(strings.text("The chat ghost button toggles stealth for one selected private chat.", "Кнопка призрака в чате включает невидимку только для выбранного личного чата.")))
+        entries.append(.ghostChatButtonEnabled(strings.text("Per-Chat Ghost Button", "Кнопка невидимки в чатах"), settings.ghostChatButtonEnabled))
+        entries.append(.ghostStories(strings.text("Anonymous Story Viewing", "Анонимный просмотр историй"), settings.ghostStories))
+        entries.append(.stealthInfo(strings.text("All controls that hide your activity are grouped here. Per-chat mode cannot hide online from only one contact.", "Здесь собраны все функции, скрывающие вашу активность. Режим для выбранного чата не может скрыть онлайн только от одного контакта.")))
 
     case .channels:
         entries.append(.channelsHeader(telewhiteTabTitle(.channels, strings: strings)))
@@ -1473,9 +1477,6 @@ private func telewhiteModsEntries(tab: TelewhiteModsTab, settings: TelewhiteMods
 
     case .developer:
         entries.append(.developerHeader(telewhiteTabTitle(.developer, strings: strings)))
-        entries.append(.showUserIds(strings.text("Show User IDs", "Показывать ID пользователей"), settings.showUserIds))
-        entries.append(.showChatIds(strings.text("Show Chat IDs", "Показывать ID чатов"), settings.showChatIds))
-        entries.append(.showMessageIds(strings.text("Show Message IDs", "Показывать ID сообщений"), settings.showMessageIds))
 
         let defaults = UserDefaults.standard
         let pushStatus = defaults.string(forKey: "telewhite.push.status") ?? strings.text("Not requested yet", "Ещё не запрошено")
@@ -1491,7 +1492,7 @@ private func telewhiteModsEntries(tab: TelewhiteModsTab, settings: TelewhiteMods
         }
         entries.append(.pushToken(strings.text("APNs token", "APNs токен"), pushToken.isEmpty ? shortToken : "\(shortToken) — \(strings.text("tap to copy", "нажмите чтобы скопировать"))"))
         entries.append(.debugMenu(strings.text("Debug Menu", "Меню отладки")))
-        entries.append(.developerInfo(strings.text("If push status is not \"Registered\", Apple did not issue a token for this signing profile — messages will not push. IDs are shown in profile/context surfaces when enabled.", "Если статус пушей не \"Registered\", Apple не выдал токен для этого профиля подписи — пуши работать не будут. ID отображаются в профилях и контекстных меню.")))
+        entries.append(.developerInfo(strings.text("Diagnostics for push registration and technical debugging tools.", "Диагностика регистрации push-уведомлений и технические инструменты отладки.")))
     }
 
     return entries
