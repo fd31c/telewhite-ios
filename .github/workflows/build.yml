@@ -2,7 +2,7 @@ name: iOS IPA
 
 on:
   push:
-    branches: [master, project-status-update]
+    branches: [master, project-status-update, v0/bug-fixing-f3c8aca8]
   workflow_dispatch:
     inputs:
       app_name:
