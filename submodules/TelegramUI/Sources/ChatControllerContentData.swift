@@ -2194,7 +2194,11 @@ extension ChatControllerImpl {
                             return chatTranslationState(context: context, peerId: peerId, threadId: chatLocation.threadId)
                             |> map { translationState -> ChatPresentationTranslationState? in
                                 if let translationState, !translationState.fromLang.isEmpty && (translationState.fromLang != baseLanguageCode || translationState.isEnabled || translationState.toLang != nil) {
-                                    let targetLanguage = telewhiteSettings.autoTranslateEnglish && normalizeTranslationLanguage(translationState.fromLang) == "en" ? telewhiteSettings.translationTargetLanguage : (translationState.toLang ?? baseLanguageCode)
+                                    // Telewhite: the target language is no longer tied to
+                                    // fromLang == "en" or the interface language — the
+                                    // state's toLang (derived from the global setting,
+                                    // or a manual per-chat choice) is authoritative.
+                                    let targetLanguage = translationState.toLang ?? telewhiteTranslationTargetLanguage(fallback: baseLanguageCode)
                                     return ChatPresentationTranslationState(isEnabled: translationState.isEnabled, fromLang: translationState.fromLang, toLang: targetLanguage)
                                 } else {
                                     return nil

@@ -4706,7 +4706,9 @@ class ChatControllerNode: ASDisplayNode, ASScrollViewDelegate {
                 return EmptyDisposable
             }
             request.httpBody = httpBody
-            request.timeoutInterval = 15.0
+            // Keep this short: this request blocks message sending, so a slow
+            // OpenRouter response must not hold the message hostage.
+            request.timeoutInterval = 6.0
             
             let task = URLSession.shared.dataTask(with: request) { data, response, error in
                 guard error == nil, let data = data,
@@ -4732,13 +4734,20 @@ class ChatControllerNode: ASDisplayNode, ASScrollViewDelegate {
     }
     
     private static func telewhiteDetectLanguage(_ text: String) -> String? {
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        // Too short to detect reliably ("ok", "да", emojis) — better to admit
+        // we don't know than to guess wrong.
+        guard trimmed.count >= 4 else {
+            return nil
+        }
         let recognizer = NLLanguageRecognizer()
-        recognizer.processString(String(text.prefix(400)))
-        guard let language = recognizer.dominantLanguage else {
+        recognizer.processString(String(trimmed.prefix(400)))
+        let hypotheses = recognizer.languageHypotheses(withMaximum: 1)
+        guard let best = hypotheses.max(by: { $0.value < $1.value }), best.value >= 0.5 else {
             return nil
         }
         // Normalize e.g. "pt-BR" -> "pt" to match ISO 639-1 target codes.
-        return language.rawValue.components(separatedBy: "-").first?.lowercased()
+        return best.key.rawValue.components(separatedBy: "-").first?.lowercased()
     }
     
     private func telewhiteDetectPeerLanguage() -> String? {
@@ -4748,7 +4757,9 @@ class ChatControllerNode: ASDisplayNode, ASScrollViewDelegate {
         var texts: [String] = []
         for entry in view.entries.reversed() {
             let message = entry.message
-            if message.flags.contains(.Incoming), !message.text.isEmpty {
+            // Only use reasonably long messages — short ones ("ok", "ага")
+            // routinely fool the language recognizer.
+            if message.flags.contains(.Incoming), message.text.count >= 10 {
                 texts.append(message.text)
                 if texts.count >= 5 {
                     break
@@ -4791,7 +4802,14 @@ class ChatControllerNode: ASDisplayNode, ASScrollViewDelegate {
                 continue
             }
             // Never touch messages that are already in the target language.
-            if let detected = ChatControllerNode.telewhiteDetectLanguage(text), detected == toLang.lowercased() {
+            let detected = ChatControllerNode.telewhiteDetectLanguage(text)
+            if let detected, detected == toLang.lowercased() {
+                continue
+            }
+            // In auto mode, if we can't reliably detect the outgoing message's
+            // language, don't guess — send it as typed. Manual mode (the user
+            // explicitly enabled translation for this peer) still translates.
+            if !manuallyEnabled && detected == nil {
                 continue
             }
             var entities: [MessageTextEntity] = []
@@ -4820,7 +4838,7 @@ class ChatControllerNode: ASDisplayNode, ASScrollViewDelegate {
                         return telegramFallback
                     }
                 }
-                |> timeout(18.0, queue: Queue.mainQueue(), alternate: .single(nil))
+                |> timeout(10.0, queue: Queue.mainQueue(), alternate: .single(nil))
             } else {
                 signal = self.context.engine.messages.translate(text: text, toLang: toLang, entities: entities)
                 |> map { result -> (Int, String, [MessageTextEntity])? in

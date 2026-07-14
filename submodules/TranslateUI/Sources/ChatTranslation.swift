@@ -138,6 +138,32 @@ public func updateChatTranslationStateInteractively(engine: TelegramEngine, peer
 }
 
 
+// Telewhite: single source of truth for the incoming-translation mod settings.
+// Always read them through these helpers — reading UserDefaults.standard.bool(...)
+// directly returns `false` for users who never opened the mods settings screen,
+// while TelewhiteModsSettings defaults to `true`, which made translation behave
+// differently for different users.
+public func telewhiteAutoTranslateEnabled() -> Bool {
+    return (UserDefaults.standard.object(forKey: "telewhite.mods.autoTranslateEnglish") as? Bool) ?? true
+}
+
+// Telewhite: the target language for incoming translation always comes from the
+// "Translation Language" setting (default "ru", matching the settings screen),
+// never from the app interface language. Falls back to the interface language
+// only if the stored value is not a supported translation language.
+public func telewhiteTranslationTargetLanguage(fallback baseLang: String) -> String {
+    let stored = UserDefaults.standard.string(forKey: "telewhite.mods.translationTargetLanguage") ?? "ru"
+    let normalized = normalizeTranslationLanguage(stored.lowercased())
+    if supportedTranslationLanguages.contains(normalized) {
+        return normalized
+    }
+    let base = normalizeTranslationLanguage(baseLang)
+    if supportedTranslationLanguages.contains(base) {
+        return base
+    }
+    return "ru"
+}
+
 @available(iOS 12.0, *)
 private let languageRecognizer = NLLanguageRecognizer()
 
@@ -232,7 +258,7 @@ public func chatTranslationState(context: AccountContext, peerId: EnginePeer.Id,
             context.engine.data.subscribe(TelegramEngine.EngineData.Item.Peer.AutoTranslateEnabled(id: peerId))
         )
         |> mapToSignal { settings, autoTranslateEnabled in
-            let telewhiteIncomingTranslationEnabled = UserDefaults.standard.bool(forKey: "telewhite.mods.autoTranslateEnglish")
+            let telewhiteIncomingTranslationEnabled = telewhiteAutoTranslateEnabled()
             if !settings.translateChats && !autoTranslateEnabled && !telewhiteIncomingTranslationEnabled {
                 return .single(nil)
             }
@@ -365,12 +391,20 @@ public func chatTranslationState(context: AccountContext, peerId: EnginePeer.Id,
                             }
 
                             let isEnabled = cached?.isEnabled ?? autoTranslateEnabled
-                            let targetLanguage = supportedTranslationLanguages.contains(baseLang) ? baseLang : "ru"
+                            // Telewhite: always derive the target from the global
+                            // "Translation Language" setting instead of the interface
+                            // language. On re-detection we intentionally do NOT reuse
+                            // cached.toLang: old caches were populated with the
+                            // interface language and would keep the wrong target
+                            // forever. A manual per-chat "Translate to" choice still
+                            // wins while its cache entry is fresh (< 1h, refreshed on
+                            // every toggle).
+                            let targetLanguage = telewhiteTranslationTargetLanguage(fallback: baseLang)
                             let state = ChatTranslationState(
                                 baseLang: baseLang,
                                 fromLang: fromLang,
                                 timestamp: currentTime,
-                                toLang: cached?.toLang ?? targetLanguage,
+                                toLang: targetLanguage,
                                 isEnabled: isEnabled
                             )
                             let _ = updateChatTranslationState(engine: context.engine, peerId: peerId, threadId: threadId, state: state).start()

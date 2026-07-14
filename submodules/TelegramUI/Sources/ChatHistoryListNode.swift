@@ -2134,9 +2134,9 @@ public final class ChatHistoryListNodeImpl: ListViewImpl, ChatHistoryNode, ChatH
                 )
                 
                 var translateToLanguage: (fromLang: String, toLang: String)?
-                let telewhiteAutoTranslateEnglish = UserDefaults.standard.bool(forKey: "telewhite.mods.autoTranslateEnglish")
+                let telewhiteAutoTranslateEnglish = telewhiteAutoTranslateEnabled()
                 if let translationState, (isPremium || autoTranslate || telewhiteAutoTranslateEnglish) && translationState.isEnabled {
-                    var languageCode = translationState.toLang ?? chatPresentationData.strings.baseLanguageCode
+                    var languageCode = translationState.toLang ?? telewhiteTranslationTargetLanguage(fallback: chatPresentationData.strings.baseLanguageCode)
                     let rawSuffix = "-raw"
                     if languageCode.hasSuffix(rawSuffix) {
                         languageCode = String(languageCode.dropLast(rawSuffix.count))
