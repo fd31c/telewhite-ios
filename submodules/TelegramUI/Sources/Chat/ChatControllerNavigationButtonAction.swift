@@ -125,17 +125,19 @@ extension ChatControllerImpl {
         case .spacer, .toggleInfoPanel:
             break
         case let .toggleGhostMode(peerId, _):
+            // Telewhite: per-chat ghost toggle. While enabled for this chat:
+            // no "typing...", no read receipts, and the account presence stays
+            // suppressed so sending a message never flips you to "online".
             var settings = TelewhiteModsSettings.current
-            if settings.ghostMode {
-                settings.ghostMode = false
-                settings.ghostPeerIds = [peerId]
-            } else if settings.ghostPeerIds.contains(peerId) {
+            if settings.ghostPeerIds.contains(peerId) {
                 settings.ghostPeerIds.remove(peerId)
             } else {
                 settings.ghostPeerIds.insert(peerId)
             }
             settings.save()
-            self.context.account.shouldKeepOnlinePresence.set(.single(!settings.hideOnlineStatus && !settings.ghostMode))
+            // Presence is allowed only when "Hide Online Status" is off AND no
+            // chat is ghosted (Telegram cannot hide online per-contact).
+            self.context.account.shouldKeepOnlinePresence.set(.single(!settings.hideOnlineStatus && settings.ghostPeerIds.isEmpty))
 
             let isEnabled = settings.ghostPeerIds.contains(peerId)
             if !isEnabled {
@@ -152,7 +154,7 @@ extension ChatControllerImpl {
 
             self.present(UndoOverlayController(
                 presentationData: self.presentationData,
-                content: .info(title: nil, text: isEnabled ? "Ghost Mode: read and typing receipts are hidden in this chat" : "Ghost Mode disabled: viewed messages will be marked as read", timeout: nil, customUndoText: nil),
+                content: .info(title: nil, text: isEnabled ? "Ghost Mode: typing, sending and reading are invisible in this chat" : "Ghost Mode disabled: viewed messages will be marked as read", timeout: nil, customUndoText: nil),
                 elevatedLayout: false,
                 action: { _ in
                     return false

@@ -51,9 +51,15 @@ private struct AccountTasks {
 
 private let backgroundTaskSubmissionDelay: Double = 10.0
 
+// Telewhite: presence must also stay suppressed while any per-chat ghost is
+// active, mirroring ManagedAccountPresence — otherwise a background wakeup
+// could briefly reveal the account as online.
 private func telewhiteBlocksOnlinePresence() -> Bool {
     let defaults = UserDefaults.standard
-    return defaults.bool(forKey: "telewhite.mods.hideOnlineStatus") || defaults.bool(forKey: "telewhite.mods.ghostMode") || defaults.bool(forKey: "telewhite.mods.hideReadReceipts")
+    if defaults.bool(forKey: "telewhite.mods.hideOnlineStatus") || defaults.bool(forKey: "telewhite.mods.hideReadReceipts") {
+        return true
+    }
+    return !(defaults.array(forKey: "telewhite.mods.ghostPeerIds") as? [NSNumber] ?? []).isEmpty
 }
 
 private struct PendingMediaUploadKey: Hashable {

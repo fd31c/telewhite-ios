@@ -2292,7 +2292,36 @@ public final class PendingMessageManager {
         }
     }
     
+    // Telewhite: sending a message makes the server mark the account online,
+    // which would leak presence ("last seen recently") even in a ghost chat.
+    // Immediately reassert offline after every send to a ghost chat (or while
+    // "Hide Online Status" is on), with a delayed second pass to outlast the
+    // server-side online window.
+    private func telewhiteReassertOfflineAfterSend(peerId: PeerId) {
+        let defaults = UserDefaults.standard
+        var shouldHide = defaults.bool(forKey: "telewhite.mods.hideOnlineStatus")
+        if !shouldHide {
+            let ghostPeerIds = defaults.array(forKey: "telewhite.mods.ghostPeerIds") as? [NSNumber] ?? []
+            shouldHide = ghostPeerIds.contains(NSNumber(value: peerId.toInt64()))
+        }
+        guard shouldHide else {
+            return
+        }
+        let network = self.network
+        let sendOffline: () -> Void = {
+            let _ = network.request(Api.functions.account.updateStatus(offline: .boolTrue)).start()
+        }
+        sendOffline()
+        Queue.concurrentDefaultQueue().after(1.5, {
+            sendOffline()
+        })
+        Queue.concurrentDefaultQueue().after(5.0, {
+            sendOffline()
+        })
+    }
+    
     private func applySentMessage(postbox: Postbox, stateManager: AccountStateManager, message: Message, content: PendingMessageUploadedContentAndReuploadInfo, result: Api.Updates) -> Signal<Void, NoError> {
+        self.telewhiteReassertOfflineAfterSend(peerId: message.id.peerId)
         if let _ = message.peers[message.id.peerId] as? TelegramChannel {
             for attribute in message.attributes {
                 if let attribute = attribute as? PaidStarsMessageAttribute {
@@ -2357,6 +2386,9 @@ public final class PendingMessageManager {
     }
     
     private func applySentGroupMessages(postbox: Postbox, stateManager: AccountStateManager, messages: [Message], result: Api.Updates) -> Signal<Void, NoError> {
+        if let peerId = messages.first?.id.peerId {
+            self.telewhiteReassertOfflineAfterSend(peerId: peerId)
+        }
         var namespace = Namespaces.Message.Cloud
         if let message = messages.first {
             if let channel = message.peers[message.id.peerId] as? TelegramChannel, channel.isMonoForum {

@@ -111,7 +111,10 @@ public struct TelewhiteModsSettings: Equatable {
         return TelewhiteModsSettings(
             vpnEnabled: defaults.bool(forKey: Key.vpnEnabled),
             vpnSubscription: defaults.string(forKey: Key.vpnSubscription) ?? "",
-            ghostMode: defaults.bool(forKey: Key.ghostMode),
+            // Telewhite: global ghost mode is removed; always read as disabled so a
+            // stale stored value from older builds can never keep the account
+            // permanently invisible. Per-chat ghostPeerIds is the only ghost control.
+            ghostMode: false,
             ghostChatButtonEnabled: defaults.object(forKey: Key.ghostChatButtonEnabled) as? Bool ?? true,
             hiddenChatsEnabled: defaults.bool(forKey: Key.hiddenChatsEnabled),
             preserveDeletedMessages: defaults.bool(forKey: Key.preserveDeletedMessages),
@@ -1339,13 +1342,15 @@ private func telewhiteModsEntries(tab: TelewhiteModsTab, settings: TelewhiteMods
 
     case .stealth:
         entries.append(.stealthHeader(telewhiteTabTitle(.stealth, strings: strings)))
-        entries.append(.ghostMode(strings.text("Global Ghost Mode", "Общая невидимка"), settings.ghostMode))
+        // Telewhite: "Global Ghost Mode" removed — invisibility is now per-chat only,
+        // via the ghost button in each chat. The individual global toggles below
+        // (online / read receipts / typing) remain as separate, understandable switches.
         entries.append(.hideOnlineStatus(strings.text("Hide Online Status", "Скрыть статус онлайн"), settings.hideOnlineStatus))
         entries.append(.ghostMessages(strings.text("Hide Read Receipts", "Скрыть прочтение сообщений"), settings.hideReadReceipts))
         entries.append(.hideTypingStatus(strings.text("Hide Typing Status", "Скрыть набор текста"), settings.hideTypingStatus))
         entries.append(.ghostChatButtonEnabled(strings.text("Per-Chat Ghost Button", "Кнопка невидимки в чатах"), settings.ghostChatButtonEnabled))
         entries.append(.ghostStories(strings.text("Anonymous Story Viewing", "Анонимный просмотр историй"), settings.ghostStories))
-        entries.append(.stealthInfo(strings.text("All controls that hide your activity are grouped here. Per-chat mode cannot hide online from only one contact.", "Здесь собраны все функции, скрывающие вашу активность. Режим для выбранного чата не может скрыть онлайн только от одного контакта.")))
+        entries.append(.stealthInfo(strings.text("Enable the ghost button in a chat: typing, sending and reading there won't show your activity or update your online status.", "Включите кнопку невидимки в чате: набор текста, отправка и чтение там не покажут вашу активность и не обновят ваш онлайн-статус.")))
 
     case .channels:
         entries.append(.channelsHeader(telewhiteTabTitle(.channels, strings: strings)))
@@ -1510,7 +1515,9 @@ public func telewhiteModsController(context: AccountContext) -> ViewController {
             updated.save()
             return updated
         }
-        let shouldHidePresence = updated.hideOnlineStatus || updated.ghostMode
+        // Telewhite: presence is suppressed by "Hide Online Status" or while any
+        // per-chat ghost is active (matches ManagedAccountPresence logic).
+        let shouldHidePresence = updated.hideOnlineStatus || !updated.ghostPeerIds.isEmpty
         context.account.shouldKeepOnlinePresence.set(.single(!shouldHidePresence))
         let cacheLimit = updated.autoCacheCleanup ? updated.cacheLimitGigabytes : Int32.max
         let _ = updateCacheStorageSettingsInteractively(accountManager: context.sharedContext.accountManager, { current in

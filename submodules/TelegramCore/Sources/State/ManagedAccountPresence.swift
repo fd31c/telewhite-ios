@@ -6,9 +6,14 @@ import MtProtoKit
 
 private typealias SignalKitTimer = SwiftSignalKit.Timer
 
+// Telewhite: presence is suppressed when "Hide Online Status" is on, or while at
+// least one chat has per-chat ghost enabled. Telegram has no per-contact online
+// visibility, so as long as any ghost chat exists the account must stay offline —
+// otherwise sending a message in that chat would instantly reveal you as online.
+// (Global Ghost Mode was removed — per-chat ghost is the only ghost control.)
 private func telewhiteGhostPresenceEnabled() -> Bool {
     let defaults = UserDefaults.standard
-    if defaults.bool(forKey: "telewhite.mods.hideOnlineStatus") || defaults.bool(forKey: "telewhite.mods.ghostMode") {
+    if defaults.bool(forKey: "telewhite.mods.hideOnlineStatus") {
         return true
     }
     return !(defaults.array(forKey: "telewhite.mods.ghostPeerIds") as? [NSNumber] ?? []).isEmpty

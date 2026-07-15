@@ -81,7 +81,7 @@ func managedSynchronizeConsumeMessageContentOperations(postbox: Postbox, network
             for (entry, disposable) in beginOperations {
                 let defaults = UserDefaults.standard
                 let ghostPeerIds = defaults.array(forKey: "telewhite.mods.ghostPeerIds") as? [NSNumber] ?? []
-                if defaults.bool(forKey: "telewhite.mods.ghostMode") || defaults.bool(forKey: "telewhite.mods.hideReadReceipts") || ghostPeerIds.contains(NSNumber(value: entry.peerId.toInt64())) {
+                if defaults.bool(forKey: "telewhite.mods.hideReadReceipts") || ghostPeerIds.contains(NSNumber(value: entry.peerId.toInt64())) {
                     continue
                 }
                 let signal = withTakenOperation(postbox: postbox, peerId: entry.peerId, tagLocalIndex: entry.tagLocalIndex, { transaction, entry -> Signal<Void, NoError> in
