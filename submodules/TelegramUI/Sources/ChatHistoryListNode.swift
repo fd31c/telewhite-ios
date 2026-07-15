@@ -2141,7 +2141,13 @@ public final class ChatHistoryListNodeImpl: ListViewImpl, ChatHistoryNode, ChatH
                     if languageCode.hasSuffix(rawSuffix) {
                         languageCode = String(languageCode.dropLast(rawSuffix.count))
                     }
-                    translateToLanguage = (normalizeTranslationLanguage(translationState.fromLang), normalizeTranslationLanguage(languageCode))
+                    let normalizedFromLang = normalizeTranslationLanguage(translationState.fromLang)
+                    let normalizedToLang = normalizeTranslationLanguage(languageCode)
+                    // Telewhite: hard stop — never translate messages when the chat
+                    // language equals the target language (e.g. Russian to Russian).
+                    if !normalizedFromLang.isEmpty && normalizedFromLang != normalizedToLang {
+                        translateToLanguage = (normalizedFromLang, normalizedToLang)
+                    }
                 }
                 
                 var isSuspiciousPeer = false

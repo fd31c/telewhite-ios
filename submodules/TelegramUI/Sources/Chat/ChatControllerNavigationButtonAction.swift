@@ -177,14 +177,17 @@ extension ChatControllerImpl {
                 }
             ), in: .current)
         case let .toggleTranslation(isEnabled):
+            // Telewhite: translate into the globally configured target language
+            // instead of hardcoded Russian.
+            let targetLanguage = telewhiteTranslationTargetLanguage(fallback: self.presentationData.strings.baseLanguageCode)
             if isEnabled {
                 self.interfaceInteraction?.toggleTranslation(.original)
             } else {
-                self.interfaceInteraction?.changeTranslationLanguage("ru")
+                self.interfaceInteraction?.changeTranslationLanguage(targetLanguage)
             }
             self.present(UndoOverlayController(
                 presentationData: self.presentationData,
-                content: .info(title: nil, text: isEnabled ? "Showing original text" : "Translating English to Russian", timeout: nil, customUndoText: nil),
+                content: .info(title: nil, text: isEnabled ? "Showing original text" : "Translating to \(outgoingTranslationLanguageDisplayName(targetLanguage))", timeout: nil, customUndoText: nil),
                 elevatedLayout: false,
                 action: { _ in
                     return false

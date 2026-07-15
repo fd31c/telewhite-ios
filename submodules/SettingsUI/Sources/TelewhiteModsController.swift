@@ -1320,7 +1320,8 @@ private func telewhiteModsEntries(tab: TelewhiteModsTab, settings: TelewhiteMods
         entries.append(.autoTranslateEnglish(strings.text("Incoming Message Translation", "Перевод входящих сообщений"), settings.autoTranslateEnglish))
         entries.append(.translationTargetLanguage(strings.text("Translation Language", "Язык перевода"), settings.translationTargetLanguage))
         entries.append(.outgoingTranslateButtonEnabled(strings.text("Per-Chat Translator Button", "Кнопка переводчика в чатах"), settings.outgoingTranslateButtonEnabled))
-        entries.append(.outgoingTranslationAutoEnabled(strings.text("Smart Auto-Translate", "Умный автоперевод"), settings.outgoingTranslationAutoEnabled))
+        // Telewhite: "Smart Auto-Translate" removed — outgoing translation is now
+        // strictly manual via the per-chat translator button.
         entries.append(.openRouterApiKey(strings.text("OpenRouter API Key", "Ключ OpenRouter API"), settings.openRouterApiKey))
         entries.append(.messengerInfo(strings.text("Message features are split here: deleted messages, one-time media, uploads and translation.", "Здесь собраны функции сообщений: удалённые сообщения, одноразовые медиа, за��рузка и перевод.")))
 

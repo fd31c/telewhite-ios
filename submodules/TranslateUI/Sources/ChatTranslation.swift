@@ -276,15 +276,28 @@ public func chatTranslationState(context: AccountContext, peerId: EnginePeer.Id,
             return cachedChatTranslationState(engine: context.engine, peerId: peerId, threadId: threadId)
             |> mapToSignal { cached in
                 let currentTime = Int32(CFAbsoluteTimeGetCurrent() + kCFAbsoluteTimeIntervalSince1970)
-                // Telewhite: once translation has been used in this chat (a target
-                // language was picked or it is currently enabled), keep the panel
-                // sticky — don't let the "do not translate" language filter drop
-                // it right after the user taps "Show Original".
-                let isStickyState: (ChatTranslationState) -> Bool = { state in
-                    return state.isEnabled || state.toLang != nil
+                // Telewhite: unified rule for when a chat is translatable.
+                // A chat whose detected language equals the target language
+                // (e.g. a Russian chat with a Russian target) must NEVER be
+                // translated or show the translation panel — translation only
+                // makes sense between two different languages.
+                let isDisplayable: (ChatTranslationState) -> Bool = { state in
+                    guard !state.fromLang.isEmpty else {
+                        return false
+                    }
+                    if let toLang = state.toLang, state.fromLang == toLang {
+                        return false
+                    }
+                    if state.isEnabled {
+                        return true
+                    }
+                    if telewhiteIncomingTranslationEnabled {
+                        return true
+                    }
+                    return !dontTranslateLanguages.contains(state.fromLang)
                 }
                 if let cached, let timestamp = cached.timestamp, cached.baseLang == baseLang && currentTime - timestamp < 60 * 60 {
-                    if !dontTranslateLanguages.contains(cached.fromLang) || isStickyState(cached) {
+                    if isDisplayable(cached) {
                         return .single(cached)
                     } else {
                         return .single(nil)
@@ -294,7 +307,7 @@ public func chatTranslationState(context: AccountContext, peerId: EnginePeer.Id,
                     // runs, instead of blinking the panel out with nil.
                     var initialState: ChatTranslationState?
                     if let cached, cached.baseLang == baseLang, !cached.fromLang.isEmpty {
-                        if !dontTranslateLanguages.contains(cached.fromLang) || isStickyState(cached) {
+                        if isDisplayable(cached) {
                             initialState = cached
                         }
                     }
@@ -390,7 +403,6 @@ public func chatTranslationState(context: AccountContext, peerId: EnginePeer.Id,
                                 return nil
                             }
 
-                            let isEnabled = cached?.isEnabled ?? autoTranslateEnabled
                             // Telewhite: always derive the target from the global
                             // "Translation Language" setting instead of the interface
                             // language. On re-detection we intentionally do NOT reuse
@@ -400,6 +412,13 @@ public func chatTranslationState(context: AccountContext, peerId: EnginePeer.Id,
                             // wins while its cache entry is fresh (< 1h, refreshed on
                             // every toggle).
                             let targetLanguage = telewhiteTranslationTargetLanguage(fallback: baseLang)
+                            var isEnabled = cached?.isEnabled ?? (autoTranslateEnabled || telewhiteIncomingTranslationEnabled)
+                            // Never translate a chat that is already in the target
+                            // language (e.g. Russian chats with a Russian target),
+                            // and never auto-enable when detection failed.
+                            if fromLang.isEmpty || fromLang == targetLanguage {
+                                isEnabled = false
+                            }
                             let state = ChatTranslationState(
                                 baseLang: baseLang,
                                 fromLang: fromLang,
@@ -408,7 +427,7 @@ public func chatTranslationState(context: AccountContext, peerId: EnginePeer.Id,
                                 isEnabled: isEnabled
                             )
                             let _ = updateChatTranslationState(engine: context.engine, peerId: peerId, threadId: threadId, state: state).start()
-                            if !dontTranslateLanguages.contains(fromLang) || state.isEnabled || state.toLang != nil {
+                            if isDisplayable(state) {
                                 return state
                             } else {
                                 return nil
