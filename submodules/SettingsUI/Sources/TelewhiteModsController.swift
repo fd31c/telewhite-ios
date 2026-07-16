@@ -874,9 +874,11 @@ private enum TelewhiteModsEntry: ItemListNodeEntry, Equatable {
                 settings.hidePhoneInSettings = value
             }
         case let .showProfileIds(text, value):
+            // Telewhite: one switch controls all technical IDs (users, chats, messages).
             return self.switchItem(presentationData: presentationData, arguments: arguments, text: text, value: value) { settings, value in
                 settings.showUserIds = value
                 settings.showChatIds = value
+                settings.showMessageIds = value
             }
         case let .ghostMessages(text, value):
             return self.switchItem(presentationData: presentationData, arguments: arguments, text: text, value: value) { settings, value in
@@ -1266,7 +1268,7 @@ private func telewhiteEntryDescription(_ entry: TelewhiteModsEntry, presentation
     case .downloadOneTimeMedia:
         return text("Lets you save view-once photos and videos.", "Позволяет сохранять одноразовые фото и видео.")
     case .vpnEnabled:
-        return text("Routes Telegram traffic through a proxy server. Other apps are not affected.", "Пропускает трафик Telegram через прокси-сервер. Другие приложения не затр��гиваются.")
+        return text("Routes Telegram traffic through a proxy server. Other apps are not affected.", "Пропускает трафик Telegram через прокси-сервер. Другие приложения не затрагиваются.")
     case .hideOnlineStatus:
         return text("Others won't see you online.", "Другие не будут видеть вас в сети.")
     case .ghostMode:
@@ -1286,7 +1288,7 @@ private func telewhiteEntryDescription(_ entry: TelewhiteModsEntry, presentation
     case .contentRestrictionBypass, .channelContentRestrictionBypass:
         return text("Lets you forward, copy and save from protected chats and channels.", "Позволяет пересылать, копировать и сохранять из защищённых чатов и каналов.")
     case .hidePhoneInSettings:
-        return text("Hides your phone number in Settings and your profile.", "Скрывает ваш номер телефона в настройках и п��офиле.")
+        return text("Hides your phone number and username in Settings and your profile.", "Скрывает ваш номер телефона и юзернейм в настройках и профиле.")
     case .showProfileIds, .showUserIds, .showChatIds, .showMessageIds:
         return text("Shows user and chat IDs in profiles. Tap an ID to copy it.", "Показывает ID пользователей и чатов в профилях. Нажмите на ID, чтобы скопировать.")
     case .downloadStories:
@@ -1326,18 +1328,15 @@ private func telewhiteModsEntries(tab: TelewhiteModsTab, settings: TelewhiteMods
         // Telewhite: "Smart Auto-Translate" removed — outgoing translation is now
         // strictly manual via the per-chat translator button.
         entries.append(.openRouterApiKey(strings.text("OpenRouter API Key", "Ключ OpenRouter API"), settings.openRouterApiKey))
-        entries.append(.messengerInfo(strings.text("Message features are split here: deleted messages, one-time media, uploads and translation.", "Здесь собраны функции сообщений: удалённые сообщения, одноразовые медиа, за��рузка и перевод.")))
+        entries.append(.messengerInfo(strings.text("Message features are split here: deleted messages, one-time media, uploads and translation.", "Здесь собраны функции сообщений: удалённые сообщения, одноразовые медиа, загрузка и перевод.")))
 
     case .privacy:
         entries.append(.privacyHeader(telewhiteTabTitle(.privacy, strings: strings)))
         entries.append(.hiddenChatsEnabled(strings.text("Hidden Chats", "Скрытые чаты"), settings.hiddenChatsEnabled))
         entries.append(.screenshotProtectionBypass(strings.text("Screenshot Protection Bypass", "Обход защиты скриншотов"), settings.screenshotProtectionBypass))
         entries.append(.contentRestrictionBypass(strings.text("Content Restriction Bypass", "Обход ограничений контента"), settings.contentRestrictionBypass))
-        entries.append(.hidePhoneInSettings(strings.text("Hide Phone in Settings", "Скрыть номер в настройках"), settings.hidePhoneInSettings))
-        entries.append(.showProfileIds(strings.text("Show Profile ID", "Показать ID профиля"), settings.showUserIds && settings.showChatIds))
-        entries.append(.showUserIds(strings.text("Show User IDs", "Показывать ID пользователей"), settings.showUserIds))
-        entries.append(.showChatIds(strings.text("Show Chat IDs", "Показывать ID чатов"), settings.showChatIds))
-        entries.append(.showMessageIds(strings.text("Show Message IDs", "Показывать ID сообщений"), settings.showMessageIds))
+        entries.append(.hidePhoneInSettings(strings.text("Hide Phone and Username", "Скрыть номер и юзернейм"), settings.hidePhoneInSettings))
+        entries.append(.showProfileIds(strings.text("Show IDs", "Показывать ID"), settings.showUserIds && settings.showChatIds))
         entries.append(.privacyInfo(strings.text("Hidden chats, content protection and optional technical IDs are managed here.", "Здесь собраны скрытые чаты, защита контента и показ технических ID.")))
 
     case .stealth:

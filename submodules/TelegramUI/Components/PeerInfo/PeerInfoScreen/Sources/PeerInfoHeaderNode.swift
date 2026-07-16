@@ -1222,7 +1222,10 @@ final class PeerInfoHeaderNode: ASDisplayNode {
                 title = "" //"\u{00A0}"
             }
             if title.isEmpty {
-                if case let .user(user) = peer, let phone = user.phone, !TelewhiteModsSettings.current.hidePhoneInSettings {
+                if self.isSettings && TelewhiteModsSettings.current.hidePhoneInSettings {
+                    // Telewhite: the hide toggle covers phone and username alike.
+                    title = "—"
+                } else if case let .user(user) = peer, let phone = user.phone, !TelewhiteModsSettings.current.hidePhoneInSettings {
                     title = formatPhoneNumber(context: self.context, number: phone)
                 } else if let addressName = peer.addressName {
                     title = "@\(addressName)"
@@ -1236,11 +1239,12 @@ final class PeerInfoHeaderNode: ASDisplayNode {
             smallTitleAttributes = MultiScaleTextState.Attributes(font: Font.medium(28.0), color: .white, shadowColor: titleShadowColor)
             
             if self.isSettings, case let .user(user) = peer {
-                let hidePhone = TelewhiteModsSettings.current.hidePhoneInSettings
-                var subtitle = hidePhone ? "—" : formatPhoneNumber(context: self.context, number: user.phone ?? "")
+                // Telewhite: one toggle hides both the phone number and the username.
+                let hideProfileInfo = TelewhiteModsSettings.current.hidePhoneInSettings
+                var subtitle = hideProfileInfo ? "—" : formatPhoneNumber(context: self.context, number: user.phone ?? "")
                 
-                if let mainUsername = user.addressName, !mainUsername.isEmpty {
-                    subtitle = hidePhone ? "@\(mainUsername)" : "\(subtitle) • @\(mainUsername)"
+                if !hideProfileInfo, let mainUsername = user.addressName, !mainUsername.isEmpty {
+                    subtitle = "\(subtitle) • @\(mainUsername)"
                 }
                 subtitleStringText = subtitle
                 subtitleAttributes = MultiScaleTextState.Attributes(font: Font.regular(17.0), color: .white)

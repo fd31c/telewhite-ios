@@ -412,7 +412,10 @@ public func chatTranslationState(context: AccountContext, peerId: EnginePeer.Id,
                             // wins while its cache entry is fresh (< 1h, refreshed on
                             // every toggle).
                             let targetLanguage = telewhiteTranslationTargetLanguage(fallback: baseLang)
-                            var isEnabled = cached?.isEnabled ?? (autoTranslateEnabled || telewhiteIncomingTranslationEnabled)
+                            // Telewhite: incoming translation is strictly manual — the
+                            // translation bar is shown, but nothing is translated until
+                            // the user turns it on for this chat themselves.
+                            var isEnabled = cached?.isEnabled ?? false
                             // Never translate a chat that is already in the target
                             // language (e.g. Russian chats with a Russian target),
                             // and never auto-enable when detection failed.

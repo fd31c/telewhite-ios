@@ -23,7 +23,9 @@ private func telewhiteCurrentAppIconImage(context: AccountContext) -> UIImage? {
     if let alternateIconName = context.sharedContext.applicationBindings.getAlternateIconName() {
         selectedIcon = icons.first(where: { $0.name == alternateIconName })
     } else {
-        selectedIcon = icons.first(where: { $0.isDefault })
+        // No icon is flagged default in non-AppStore builds — fall back to the
+        // first icon (BlueIcon, the actual default) so the row always syncs.
+        selectedIcon = icons.first(where: { $0.isDefault }) ?? icons.first
     }
     guard let selectedIcon else {
         return nil
@@ -495,7 +497,10 @@ func settingsEditingItems(data: PeerInfoScreenData?, state: PeerInfoState, conte
         }))
     }
     var username = ""
-    if let addressName = data.peer?.addressName, !addressName.isEmpty {
+    if TelewhiteModsSettings.current.hidePhoneInSettings {
+        // Telewhite: the hide toggle covers phone and username alike.
+        username = "—"
+    } else if let addressName = data.peer?.addressName, !addressName.isEmpty {
         username = "@\(addressName)"
     }
     items[.info]!.append(PeerInfoScreenDisclosureItem(id: ItemUsername, label: .text(username), text: presentationData.strings.Settings_Username, icon: PresentationResourcesSettings.email, action: {
