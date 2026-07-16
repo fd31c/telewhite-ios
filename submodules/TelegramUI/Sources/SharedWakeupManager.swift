@@ -56,7 +56,7 @@ private let backgroundTaskSubmissionDelay: Double = 10.0
 // could briefly reveal the account as online.
 private func telewhiteBlocksOnlinePresence() -> Bool {
     let defaults = UserDefaults.standard
-    if defaults.bool(forKey: "telewhite.mods.hideOnlineStatus") || defaults.bool(forKey: "telewhite.mods.hideReadReceipts") {
+    if defaults.bool(forKey: "telewhite.mods.hideOnlineStatus") {
         return true
     }
     return !(defaults.array(forKey: "telewhite.mods.ghostPeerIds") as? [NSNumber] ?? []).isEmpty

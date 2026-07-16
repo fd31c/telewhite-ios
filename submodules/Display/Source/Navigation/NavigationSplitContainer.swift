@@ -71,7 +71,8 @@ final class NavigationSplitContainer: ASDisplayNode {
     }
     
     func scrollToTopProxyFrames(layout: ContainerViewLayout) -> (master: CGRect, detail: CGRect) {
-        let masterWidth: CGFloat = min(max(320.0, floor(layout.size.width / 3.0)), floor(layout.size.width / 2.0))
+        // Keep in sync with the masterWidth formula in update(layout:...).
+        let masterWidth: CGFloat = min(max(320.0, floor(layout.size.width / 3.0)), floor(layout.size.width / 2.0)) + layout.safeInsets.left
         let detailWidth = layout.size.width - masterWidth
         let scrollToTopHeight = max(layout.statusBarHeight ?? layout.safeInsets.top, 1.0)
         
@@ -82,8 +83,22 @@ final class NavigationSplitContainer: ASDisplayNode {
     }
 
     func update(layout: ContainerViewLayout, masterControllers: [ViewController], detailControllers: [ViewController], detailsPlaceholderNode: NavigationDetailsPlaceholderNode?, transition: ContainedViewLayoutTransition) {
-        let masterWidth: CGFloat = min(max(320.0, floor(layout.size.width / 3.0)), floor(layout.size.width / 2.0))
+        // Telewhite: widen the master column by the left safe inset (notch in
+        // landscape) so the usable chat list width isn't squeezed.
+        let masterWidth: CGFloat = min(max(320.0, floor(layout.size.width / 3.0)), floor(layout.size.width / 2.0)) + layout.safeInsets.left
         let detailWidth = layout.size.width - masterWidth
+        
+        // Telewhite: split the horizontal safe insets between the two columns —
+        // the master only touches the left screen edge and the detail only the
+        // right one. Passing the full insets to both made buttons overlap.
+        var masterSafeInsets = layout.safeInsets
+        masterSafeInsets.right = 0.0
+        var detailSafeInsets = layout.safeInsets
+        detailSafeInsets.left = 0.0
+        var masterIntrinsicInsets = layout.intrinsicInsets
+        masterIntrinsicInsets.right = 0.0
+        var detailIntrinsicInsets = layout.intrinsicInsets
+        detailIntrinsicInsets.left = 0.0
         
         transition.updateFrame(node: self.masterContainer, frame: CGRect(origin: CGPoint(), size: CGSize(width: masterWidth, height: layout.size.height)))
         transition.updateFrame(node: self.detailContainer, frame: CGRect(origin: CGPoint(x: masterWidth, y: 0.0), size: CGSize(width: detailWidth, height: layout.size.height)))
@@ -95,8 +110,8 @@ final class NavigationSplitContainer: ASDisplayNode {
             transition.updateFrame(node: detailsPlaceholderNode, frame: CGRect(origin: CGPoint(x: masterWidth, y: 0.0), size: CGSize(width: detailWidth, height: layout.size.height)))
         }
         
-        self.masterContainer.update(layout: ContainerViewLayout(size: CGSize(width: masterWidth, height: layout.size.height), metrics: layout.metrics, deviceMetrics: layout.deviceMetrics, intrinsicInsets: layout.intrinsicInsets, safeInsets: layout.safeInsets, additionalInsets: UIEdgeInsets(), statusBarHeight: layout.statusBarHeight, inputHeight: layout.inputHeight, inputHeightIsInteractivellyChanging: layout.inputHeightIsInteractivellyChanging, inVoiceOver: layout.inVoiceOver), canBeClosed: false, controllers: masterControllers, transition: transition)
-        self.detailContainer.update(layout: ContainerViewLayout(size: CGSize(width: detailWidth, height: layout.size.height), metrics: layout.metrics, deviceMetrics: layout.deviceMetrics, intrinsicInsets: layout.intrinsicInsets, safeInsets: layout.safeInsets, additionalInsets: layout.additionalInsets, statusBarHeight: layout.statusBarHeight, inputHeight: layout.inputHeight, inputHeightIsInteractivellyChanging: layout.inputHeightIsInteractivellyChanging, inVoiceOver: layout.inVoiceOver), canBeClosed: true, controllers: detailControllers, transition: transition)
+        self.masterContainer.update(layout: ContainerViewLayout(size: CGSize(width: masterWidth, height: layout.size.height), metrics: layout.metrics, deviceMetrics: layout.deviceMetrics, intrinsicInsets: masterIntrinsicInsets, safeInsets: masterSafeInsets, additionalInsets: UIEdgeInsets(), statusBarHeight: layout.statusBarHeight, inputHeight: layout.inputHeight, inputHeightIsInteractivellyChanging: layout.inputHeightIsInteractivellyChanging, inVoiceOver: layout.inVoiceOver), canBeClosed: false, controllers: masterControllers, transition: transition)
+        self.detailContainer.update(layout: ContainerViewLayout(size: CGSize(width: detailWidth, height: layout.size.height), metrics: layout.metrics, deviceMetrics: layout.deviceMetrics, intrinsicInsets: detailIntrinsicInsets, safeInsets: detailSafeInsets, additionalInsets: layout.additionalInsets, statusBarHeight: layout.statusBarHeight, inputHeight: layout.inputHeight, inputHeightIsInteractivellyChanging: layout.inputHeightIsInteractivellyChanging, inVoiceOver: layout.inVoiceOver), canBeClosed: true, controllers: detailControllers, transition: transition)
         
         var controllersUpdated = false
         if self.detailControllers.last !== detailControllers.last {

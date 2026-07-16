@@ -120,7 +120,10 @@ public struct TelewhiteModsSettings: Equatable {
             preserveDeletedMessages: defaults.bool(forKey: Key.preserveDeletedMessages),
             hideOnlineStatus: defaults.bool(forKey: Key.hideOnlineStatus),
             hideTypingStatus: defaults.bool(forKey: Key.hideTypingStatus),
-            hideReadReceipts: defaults.bool(forKey: Key.hideReadReceipts),
+            // Telewhite: global "Hide Read Receipts" removed — read receipts are
+            // hidden per-chat via the ghost button only. Read as false so stale
+            // values from older builds have no effect.
+            hideReadReceipts: false,
             screenshotProtectionBypass: defaults.bool(forKey: Key.screenshotProtectionBypass),
             contentRestrictionBypass: defaults.bool(forKey: Key.contentRestrictionBypass),
             hidePhoneInSettings: defaults.bool(forKey: Key.hidePhoneInSettings),
@@ -1231,9 +1234,10 @@ private func telewhiteMenuEntries(strings: TelewhiteModsStrings) -> [TelewhiteMo
         .menuItem(2, .messages, telewhiteTabTitle(.messenger, strings: strings), strings.text("Deleted messages, one-time media, uploads and translation.", "\u{0423}\u{0434}\u{0430}\u{043b}\u{0451}\u{043d}\u{043d}\u{044b}\u{0435} \u{0441}\u{043e}\u{043e}\u{0431}\u{0449}\u{0435}\u{043d}\u{0438}\u{044f}, \u{043e}\u{0434}\u{043d}\u{043e}\u{0440}\u{0430}\u{0437}\u{043e}\u{0432}\u{044b}\u{0435} \u{043c}\u{0435}\u{0434}\u{0438}\u{0430}, \u{0437}\u{0430}\u{0433}\u{0440}\u{0443}\u{0437}\u{043a}\u{0438} \u{0438} \u{043f}\u{0435}\u{0440}\u{0435}\u{0432}\u{043e}\u{0434}."), .messenger),
         .menuItem(3, .groups, telewhiteTabTitle(.channels, strings: strings), strings.text("Channel and group content controls.", "\u{0424}\u{0443}\u{043d}\u{043a}\u{0446}\u{0438}\u{0438} \u{0434}\u{043b}\u{044f} \u{043a}\u{0430}\u{043d}\u{0430}\u{043b}\u{043e}\u{0432} \u{0438} \u{0433}\u{0440}\u{0443}\u{043f}\u{043f}."), .channels),
         .menuItem(4, .media, telewhiteTabTitle(.media, strings: strings), strings.text("Stories, downloads and media actions.", "\u{0418}\u{0441}\u{0442}\u{043e}\u{0440}\u{0438}\u{0438}, \u{0441}\u{043a}\u{0430}\u{0447}\u{0438}\u{0432}\u{0430}\u{043d}\u{0438}\u{0435} \u{0438} \u{043c}\u{0435}\u{0434}\u{0438}\u{0430}-\u{0434}\u{0435}\u{0439}\u{0441}\u{0442}\u{0432}\u{0438}\u{044f}."), .media),
-        .menuItem(5, .proxy, telewhiteTabTitle(.proxy, strings: strings), strings.text("Auto-picks the fastest working proxy server.", "Сам выбирает самый быстрый рабочий прокси-сервер."), .proxy),
-        .menuItem(6, .appearance, telewhiteTabTitle(.appearance, strings: strings), strings.text("Colors, chat list and split view.", "Цвета, список чатов и сплит-режим."), .appearance),
-        .menuItem(7, .developer, telewhiteTabTitle(.developer, strings: strings), strings.text("Push diagnostics and technical tools.", "Диагностика push и технические инструменты."), .developer)
+        // Telewhite: Smart Proxy tab removed per user request; the engine code
+        // stays but is unreachable from the UI.
+        .menuItem(5, .appearance, telewhiteTabTitle(.appearance, strings: strings), strings.text("Colors, chat list and split view.", "Цвета, список чатов и сплит-режим."), .appearance),
+        .menuItem(6, .developer, telewhiteTabTitle(.developer, strings: strings), strings.text("Push diagnostics and technical tools.", "Диагностика push и технические инструменты."), .developer)
     ]
 }
 
@@ -1254,13 +1258,13 @@ private func telewhiteEntryDescription(_ entry: TelewhiteModsEntry, presentation
     case .translateChats:
         return text("Shows a translate bar at the top of foreign-language chats.", "Показывает панель перевода сверху в чатах на иностранном языке.")
     case .autoTranslateEnglish:
-        return text("Detects the chat language automatically. Translation stays manual until you enable it for that chat in Telegram's translation bar.", "Сам определяет язык чата. Перевод остаётся ручным, пока вы не включите его для этого чата в панели перевода Telegram.")
+        return text("Shows a translate bar in foreign-language chats. Nothing is translated until you turn it on in that chat.", "Показывает панель перевода в иностранных чатах. Ничего не переводится, пока вы сами не включите её в чате.")
     case .outgoingTranslateButtonEnabled:
-        return text("Shows the translator button in private chats; tap toggles per-chat outgoing translation, long press picks the language.", "Показывает кнопку переводчика в личных чатах: тап включает перевод исходящих для чата, долгий тап выбирает язык.")
+        return text("Translator button in private chats: tap to translate your outgoing messages, long press to pick the language.", "Кнопка переводчика в личных чатах: тап — перевод ваших сообщений, долгий тап — выбор языка.")
     case .outgoingTranslationAutoEnabled:
         return text("Automatically translates outgoing messages when your language differs from the chat partner's language (detected from their recent messages). No need to toggle translation manually per chat. Messages already in the target language are never touched.", "Автоматически переводит исходящие, когда ваш язык отличается от языка собеседника (определяется по его последним сообщениям). Не нужно вручную включать перевод в каждом чате. Сообщения уже на целевом языке не трогаются.")
     case .openRouterApiKey:
-        return text("Free key from openrouter.ai for high-quality AI translation of outgoing messages. Without it the standard Telegram translator is used.", "Бесплатный ключ с openrouter.ai для качественного AI-перевода исходящих сообщений. Без него используется стандартный переводчик Telegram.")
+        return text("Optional free key from openrouter.ai for better AI translation. Without it the standard translator is used.", "Необязательный бесплатный ключ с openrouter.ai для более качественного AI-перевода. Без него — стандартный переводчик.")
     case .uploadVideoMessage:
         return text("Videos from the gallery are sent as round video messages.", "Видео из галереи отправляются как круглые видеосообщения.")
     case .oneTimeMediaUnlimited:
@@ -1274,7 +1278,7 @@ private func telewhiteEntryDescription(_ entry: TelewhiteModsEntry, presentation
     case .ghostMode:
         return text("Full invisibility: hides reads, typing and online status.", "Полная невидимость: скрывает прочтение, набор текста и онлайн.")
     case .ghostChatButtonEnabled:
-        return text("Adds a per-chat ghost button that hides read, voice/video play and typing receipts. Telegram cannot hide online from only one contact; use global Ghost Mode for that.", "Добавляет кнопку призрака для выбранного чата: скрывает прочтение, прослушивание голосовых/кружков и набор текста. Telegram не позволяет скрыть онлайн только от одного контакта — для этого используйте глобальную невидимку.")
+        return text("Adds a ghost button to each chat: reads, voice playback and typing in that chat stay invisible.", "Добавляет кнопку невидимки в каждый чат: прочтение, прослушивание и набор текста в этом чате никто не увидит.")
     case .hiddenChatsEnabled:
         return text("Enables the Hide Chat action. Hidden chat data stays on this device.", "Включает действие «Скрыть чат». Данные скрытых чатов хранятся только на этом устройстве.")
     case .hideTypingStatus:
@@ -1294,7 +1298,7 @@ private func telewhiteEntryDescription(_ entry: TelewhiteModsEntry, presentation
     case .downloadStories:
         return text("Adds a save button to stories.", "Добавляет кнопку сохранения в истории.")
     case .autoCacheCleanup:
-        return text("Automatically removes the oldest local media after the selected cache limit is reached. Cloud messages and files remain available.", "Автоматически удаляет самые старые локальные медиа после достижения выбранного лимита. Сообщения и облачные файлы остаются доступными.")
+        return text("Removes the oldest downloaded media when the cache limit is reached. Nothing is deleted from the cloud.", "Удаляет самые старые скачанные медиа при достижении лимита. Из облака ничего не удаляется.")
     case .hideStories:
         return text("Hides the stories row above the chat list.", "Скрывает ленту историй над списком чатов.")
     case .compactChatList:
@@ -1345,11 +1349,12 @@ private func telewhiteModsEntries(tab: TelewhiteModsTab, settings: TelewhiteMods
         // via the ghost button in each chat. The individual global toggles below
         // (online / read receipts / typing) remain as separate, understandable switches.
         entries.append(.hideOnlineStatus(strings.text("Hide Online Status", "Скрыть статус онлайн"), settings.hideOnlineStatus))
-        entries.append(.ghostMessages(strings.text("Hide Read Receipts", "Скрыть прочтение сообщений"), settings.hideReadReceipts))
+        // Telewhite: global "Hide Read Receipts" removed — hiding read receipts is
+        // per-chat only, via the ghost button in each chat.
         entries.append(.hideTypingStatus(strings.text("Hide Typing Status", "Скрыть набор текста"), settings.hideTypingStatus))
         entries.append(.ghostChatButtonEnabled(strings.text("Per-Chat Ghost Button", "Кнопка невидимки в чатах"), settings.ghostChatButtonEnabled))
         entries.append(.ghostStories(strings.text("Anonymous Story Viewing", "Анонимный просмотр историй"), settings.ghostStories))
-        entries.append(.stealthInfo(strings.text("Enable the ghost button in a chat: typing, sending and reading there won't show your activity or update your online status.", "Включите кнопку невидимки в чате: набор текста, отправка и чтение там не покажут вашу активность и не обновят ваш онлайн-статус.")))
+        entries.append(.stealthInfo(strings.text("Global switches above hide your online and typing everywhere. Read receipts are hidden per chat with the ghost button.", "Переключатели выше скрывают ваш онлайн и набор текста везде. Прочтение скрывается отдельно в каждом чате кнопкой невидимки.")))
 
     case .channels:
         entries.append(.channelsHeader(telewhiteTabTitle(.channels, strings: strings)))

@@ -3,15 +3,11 @@ import Postbox
 import TelegramApi
 import SwiftSignalKit
 
-// Telewhite: read receipts are hidden when the global "Hide Read Receipts"
-// toggle is on, or when per-chat ghost is enabled for this specific peer.
-// (Global Ghost Mode was removed — per-chat ghost is the only ghost control.)
+// Telewhite: read receipts are hidden only when per-chat ghost is enabled for
+// this specific peer. (Global toggles were removed — per-chat ghost is the
+// only control.)
 private func telewhiteHideReadReceiptsEnabled(peerId: PeerId) -> Bool {
-    let defaults = UserDefaults.standard
-    if defaults.bool(forKey: "telewhite.mods.hideReadReceipts") {
-        return true
-    }
-    let ghostPeerIds = defaults.array(forKey: "telewhite.mods.ghostPeerIds") as? [NSNumber] ?? []
+    let ghostPeerIds = UserDefaults.standard.array(forKey: "telewhite.mods.ghostPeerIds") as? [NSNumber] ?? []
     return ghostPeerIds.contains(NSNumber(value: peerId.toInt64()))
 }
 
