@@ -135,3 +135,55 @@ public func transcribeAudio(path: String, appLocale: String) -> Signal<LocallyTr
         }
     }
 }
+
+private func appendMultipartString(_ string: String, to data: inout Data) {
+    if let stringData = string.data(using: .utf8) {
+        data.append(stringData)
+    }
+}
+
+public func transcribeAudioWithOpenRouter(path: String, apiKey: String) -> Signal<LocallyTranscribedAudio?, NoError> {
+    return Signal { subscriber in
+        guard !apiKey.isEmpty, let url = URL(string: "https://openrouter.ai/api/v1/audio/transcriptions"), let fileData = try? Data(contentsOf: URL(fileURLWithPath: path)) else {
+            subscriber.putNext(nil)
+            subscriber.putCompletion()
+            return EmptyDisposable
+        }
+
+        let boundary = "Boundary-\(UUID().uuidString)"
+        var body = Data()
+        appendMultipartString("--\(boundary)\r\n", to: &body)
+        appendMultipartString("Content-Disposition: form-data; name=\"model\"\r\n\r\n", to: &body)
+        appendMultipartString("openai/whisper-1\r\n", to: &body)
+        appendMultipartString("--\(boundary)\r\n", to: &body)
+        appendMultipartString("Content-Disposition: form-data; name=\"file\"; filename=\"audio.m4a\"\r\n", to: &body)
+        appendMultipartString("Content-Type: audio/mp4\r\n\r\n", to: &body)
+        body.append(fileData)
+        appendMultipartString("\r\n--\(boundary)--\r\n", to: &body)
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.timeoutInterval = 60.0
+        request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
+        request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
+        request.httpBody = body
+
+        let task = URLSession.shared.dataTask(with: request) { data, _, error in
+            guard error == nil, let data = data,
+                  let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                  let text = json["text"] as? String else {
+                subscriber.putNext(nil)
+                subscriber.putCompletion()
+                return
+            }
+            let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+            subscriber.putNext(trimmed.isEmpty ? nil : LocallyTranscribedAudio(text: trimmed, isFinal: true))
+            subscriber.putCompletion()
+        }
+        task.resume()
+
+        return ActionDisposable {
+            task.cancel()
+        }
+    }
+}

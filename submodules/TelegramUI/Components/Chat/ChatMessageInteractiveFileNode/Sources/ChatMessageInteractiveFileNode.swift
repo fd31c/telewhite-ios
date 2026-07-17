@@ -358,9 +358,11 @@ public final class ChatMessageInteractiveFileNode: ASDisplayNode {
         
         let presentationData = context.sharedContext.currentPresentationData.with { $0 }
         let premiumConfiguration = PremiumConfiguration.with(appConfiguration: arguments.context.currentAppConfiguration.with { $0 })
+        let telewhiteOpenRouterKey = UserDefaults.standard.string(forKey: "telewhite.mods.openRouterApiKey") ?? ""
+        let canUseTelewhiteOpenRouterTranscription = !telewhiteOpenRouterKey.isEmpty
         
         let transcriptionText = self.forcedAudioTranscriptionText ?? transcribedText(message: EngineMessage(message))
-        if transcriptionText == nil && !arguments.associatedData.alwaysDisplayTranscribeButton.providedByGroupBoost {
+        if transcriptionText == nil && !arguments.associatedData.alwaysDisplayTranscribeButton.providedByGroupBoost && !canUseTelewhiteOpenRouterTranscription {
             if premiumConfiguration.audioTransciptionTrialCount > 0 {
                 if !arguments.associatedData.isPremium {
                     if self.presentAudioTranscriptionTooltip(finished: false) {
@@ -419,8 +421,9 @@ public final class ChatMessageInteractiveFileNode: ASDisplayNode {
                 self.audioTranscriptionState = .inProgress
                 self.requestUpdateLayout(true)
                 
-                if context.sharedContext.immediateExperimentalUISettings.localTranscription {
+                if context.sharedContext.immediateExperimentalUISettings.localTranscription || canUseTelewhiteOpenRouterTranscription {
                     let appLocale = presentationData.strings.baseLanguageCode
+                    let useOpenRouterTranscription = canUseTelewhiteOpenRouterTranscription && !context.sharedContext.immediateExperimentalUISettings.localTranscription
                     
                     let signal: Signal<LocallyTranscribedAudio?, NoError> = context.engine.data.get(TelegramEngine.EngineData.Item.Messages.Message(id: message.id))
                     |> mapToSignal { message -> Signal<String?, NoError> in
@@ -451,7 +454,11 @@ public final class ChatMessageInteractiveFileNode: ASDisplayNode {
                         guard let result = result else {
                             return .single(nil)
                         }
-                        return transcribeAudio(path: result, appLocale: appLocale)
+                        if useOpenRouterTranscription {
+                            return transcribeAudioWithOpenRouter(path: result, apiKey: telewhiteOpenRouterKey)
+                        } else {
+                            return transcribeAudio(path: result, appLocale: appLocale)
+                        }
                     }
                     
                     self.transcribeDisposable = (signal
