@@ -39,6 +39,25 @@ import ChatNewThreadInfoItem
 import PhoneNumberFormat
 import Postbox
 
+private func telewhiteChatPresentationData(_ data: ChatPresentationData) -> ChatPresentationData {
+    let rawValue = UserDefaults.standard.integer(forKey: "telewhite.mods.chatFontSizeOverride")
+    guard rawValue != 0, let fontSize = PresentationFontSize(rawValue: Int32(rawValue)), fontSize != data.fontSize else {
+        return data
+    }
+    return ChatPresentationData(
+        theme: data.theme,
+        fontSize: fontSize,
+        strings: data.strings,
+        dateTimeFormat: data.dateTimeFormat,
+        nameDisplayOrder: data.nameDisplayOrder,
+        disableAnimations: data.disableAnimations,
+        largeEmoji: data.largeEmoji,
+        chatBubbleCorners: data.chatBubbleCorners,
+        animatedEmojiScale: data.animatedEmojiScale,
+        isPreview: data.isPreview
+    )
+}
+
 struct ChatTopVisibleMessageRange: Equatable {
     var lowerBound: MessageIndex
     var upperBound: MessageIndex
@@ -1906,6 +1925,7 @@ public final class ChatHistoryListNodeImpl: ListViewImpl, ChatHistoryNode, ChatH
             contentSettings |> debug_measureTimeToFirstEvent(label: "chatHistoryNode_contentSettings")
         ) |> debug_measureTimeToFirstEvent(label: "chatHistoryNode_firstChatHistoryTransition")).startStrict(next: { [weak self] update, chatPresentationData, selectedMessages, updatingMedia, networkType, preferredStoryHighQuality, animatedEmojiStickers, additionalAnimatedEmojiStickers, customChannelDiscussionReadState, customThreadOutgoingReadState, availableReactions, availableMessageEffects, savedMessageTags, defaultReaction, accountPeer, accountCountry, suggestAudioTranscription, promises, topicAuthorId, translationState, maxReadStoryId, recommendedChannels, audioTranscriptionTrial, chatThemes, deviceContactsNumbers, contentSettings in
             let (historyAppearsCleared, pendingUnpinnedAllMessages, pendingRemovedMessages, currentlyPlayingMessageIdAndType, scrollToMessageId, chatHasBots, allAdMessages) = promises
+            let effectiveChatPresentationData = telewhiteChatPresentationData(chatPresentationData)
             
             if measure_isFirstTime {
                 measure_isFirstTime = false
@@ -2200,7 +2220,7 @@ public final class ChatHistoryListNodeImpl: ListViewImpl, ChatHistoryNode, ChatH
                     groupMessages: mode == .bubbles,
                     reverseGroupedMessages: reverseGroups,
                     selectedMessages: selectedMessages,
-                    presentationData: chatPresentationData,
+                    presentationData: effectiveChatPresentationData,
                     historyAppearsCleared: historyAppearsCleared,
                     skipViewOnceMedia: mode != .bubbles,
                     pendingUnpinnedAllMessages: pendingUnpinnedAllMessages,

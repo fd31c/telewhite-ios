@@ -49,6 +49,7 @@ public struct TelewhiteModsSettings: Equatable {
     public var chatBackgroundColorOverride: Int64?
     public var chatBackgroundGradientOverride: [Int64]?
     public var bubbleCornerRadiusOverride: Int32?
+    public var chatFontSizeOverride: Int32
     public var outgoingTranslateButtonEnabled: Bool
     public var outgoingTranslationPeerIds: Set<Int64>
     public var outgoingTranslationLanguages: [Int64: String]
@@ -101,6 +102,7 @@ public struct TelewhiteModsSettings: Equatable {
         static let chatBackgroundColor = "telewhite.mods.chatBackgroundColor"
         static let chatBackgroundGradient = "telewhite.mods.chatBackgroundGradient"
         static let bubbleCornerRadius = "telewhite.mods.bubbleCornerRadius"
+        static let chatFontSizeOverride = "telewhite.mods.chatFontSizeOverride"
         static let outgoingTranslateButtonEnabled = "telewhite.mods.outgoingTranslateButtonEnabled"
         static let outgoingTranslationPeerIds = "telewhite.mods.outgoingTranslationPeerIds"
         static let outgoingTranslationLanguages = "telewhite.mods.outgoingTranslationLanguages"
@@ -162,6 +164,7 @@ public struct TelewhiteModsSettings: Equatable {
             chatBackgroundColorOverride: (defaults.object(forKey: Key.chatBackgroundColor) as? NSNumber)?.int64Value,
             chatBackgroundGradientOverride: (defaults.array(forKey: Key.chatBackgroundGradient) as? [NSNumber]).flatMap { numbers in numbers.count >= 2 ? numbers.map { $0.int64Value } : nil },
             bubbleCornerRadiusOverride: (defaults.object(forKey: Key.bubbleCornerRadius) as? NSNumber)?.int32Value,
+            chatFontSizeOverride: (defaults.object(forKey: Key.chatFontSizeOverride) as? NSNumber)?.int32Value ?? 0,
             outgoingTranslateButtonEnabled: defaults.object(forKey: Key.outgoingTranslateButtonEnabled) as? Bool ?? true,
             outgoingTranslationPeerIds: Set((defaults.array(forKey: Key.outgoingTranslationPeerIds) as? [NSNumber] ?? []).map { $0.int64Value }),
             outgoingTranslationLanguages: {
@@ -299,6 +302,7 @@ public struct TelewhiteModsSettings: Equatable {
         } else {
             defaults.removeObject(forKey: Key.bubbleCornerRadius)
         }
+        defaults.set(self.chatFontSizeOverride, forKey: Key.chatFontSizeOverride)
         defaults.set(self.outgoingTranslateButtonEnabled, forKey: Key.outgoingTranslateButtonEnabled)
         defaults.set(self.outgoingTranslationPeerIds.map { NSNumber(value: $0) }, forKey: Key.outgoingTranslationPeerIds)
         defaults.set(Dictionary(uniqueKeysWithValues: self.outgoingTranslationLanguages.map { (String($0.key), $0.value) }), forKey: Key.outgoingTranslationLanguages)
@@ -345,6 +349,7 @@ private final class TelewhiteModsControllerArguments {
     let openDebug: () -> Void
     let promptOpenRouterKey: () -> Void
     let promptMessageFilterRules: () -> Void
+    let promptGroupEventLog: () -> Void
     
     init(
         updateSettings: @escaping ((TelewhiteModsSettings) -> TelewhiteModsSettings) -> Void,
@@ -354,7 +359,8 @@ private final class TelewhiteModsControllerArguments {
         promptCustomColor: @escaping (TelewhiteCustomColorTarget) -> Void = { _ in },
         openDebug: @escaping () -> Void = {},
         promptOpenRouterKey: @escaping () -> Void = {},
-        promptMessageFilterRules: @escaping () -> Void = {}
+        promptMessageFilterRules: @escaping () -> Void = {},
+        promptGroupEventLog: @escaping () -> Void = {}
     ) {
         self.updateSettings = updateSettings
         self.updateTranslationSettings = updateTranslationSettings
@@ -364,6 +370,7 @@ private final class TelewhiteModsControllerArguments {
         self.openDebug = openDebug
         self.promptOpenRouterKey = promptOpenRouterKey
         self.promptMessageFilterRules = promptMessageFilterRules
+        self.promptGroupEventLog = promptGroupEventLog
     }
 }
 
@@ -449,6 +456,7 @@ private enum TelewhiteModsEntry: ItemListNodeEntry, Equatable {
     case screenshotProtectionBypass(String, Bool)
     case contentRestrictionBypass(String, Bool)
     case hidePhoneInSettings(String, Bool)
+    case groupEventLog(String, String)
     case showProfileIds(String, Bool)
     case privacyInfo(String)
     
@@ -493,6 +501,7 @@ private enum TelewhiteModsEntry: ItemListNodeEntry, Equatable {
     case backgroundColorCustom(String, Int64?, Bool)
     case cornerRadiusHeader(String)
     case cornerRadiusOption(Int32, String, Int32?, Bool)
+    case chatFontSizeOption(Int32, String, Int32, Bool)
     case appearanceInfo(String)
     
     case developerHeader(String)
@@ -512,7 +521,7 @@ private enum TelewhiteModsEntry: ItemListNodeEntry, Equatable {
             return TelewhiteModsSection.messenger.rawValue
         case .vpnHeader, .vpnEnabled, .vpnSubscription, .vpnStatus, .vpnStart, .vpnInfo:
             return TelewhiteModsSection.vpn.rawValue
-        case .privacyHeader, .hiddenChatsEnabled, .screenshotProtectionBypass, .contentRestrictionBypass, .hidePhoneInSettings, .showProfileIds, .showUserIds, .showChatIds, .showMessageIds, .privacyInfo:
+        case .privacyHeader, .hiddenChatsEnabled, .screenshotProtectionBypass, .contentRestrictionBypass, .hidePhoneInSettings, .groupEventLog, .showProfileIds, .showUserIds, .showChatIds, .showMessageIds, .privacyInfo:
             return TelewhiteModsSection.privacy.rawValue
         case .stealthHeader, .ghostMode, .hideOnlineStatus, .ghostMessages, .hideReadReceipts, .hideTypingStatus, .ghostChatButtonEnabled, .ghostStories, .stealthInfo:
             return TelewhiteModsSection.stealth.rawValue
@@ -530,7 +539,7 @@ private enum TelewhiteModsEntry: ItemListNodeEntry, Equatable {
             return TelewhiteModsSection.bubbleColor.rawValue
         case .backgroundColorHeader, .backgroundColorOption, .backgroundGradientOption, .backgroundColorCustom:
             return TelewhiteModsSection.backgroundColor.rawValue
-        case .cornerRadiusHeader, .cornerRadiusOption, .appearanceInfo:
+        case .cornerRadiusHeader, .cornerRadiusOption, .chatFontSizeOption, .appearanceInfo:
             return TelewhiteModsSection.cornerRadius.rawValue
         case .developerHeader, .pushStatus, .pushToken, .debugMenu, .developerInfo:
             return TelewhiteModsSection.developer.rawValue
@@ -605,6 +614,8 @@ private enum TelewhiteModsEntry: ItemListNodeEntry, Equatable {
             return 110
         case .hiddenChatsEnabled:
             return 111
+        case .groupEventLog:
+            return 112
         case .vpnHeader:
             return 200
         case .vpnEnabled:
@@ -689,6 +700,8 @@ private enum TelewhiteModsEntry: ItemListNodeEntry, Equatable {
             return 770
         case let .cornerRadiusOption(index, _, _, _):
             return 771 + index
+        case let .chatFontSizeOption(index, _, _, _):
+            return 781 + index
         case .appearanceInfo:
             return 790
         case .developerHeader:
@@ -784,6 +797,14 @@ private enum TelewhiteModsEntry: ItemListNodeEntry, Equatable {
                 arguments.updateSettings { current in
                     var updated = current
                     updated.bubbleCornerRadiusOverride = value
+                    return updated
+                }
+            })
+        case let .chatFontSizeOption(_, title, value, selected):
+            return ItemListCheckboxItem(presentationData: presentationData, systemStyle: .glass, title: title, style: .right, checked: selected, zeroSeparatorInsets: false, sectionId: self.section, action: {
+                arguments.updateSettings { current in
+                    var updated = current
+                    updated.chatFontSizeOverride = value
                     return updated
                 }
             })
@@ -896,6 +917,10 @@ private enum TelewhiteModsEntry: ItemListNodeEntry, Equatable {
         case let .debugMenu(text):
             return ItemListDisclosureItem(presentationData: presentationData, systemStyle: .glass, title: text, label: "", sectionId: self.section, style: .blocks, disclosureStyle: .arrow, action: {
                 arguments.openDebug()
+            })
+        case let .groupEventLog(text, label):
+            return ItemListDisclosureItem(presentationData: presentationData, systemStyle: .glass, title: text, label: label, labelStyle: .text, sectionId: self.section, style: .blocks, disclosureStyle: .arrow, action: {
+                arguments.promptGroupEventLog()
             })
         case let .messengerInfo(text), let .vpnInfo(text), let .privacyInfo(text), let .stealthInfo(text), let .channelsInfo(text), let .mediaInfo(text), let .callsInfo(text), let .developerInfo(text), let .appearanceInfo(text):
             return ItemListTextItem(presentationData: presentationData, text: .plain(text), sectionId: self.section)
@@ -1426,6 +1451,8 @@ private func telewhiteModsEntries(tab: TelewhiteModsTab, settings: TelewhiteMods
         entries.append(.screenshotProtectionBypass(strings.text("Screenshot Protection Bypass", "Обход защиты скриншотов"), settings.screenshotProtectionBypass))
         entries.append(.contentRestrictionBypass(strings.text("Content Restriction Bypass", "Обход ограничений контента"), settings.contentRestrictionBypass))
         entries.append(.hidePhoneInSettings(strings.text("Hide Phone and Username", "Скрыть номер и юзернейм"), settings.hidePhoneInSettings))
+        let groupEventCount = TelewhiteGroupEventLog.entries.count
+        entries.append(.groupEventLog(strings.text("Group Removal Log", "Журнал удалений из групп"), groupEventCount == 0 ? "" : "\(groupEventCount)"))
         entries.append(.showProfileIds(strings.text("Show IDs", "Показывать ID"), settings.showUserIds && settings.showChatIds))
         entries.append(.privacyInfo(strings.text("Hidden chats, content protection and optional technical IDs are managed here.", "Здесь собраны скрытые чаты, защита контента и показ технических ID.")))
 
@@ -1571,8 +1598,11 @@ private func telewhiteModsEntries(tab: TelewhiteModsTab, settings: TelewhiteMods
         for (index, preset) in radiusPresets.enumerated() {
             entries.append(.cornerRadiusOption(Int32(index), preset.0, preset.1, settings.bubbleCornerRadiusOverride == preset.1))
         }
+        entries.append(.chatFontSizeOption(0, strings.text("Chat Text: Default", "Текст чата: по умолчанию"), 0, settings.chatFontSizeOverride == 0))
+        entries.append(.chatFontSizeOption(1, strings.text("Chat Text: Small", "Текст чата: меньше"), PresentationFontSize.small.rawValue, settings.chatFontSizeOverride == PresentationFontSize.small.rawValue))
+        entries.append(.chatFontSizeOption(2, strings.text("Chat Text: Large", "Текст чата: больше"), PresentationFontSize.large.rawValue, settings.chatFontSizeOverride == PresentationFontSize.large.rawValue))
 
-        entries.append(.appearanceInfo(strings.text("Color and radius overrides apply on top of the selected Telegram theme and update instantly.", "Настройки цвета и скругления применяются поверх выбранной темы Telegram и обновляются мгновенно.")))
+        entries.append(.appearanceInfo(strings.text("Color, radius and chat text overrides apply on top of the selected Telegram theme and update instantly.", "Настройки цвета, скругления и текста чата применяются поверх выбранной темы Telegram и обновляются мгновенно.")))
 
     case .developer:
         entries.append(.developerHeader(telewhiteTabTitle(.developer, strings: strings)))
@@ -1750,6 +1780,21 @@ private func telewhiteModsSectionController(context: AccountContext, tab: Telewh
                     return updated
                 }
             }
+        )
+        presentControllerImpl?(prompt)
+    }, promptGroupEventLog: {
+        let presentationData = context.sharedContext.currentPresentationData.with { $0 }
+        let strings = TelewhiteModsStrings(presentationData: presentationData)
+        let entries = TelewhiteGroupEventLog.entries
+        let value = entries.isEmpty ? strings.text("No removal events recorded on this device yet.", "На этом устройстве пока нет записей об удалении из групп.") : entries.joined(separator: "\n")
+        let prompt = promptController(
+            context: context,
+            text: strings.text("Group Removal Log", "Журнал удалений из групп"),
+            subtitle: strings.text("Local events only. Telegram updates for basic groups do not include the admin who removed you.", "Только локальные события. Обновления Telegram для базовых групп не содержат администратора, который удалил вас."),
+            value: value,
+            placeholder: "",
+            characterLimit: 4096,
+            apply: { _ in }
         )
         presentControllerImpl?(prompt)
     })
