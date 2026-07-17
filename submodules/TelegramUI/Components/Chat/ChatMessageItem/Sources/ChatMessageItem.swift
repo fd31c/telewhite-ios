@@ -147,6 +147,10 @@ public protocol ChatMessageItem: ListViewItem {
 public func hasCommentButton(item: ChatMessageItem) -> Bool {
     let firstMessage = item.content.firstMessage
     
+    if TelewhiteChannelDeclutter.shouldHideComments(message: firstMessage) {
+        return false
+    }
+    
     var hasDiscussion = false
     if let channel = firstMessage.peers[firstMessage.id.peerId] as? TelegramChannel, case let .broadcast(info) = channel.info, info.flags.contains(.hasDiscussionGroup) {
         hasDiscussion = true

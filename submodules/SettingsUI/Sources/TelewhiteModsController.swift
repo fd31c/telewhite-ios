@@ -58,6 +58,9 @@ public struct TelewhiteModsSettings: Equatable {
     public var showPreviousEditedText: Bool
     public var autoCacheCleanup: Bool
     public var cacheLimitGigabytes: Int32
+    public var channelHideReactions: Bool
+    public var channelHideComments: Bool
+    public var channelHideShareButton: Bool
 
     private enum Key {
         static let vpnEnabled = "telewhite.mods.vpnEnabled"
@@ -104,6 +107,9 @@ public struct TelewhiteModsSettings: Equatable {
         static let showPreviousEditedText = "telewhite.mods.showPreviousEditedText"
         static let autoCacheCleanup = "telewhite.mods.autoCacheCleanup"
         static let cacheLimitGigabytes = "telewhite.mods.cacheLimitGigabytes"
+        static let channelHideReactions = "telewhite.mods.channelHideReactions"
+        static let channelHideComments = "telewhite.mods.channelHideComments"
+        static let channelHideShareButton = "telewhite.mods.channelHideShareButton"
     }
     
     public static var current: TelewhiteModsSettings {
@@ -168,7 +174,10 @@ public struct TelewhiteModsSettings: Equatable {
             forwardHideNamesByDefault: defaults.bool(forKey: Key.forwardHideNamesByDefault),
             showPreviousEditedText: defaults.object(forKey: Key.showPreviousEditedText) as? Bool ?? true,
             autoCacheCleanup: defaults.bool(forKey: Key.autoCacheCleanup),
-            cacheLimitGigabytes: max(1, (defaults.object(forKey: Key.cacheLimitGigabytes) as? NSNumber)?.int32Value ?? 5)
+            cacheLimitGigabytes: max(1, (defaults.object(forKey: Key.cacheLimitGigabytes) as? NSNumber)?.int32Value ?? 5),
+            channelHideReactions: defaults.bool(forKey: Key.channelHideReactions),
+            channelHideComments: defaults.bool(forKey: Key.channelHideComments),
+            channelHideShareButton: defaults.bool(forKey: Key.channelHideShareButton)
         )
     }
 
@@ -290,6 +299,9 @@ public struct TelewhiteModsSettings: Equatable {
         defaults.set(self.showPreviousEditedText, forKey: Key.showPreviousEditedText)
         defaults.set(self.autoCacheCleanup, forKey: Key.autoCacheCleanup)
         defaults.set(self.cacheLimitGigabytes, forKey: Key.cacheLimitGigabytes)
+        defaults.set(self.channelHideReactions, forKey: Key.channelHideReactions)
+        defaults.set(self.channelHideComments, forKey: Key.channelHideComments)
+        defaults.set(self.channelHideShareButton, forKey: Key.channelHideShareButton)
         NotificationCenter.default.post(name: TelewhiteModsSettings.didChangeNotification, object: nil)
     }
 
@@ -429,6 +441,9 @@ private enum TelewhiteModsEntry: ItemListNodeEntry, Equatable {
 
     case channelsHeader(String)
     case channelContentRestrictionBypass(String, Bool)
+    case channelHideReactions(String, Bool)
+    case channelHideComments(String, Bool)
+    case channelHideShareButton(String, Bool)
     case channelsInfo(String)
 
     case mediaHeader(String)
@@ -483,7 +498,7 @@ private enum TelewhiteModsEntry: ItemListNodeEntry, Equatable {
             return TelewhiteModsSection.privacy.rawValue
         case .stealthHeader, .ghostMode, .hideOnlineStatus, .ghostMessages, .hideReadReceipts, .hideTypingStatus, .ghostChatButtonEnabled, .ghostStories, .stealthInfo:
             return TelewhiteModsSection.stealth.rawValue
-        case .channelsHeader, .channelContentRestrictionBypass, .channelsInfo:
+        case .channelsHeader, .channelContentRestrictionBypass, .channelHideReactions, .channelHideComments, .channelHideShareButton, .channelsInfo:
             return TelewhiteModsSection.channels.rawValue
         case .mediaHeader, .downloadStories, .hideStories, .autoCacheCleanup, .cacheLimit, .mediaInfo:
             return TelewhiteModsSection.media.rawValue
@@ -590,8 +605,14 @@ private enum TelewhiteModsEntry: ItemListNodeEntry, Equatable {
             return 400
         case .channelContentRestrictionBypass:
             return 401
-        case .channelsInfo:
+        case .channelHideReactions:
             return 402
+        case .channelHideComments:
+            return 403
+        case .channelHideShareButton:
+            return 404
+        case .channelsInfo:
+            return 405
         case .mediaHeader:
             return 500
         case .downloadStories:
@@ -894,6 +915,18 @@ private enum TelewhiteModsEntry: ItemListNodeEntry, Equatable {
         case let .channelContentRestrictionBypass(text, value):
             return self.switchItem(presentationData: presentationData, arguments: arguments, text: text, value: value) { settings, value in
                 settings.contentRestrictionBypass = value
+            }
+        case let .channelHideReactions(text, value):
+            return self.switchItem(presentationData: presentationData, arguments: arguments, text: text, value: value) { settings, value in
+                settings.channelHideReactions = value
+            }
+        case let .channelHideComments(text, value):
+            return self.switchItem(presentationData: presentationData, arguments: arguments, text: text, value: value) { settings, value in
+                settings.channelHideComments = value
+            }
+        case let .channelHideShareButton(text, value):
+            return self.switchItem(presentationData: presentationData, arguments: arguments, text: text, value: value) { settings, value in
+                settings.channelHideShareButton = value
             }
         case let .downloadStories(text, value):
             return self.switchItem(presentationData: presentationData, arguments: arguments, text: text, value: value) { settings, value in
@@ -1284,13 +1317,19 @@ private func telewhiteEntryDescription(_ entry: TelewhiteModsEntry, presentation
     case .hideTypingStatus:
         return text("Others won't see when you're typing or recording.", "Другие не увидят, что вы печатаете или записываете.")
     case .hideReadReceipts, .ghostMessages:
-        return text("Works everywhere in Telegram: private chats, groups and channels. Read messages and play voice/video notes without anyone seeing read checkmarks.", "Действует на всё в Telegram: личные чаты, группы и каналы. Читайте сообщения и слушайте голосовые/видео — никто не увидит галочки прочтения.")
+        return text("Works everywhere in Telegram: private chats, groups and channels. Read messages and play voice/video notes without anyone seeing read checkmarks.", "Действует на всё в Telegram: личные чаты, группы и каналы. Читайте сообщения и слушайте голос��вые/видео — никто не увидит галочки прочтения.")
     case .ghostStories:
         return text("Watch stories without the author knowing.", "Смотрите истории так, что автор об этом не узнает.")
     case .screenshotProtectionBypass:
         return text("Removes screenshot blocks in protected chats.", "Убирает блокировку скриншотов в защищённых чатах.")
     case .contentRestrictionBypass, .channelContentRestrictionBypass:
         return text("Lets you forward, copy and save from protected chats and channels.", "Позволяет пересылать, копировать и сохранять из защищённых чатов и каналов.")
+    case .channelHideReactions:
+        return text("Hides reaction rows under channel posts on this device.", "Скрывает реакции под постами каналов на этом устройстве.")
+    case .channelHideComments:
+        return text("Hides the comments bar under channel posts on this device.", "Скрывает панель комментариев под постами каналов на этом устройстве.")
+    case .channelHideShareButton:
+        return text("Hides the floating share button next to channel posts.", "Скрывает плавающую кнопку «Поделиться» рядом с постами каналов.")
     case .hidePhoneInSettings:
         return text("Hides your phone number and username in Settings and your profile.", "Скрывает ваш номер телефона и юзернейм в настройках и профиле.")
     case .showProfileIds, .showUserIds, .showChatIds, .showMessageIds:
@@ -1359,7 +1398,10 @@ private func telewhiteModsEntries(tab: TelewhiteModsTab, settings: TelewhiteMods
     case .channels:
         entries.append(.channelsHeader(telewhiteTabTitle(.channels, strings: strings)))
         entries.append(.channelContentRestrictionBypass(strings.text("Content Restriction Bypass", "Обход ограничений контента"), settings.contentRestrictionBypass))
-        entries.append(.channelsInfo(strings.text("Channel and group restrictions are controlled here.", "Здесь управляются ограничения каналов и групп.")))
+        entries.append(.channelHideReactions(strings.text("Hide Reactions in Channels", "Скрыть реакции в каналах"), settings.channelHideReactions))
+        entries.append(.channelHideComments(strings.text("Hide Comments in Channels", "Скрыть комментарии в каналах"), settings.channelHideComments))
+        entries.append(.channelHideShareButton(strings.text("Hide Share Button in Channels", "Скрыть кнопку «Поделиться» в каналах"), settings.channelHideShareButton))
+        entries.append(.channelsInfo(strings.text("Channel and group restrictions are controlled here. Hiding reactions, comments and the share button only affects channel posts on this device.", "Здесь управляются ограничения каналов и групп. Скрытие реакций, комментариев и кнопки «Поделиться» действует только на посты каналов и только на этом устройстве.")))
 
     case .media:
         entries.append(.mediaHeader(telewhiteTabTitle(.media, strings: strings)))

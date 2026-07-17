@@ -465,13 +465,18 @@ private func contentNodeMessagesAndClassesForItem(_ item: ChatMessageItem) -> ([
         needReactions = false
     }
     
+    let telewhiteHideChannelReactions = TelewhiteChannelDeclutter.shouldHideReactions(message: firstMessage)
+    if telewhiteHideChannelReactions {
+        needReactions = false
+    }
+    
     if !isAction && !hasSeparateCommentsButton && !Namespaces.Message.allNonRegular.contains(firstMessage.id.namespace) && !hideAllAdditionalInfo {
         if hasCommentButton(item: item) {
             result.append((firstMessage, ChatMessageCommentFooterContentNode.self, ChatMessageEntryAttributes(), BubbleItemAttributes(isAttachment: true, neighborType: .footer, neighborSpacing: .default)))
         }
     }
     
-    if !reactionsAreInline && !hideAllAdditionalInfo, let reactionsAttribute = mergedMessageReactions(attributes: firstMessage.attributes, isTags: firstMessage.areReactionsTags(accountPeerId: item.context.account.peerId)), !reactionsAttribute.reactions.isEmpty {
+    if !reactionsAreInline && !hideAllAdditionalInfo && !telewhiteHideChannelReactions, let reactionsAttribute = mergedMessageReactions(attributes: firstMessage.attributes, isTags: firstMessage.areReactionsTags(accountPeerId: item.context.account.peerId)), !reactionsAttribute.reactions.isEmpty {
         if result.last?.1 == ChatMessageTextBubbleContentNode.self {
         } else {
             if result.last?.1 == ChatMessagePollBubbleContentNode.self ||
@@ -1911,6 +1916,10 @@ public class ChatMessageBubbleItemNode: ChatMessageItemView, ChatMessagePreviewI
                     needsSummarizeButton = false
                 }
             }
+        }
+        
+        if needsShareButton && TelewhiteChannelDeclutter.shouldHideShareButton(message: item.message) {
+            needsShareButton = false
         }
         
         if isPreview {

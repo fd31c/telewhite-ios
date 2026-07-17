@@ -570,6 +570,10 @@ public class ChatMessageStickerItemNode: ChatMessageItemView {
                 }
             }
             
+            if needsShareButton && TelewhiteChannelDeclutter.shouldHideShareButton(message: item.message) {
+                needsShareButton = false
+            }
+            
             if let subject = item.associatedData.subject, case .messageOptions = subject {
                 needsShareButton = false
             }
@@ -916,7 +920,7 @@ public class ChatMessageStickerItemNode: ChatMessageItemView {
             }
             
             let reactions: ReactionsMessageAttribute
-            if shouldDisplayInlineDateReactions(message: EngineMessage(item.message), isPremium: item.associatedData.isPremium, forceInline: item.associatedData.forceInlineReactions) {
+            if TelewhiteChannelDeclutter.shouldHideReactions(message: item.message) || shouldDisplayInlineDateReactions(message: EngineMessage(item.message), isPremium: item.associatedData.isPremium, forceInline: item.associatedData.forceInlineReactions) {
                 reactions = ReactionsMessageAttribute(canViewList: false, isTags: false, reactions: [], recentPeers: [], topPeers: [])
             } else {
                 reactions = mergedMessageReactions(attributes: item.message.attributes, isTags: item.message.areReactionsTags(accountPeerId: item.context.account.peerId)) ?? ReactionsMessageAttribute(canViewList: false, isTags: false, reactions: [], recentPeers: [], topPeers: [])
