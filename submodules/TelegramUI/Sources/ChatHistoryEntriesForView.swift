@@ -153,7 +153,11 @@ func chatHistoryEntriesForView(
         if pendingRemovedMessages.contains(message.id) {
             continue
         }
-        
+
+        if TelewhiteMessageFilters.shouldHideMessage(message, accountPeerId: context.account.peerId) {
+            continue
+        }
+
         if case let .replyThread(replyThreadMessage) = location, replyThreadMessage.isForumPost {
             for media in message.media {
                 if let action = media as? TelegramMediaAction {

@@ -54,6 +54,9 @@ public struct TelewhiteModsSettings: Equatable {
     public var outgoingTranslationLanguages: [Int64: String]
     public var openRouterApiKey: String
     public var outgoingTranslationAutoEnabled: Bool
+    public var messageFiltersEnabled: Bool
+    public var messageFiltersUseRegex: Bool
+    public var messageFilterRules: String
     public var forwardHideNamesByDefault: Bool
     public var showPreviousEditedText: Bool
     public var autoCacheCleanup: Bool
@@ -103,6 +106,9 @@ public struct TelewhiteModsSettings: Equatable {
         static let outgoingTranslationLanguages = "telewhite.mods.outgoingTranslationLanguages"
         static let openRouterApiKey = "telewhite.mods.openRouterApiKey"
         static let outgoingTranslationAutoEnabled = "telewhite.mods.outgoingTranslationAutoEnabled"
+        static let messageFiltersEnabled = "telewhite.mods.messageFiltersEnabled"
+        static let messageFiltersUseRegex = "telewhite.mods.messageFiltersUseRegex"
+        static let messageFilterRules = "telewhite.mods.messageFilterRules"
         static let forwardHideNamesByDefault = "telewhite.mods.forwardHideNamesByDefault"
         static let showPreviousEditedText = "telewhite.mods.showPreviousEditedText"
         static let autoCacheCleanup = "telewhite.mods.autoCacheCleanup"
@@ -171,6 +177,9 @@ public struct TelewhiteModsSettings: Equatable {
             }(),
             openRouterApiKey: defaults.string(forKey: Key.openRouterApiKey) ?? "",
             outgoingTranslationAutoEnabled: defaults.bool(forKey: Key.outgoingTranslationAutoEnabled),
+            messageFiltersEnabled: defaults.bool(forKey: Key.messageFiltersEnabled),
+            messageFiltersUseRegex: defaults.bool(forKey: Key.messageFiltersUseRegex),
+            messageFilterRules: defaults.string(forKey: Key.messageFilterRules) ?? "",
             forwardHideNamesByDefault: defaults.bool(forKey: Key.forwardHideNamesByDefault),
             showPreviousEditedText: defaults.object(forKey: Key.showPreviousEditedText) as? Bool ?? true,
             autoCacheCleanup: defaults.bool(forKey: Key.autoCacheCleanup),
@@ -295,6 +304,9 @@ public struct TelewhiteModsSettings: Equatable {
         defaults.set(Dictionary(uniqueKeysWithValues: self.outgoingTranslationLanguages.map { (String($0.key), $0.value) }), forKey: Key.outgoingTranslationLanguages)
         defaults.set(self.openRouterApiKey, forKey: Key.openRouterApiKey)
         defaults.set(self.outgoingTranslationAutoEnabled, forKey: Key.outgoingTranslationAutoEnabled)
+        defaults.set(self.messageFiltersEnabled, forKey: Key.messageFiltersEnabled)
+        defaults.set(self.messageFiltersUseRegex, forKey: Key.messageFiltersUseRegex)
+        defaults.set(self.messageFilterRules, forKey: Key.messageFilterRules)
         defaults.set(self.forwardHideNamesByDefault, forKey: Key.forwardHideNamesByDefault)
         defaults.set(self.showPreviousEditedText, forKey: Key.showPreviousEditedText)
         defaults.set(self.autoCacheCleanup, forKey: Key.autoCacheCleanup)
@@ -332,6 +344,7 @@ private final class TelewhiteModsControllerArguments {
     let promptCustomColor: (TelewhiteCustomColorTarget) -> Void
     let openDebug: () -> Void
     let promptOpenRouterKey: () -> Void
+    let promptMessageFilterRules: () -> Void
     
     init(
         updateSettings: @escaping ((TelewhiteModsSettings) -> TelewhiteModsSettings) -> Void,
@@ -340,7 +353,8 @@ private final class TelewhiteModsControllerArguments {
         openTab: @escaping (TelewhiteModsTab) -> Void = { _ in },
         promptCustomColor: @escaping (TelewhiteCustomColorTarget) -> Void = { _ in },
         openDebug: @escaping () -> Void = {},
-        promptOpenRouterKey: @escaping () -> Void = {}
+        promptOpenRouterKey: @escaping () -> Void = {},
+        promptMessageFilterRules: @escaping () -> Void = {}
     ) {
         self.updateSettings = updateSettings
         self.updateTranslationSettings = updateTranslationSettings
@@ -349,6 +363,7 @@ private final class TelewhiteModsControllerArguments {
         self.promptCustomColor = promptCustomColor
         self.openDebug = openDebug
         self.promptOpenRouterKey = promptOpenRouterKey
+        self.promptMessageFilterRules = promptMessageFilterRules
     }
 }
 
@@ -407,6 +422,9 @@ private enum TelewhiteModsEntry: ItemListNodeEntry, Equatable {
     case outgoingTranslateButtonEnabled(String, Bool)
     case outgoingTranslationAutoEnabled(String, Bool)
     case openRouterApiKey(String, String)
+    case messageFiltersEnabled(String, Bool)
+    case messageFiltersUseRegex(String, Bool)
+    case messageFilterRules(String, String)
     case messengerInfo(String)
     case oneTimeMediaUnlimited(String, Bool)
     case downloadOneTimeMedia(String, Bool)
@@ -490,7 +508,7 @@ private enum TelewhiteModsEntry: ItemListNodeEntry, Equatable {
         switch self {
         case .menuItem:
             return TelewhiteModsSection.menu.rawValue
-        case .messengerHeader, .preserveDeletedMessages, .forwardHideNamesByDefault, .showPreviousEditedText, .translateMessages, .translateChats, .autoTranslateEnglish, .translationTargetLanguage, .outgoingTranslateButtonEnabled, .outgoingTranslationAutoEnabled, .openRouterApiKey, .messengerInfo, .oneTimeMediaUnlimited, .downloadOneTimeMedia, .uploadVoice, .voiceChangeSettings, .uploadVideoMessage:
+        case .messengerHeader, .preserveDeletedMessages, .forwardHideNamesByDefault, .showPreviousEditedText, .translateMessages, .translateChats, .autoTranslateEnglish, .translationTargetLanguage, .outgoingTranslateButtonEnabled, .outgoingTranslationAutoEnabled, .openRouterApiKey, .messageFiltersEnabled, .messageFiltersUseRegex, .messageFilterRules, .messengerInfo, .oneTimeMediaUnlimited, .downloadOneTimeMedia, .uploadVoice, .voiceChangeSettings, .uploadVideoMessage:
             return TelewhiteModsSection.messenger.rawValue
         case .vpnHeader, .vpnEnabled, .vpnSubscription, .vpnStatus, .vpnStart, .vpnInfo:
             return TelewhiteModsSection.vpn.rawValue
@@ -551,12 +569,18 @@ private enum TelewhiteModsEntry: ItemListNodeEntry, Equatable {
             return 12
         case .openRouterApiKey:
             return 13
-        case .messengerInfo:
+        case .messageFiltersEnabled:
             return 14
-        case .forwardHideNamesByDefault:
+        case .messageFiltersUseRegex:
             return 15
-        case .showPreviousEditedText:
+        case .messageFilterRules:
             return 16
+        case .messengerInfo:
+            return 17
+        case .forwardHideNamesByDefault:
+            return 18
+        case .showPreviousEditedText:
+            return 19
         case .privacyHeader:
             return 100
         case .hideOnlineStatus:
@@ -816,6 +840,20 @@ private enum TelewhiteModsEntry: ItemListNodeEntry, Equatable {
         case let .openRouterApiKey(text, value):
             return ItemListDisclosureItem(presentationData: presentationData, systemStyle: .glass, title: text, label: value.isEmpty ? "" : "•••" + String(value.suffix(4)), labelStyle: .text, sectionId: self.section, style: .blocks, disclosureStyle: .arrow, action: {
                 arguments.promptOpenRouterKey()
+            })
+        case let .messageFiltersEnabled(text, value):
+            return self.switchItem(presentationData: presentationData, arguments: arguments, text: text, value: value) { settings, value in
+                settings.messageFiltersEnabled = value
+            }
+        case let .messageFiltersUseRegex(text, value):
+            return self.switchItem(presentationData: presentationData, arguments: arguments, text: text, value: value) { settings, value in
+                settings.messageFiltersUseRegex = value
+            }
+        case let .messageFilterRules(text, value):
+            let count = TelewhiteMessageFilters.parsedRules(from: value).count
+            let label = count == 0 ? "" : "\(count)"
+            return ItemListDisclosureItem(presentationData: presentationData, systemStyle: .glass, title: text, label: label, labelStyle: .text, sectionId: self.section, style: .blocks, disclosureStyle: .arrow, action: {
+                arguments.promptMessageFilterRules()
             })
         case let .oneTimeMediaUnlimited(text, value):
             return self.switchItem(presentationData: presentationData, arguments: arguments, text: text, value: value) { settings, value in
@@ -1298,6 +1336,12 @@ private func telewhiteEntryDescription(_ entry: TelewhiteModsEntry, presentation
         return text("Automatically translates outgoing messages when your language differs from the chat partner's language (detected from their recent messages). No need to toggle translation manually per chat. Messages already in the target language are never touched.", "Автоматически переводит исходящие, когда ваш язык отличается от языка собеседника (определяется по его последним сообщениям). Не нужно вручную включать перевод в каждом чате. Сообщения уже на целевом языке не трогаются.")
     case .openRouterApiKey:
         return text("Optional free key from openrouter.ai for better AI translation. Without it the standard translator is used.", "Необязательный бесплатный ключ с openrouter.ai для более качественного AI-перевода. Без него — стандартный переводчик.")
+    case .messageFiltersEnabled:
+        return text("Hides incoming messages that match your local keyword or regex rules.", "Скрывает входящие сообщения, совпадающие с локальными правилами keyword или regex.")
+    case .messageFiltersUseRegex:
+        return text("Treats every message filter rule as a regular expression. Invalid regex rules are ignored.", "Считает каждое правило фильтра регулярным выражением. Неверные regex-правила игнорируются.")
+    case .messageFilterRules:
+        return text("Separate rules with commas. In keyword mode matching is case-insensitive.", "Разделяйте правила запятыми. В режиме ключевых слов регистр не учитывается.")
     case .uploadVideoMessage:
         return text("Videos from the gallery are sent as round video messages.", "Видео из галереи отправляются как круглые видеосообщения.")
     case .oneTimeMediaUnlimited:
@@ -1371,7 +1415,10 @@ private func telewhiteModsEntries(tab: TelewhiteModsTab, settings: TelewhiteMods
         // Telewhite: "Smart Auto-Translate" removed — outgoing translation is now
         // strictly manual via the per-chat translator button.
         entries.append(.openRouterApiKey(strings.text("OpenRouter API Key", "Ключ OpenRouter API"), settings.openRouterApiKey))
-        entries.append(.messengerInfo(strings.text("Message features are split here: deleted messages, one-time media, uploads and translation.", "Здесь собраны функции сообщений: удалённые сообщения, одноразовые медиа, загрузка и перевод.")))
+        entries.append(.messageFiltersEnabled(strings.text("Message Filters", "Фильтры сообщений"), settings.messageFiltersEnabled))
+        entries.append(.messageFiltersUseRegex(strings.text("Use Regex Rules", "Использовать regex"), settings.messageFiltersUseRegex))
+        entries.append(.messageFilterRules(strings.text("Filter Rules", "Правила фильтра"), settings.messageFilterRules))
+        entries.append(.messengerInfo(strings.text("Message features are split here: deleted messages, one-time media, uploads, translation and filters.", "Здесь собраны функции сообщений: удалённые сообщения, одноразовые медиа, загрузка, перевод и фильтры.")))
 
     case .privacy:
         entries.append(.privacyHeader(telewhiteTabTitle(.privacy, strings: strings)))
@@ -1677,6 +1724,29 @@ private func telewhiteModsSectionController(context: AccountContext, tab: Telewh
                 updateSettings { current in
                     var updated = current
                     updated.openRouterApiKey = value.trimmingCharacters(in: .whitespacesAndNewlines)
+                    return updated
+                }
+            }
+        )
+        presentControllerImpl?(prompt)
+    }, promptMessageFilterRules: {
+        let presentationData = context.sharedContext.currentPresentationData.with { $0 }
+        let strings = TelewhiteModsStrings(presentationData: presentationData)
+        let settings = stateValue.with { $0 }
+        let prompt = promptController(
+            context: context,
+            text: strings.text("Filter Rules", "Правила фильтра"),
+            subtitle: strings.text("Separate keywords or regex rules with commas. Matching applies only on this device.", "Разделяйте ключевые слова или regex-правила запятыми. Фильтр работает только на этом устройстве."),
+            value: settings.messageFilterRules,
+            placeholder: strings.text("spam, casino, ads", "спам, казино, реклама"),
+            characterLimit: 4096,
+            apply: { value in
+                guard let value = value else {
+                    return
+                }
+                updateSettings { current in
+                    var updated = current
+                    updated.messageFilterRules = value.trimmingCharacters(in: .whitespacesAndNewlines)
                     return updated
                 }
             }
