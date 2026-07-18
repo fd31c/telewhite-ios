@@ -1786,7 +1786,15 @@ private func telewhiteModsSectionController(context: AccountContext, tab: Telewh
         let presentationData = context.sharedContext.currentPresentationData.with { $0 }
         let strings = TelewhiteModsStrings(presentationData: presentationData)
         let entries = TelewhiteGroupEventLog.entries
-        let value = entries.isEmpty ? strings.text("No removal events recorded on this device yet.", "На этом устройстве пока нет записей об удалении из групп.") : entries.joined(separator: "\n")
+        let formattedEntries = entries.map { entry -> String in
+            let parts = entry.split(separator: ":")
+            if parts.count == 3, parts[0] == "removed", let timestamp = TimeInterval(String(parts[2])) {
+                let date = DateFormatter.localizedString(from: Date(timeIntervalSince1970: timestamp), dateStyle: .short, timeStyle: .short)
+                return strings.text("Removed from group \(parts[1]) • \(date)", "Удаление из группы \(parts[1]) • \(date)")
+            }
+            return entry
+        }
+        let value = formattedEntries.isEmpty ? strings.text("No removal events recorded on this device yet.", "На этом устройстве пока нет записей об удалении из групп.") : formattedEntries.joined(separator: "\n")
         let prompt = promptController(
             context: context,
             text: strings.text("Group Removal Log", "Журнал удалений из групп"),
