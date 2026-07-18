@@ -689,7 +689,6 @@ public class ChatMessageBubbleItemNode: ChatMessageItemView, ChatMessagePreviewI
     private let backgroundNode: ChatMessageBackground
     private var backgroundHighlightNode: ChatMessageBackground?
     private var telewhiteDeletedOverlayNode: ChatMessageBackground?
-    private var telewhiteDeletedLabelNode: ImmediateTextNode?
     private let shadowNode: ChatMessageShadowNode
     private var clippingNode: ChatMessageBubbleClippingNode
     
@@ -3911,28 +3910,10 @@ public class ChatMessageBubbleItemNode: ChatMessageItemView, ChatMessagePreviewI
             telewhiteDeletedOverlayNode.setType(type: backgroundType, highlighted: true, graphics: graphics, maskMode: true, hasWallpaper: true, transition: .immediate, backgroundNode: nil)
             telewhiteDeletedOverlayNode.frame = backgroundFrame
             telewhiteDeletedOverlayNode.updateLayout(size: backgroundFrame.size, transition: .immediate)
-
-            let telewhiteDeletedLabelNode: ImmediateTextNode
-            if let current = strongSelf.telewhiteDeletedLabelNode {
-                telewhiteDeletedLabelNode = current
-            } else {
-                telewhiteDeletedLabelNode = ImmediateTextNode()
-                telewhiteDeletedLabelNode.maximumNumberOfLines = 1
-                telewhiteDeletedLabelNode.isUserInteractionEnabled = false
-                strongSelf.mainContextSourceNode.contentNode.insertSubnode(telewhiteDeletedLabelNode, aboveSubnode: telewhiteDeletedOverlayNode)
-                strongSelf.telewhiteDeletedLabelNode = telewhiteDeletedLabelNode
-            }
-            telewhiteDeletedLabelNode.attributedText = NSAttributedString(string: "DELETED", font: Font.semibold(9.0), textColor: UIColor.white.withAlphaComponent(0.92))
-            let labelSize = telewhiteDeletedLabelNode.updateLayout(CGSize(width: max(1.0, backgroundFrame.width - 16.0), height: 20.0))
-            telewhiteDeletedLabelNode.frame = CGRect(origin: CGPoint(x: backgroundFrame.maxX - labelSize.width - 8.0, y: backgroundFrame.minY + 5.0), size: labelSize)
         } else {
             if let telewhiteDeletedOverlayNode = strongSelf.telewhiteDeletedOverlayNode {
                 strongSelf.telewhiteDeletedOverlayNode = nil
                 telewhiteDeletedOverlayNode.removeFromSupernode()
-            }
-            if let telewhiteDeletedLabelNode = strongSelf.telewhiteDeletedLabelNode {
-                strongSelf.telewhiteDeletedLabelNode = nil
-                telewhiteDeletedLabelNode.removeFromSupernode()
             }
         }
         
@@ -5340,10 +5321,6 @@ public class ChatMessageBubbleItemNode: ChatMessageItemView, ChatMessagePreviewI
                     animation.animator.updateFrame(layer: telewhiteDeletedOverlayNode.layer, frame: backgroundFrame, completion: nil)
                     telewhiteDeletedOverlayNode.updateLayout(size: backgroundFrame.size, transition: animation)
                 }
-                if let telewhiteDeletedLabelNode = strongSelf.telewhiteDeletedLabelNode {
-                    let labelSize = telewhiteDeletedLabelNode.updateLayout(CGSize(width: max(1.0, backgroundFrame.width - 16.0), height: 20.0))
-                    animation.animator.updateFrame(layer: telewhiteDeletedLabelNode.layer, frame: CGRect(origin: CGPoint(x: backgroundFrame.maxX - labelSize.width - 8.0, y: backgroundFrame.minY + 5.0), size: labelSize), completion: nil)
-                }
                 animation.animator.updatePosition(layer: strongSelf.clippingNode.layer, position: backgroundFrame.center, completion: nil)
                 strongSelf.clippingNode.clipsToBounds = shouldClipOnTransitions
                 animation.animator.updateBounds(layer: strongSelf.clippingNode.layer, bounds: CGRect(origin: CGPoint(x: backgroundFrame.minX, y: backgroundFrame.minY), size: backgroundFrame.size), completion: { [weak strongSelf] _ in
@@ -5485,10 +5462,6 @@ public class ChatMessageBubbleItemNode: ChatMessageItemView, ChatMessagePreviewI
                     legacyTransition.updateFrame(node: telewhiteDeletedOverlayNode, frame: backgroundFrame, completion: nil)
                     telewhiteDeletedOverlayNode.updateLayout(size: backgroundFrame.size, transition: legacyTransition)
                 }
-                if let telewhiteDeletedLabelNode = strongSelf.telewhiteDeletedLabelNode {
-                    let labelSize = telewhiteDeletedLabelNode.updateLayout(CGSize(width: max(1.0, backgroundFrame.width - 16.0), height: 20.0))
-                    legacyTransition.updateFrame(node: telewhiteDeletedLabelNode, frame: CGRect(origin: CGPoint(x: backgroundFrame.maxX - labelSize.width - 8.0, y: backgroundFrame.minY + 5.0), size: labelSize), completion: nil)
-                }
 
                 legacyTransition.updateFrame(node: strongSelf.clippingNode, frame: backgroundFrame)
                 legacyTransition.updateBounds(node: strongSelf.clippingNode, bounds: CGRect(origin: CGPoint(x: backgroundFrame.minX, y: backgroundFrame.minY), size: backgroundFrame.size))
@@ -5505,10 +5478,6 @@ public class ChatMessageBubbleItemNode: ChatMessageItemView, ChatMessagePreviewI
                 if let telewhiteDeletedOverlayNode = strongSelf.telewhiteDeletedOverlayNode {
                     telewhiteDeletedOverlayNode.frame = backgroundFrame
                     telewhiteDeletedOverlayNode.updateLayout(size: backgroundFrame.size, transition: .immediate)
-                }
-                if let telewhiteDeletedLabelNode = strongSelf.telewhiteDeletedLabelNode {
-                    let labelSize = telewhiteDeletedLabelNode.updateLayout(CGSize(width: max(1.0, backgroundFrame.width - 16.0), height: 20.0))
-                    telewhiteDeletedLabelNode.frame = CGRect(origin: CGPoint(x: backgroundFrame.maxX - labelSize.width - 8.0, y: backgroundFrame.minY + 5.0), size: labelSize)
                 }
                 
                 strongSelf.clippingNode.frame = backgroundFrame
