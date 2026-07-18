@@ -1380,7 +1380,7 @@ private func telewhiteEntryDescription(_ entry: TelewhiteModsEntry, presentation
     case .ghostMode:
         return text("Full invisibility: hides reads, typing and online status.", "Полная невидимость: скрывает прочтение, набор текста и онлайн.")
     case .ghostChatButtonEnabled:
-        return text("Adds a ghost button to each chat: reads, voice playback and typing in that chat stay invisible.", "Добавляет кнопку невидимки в каждый чат: прочтение, прослушивание и набор текста в этом чате никто не увидит.")
+        return text("Adds a ghost button to each chat: reads, voice playback and typing in that chat stay invisible. Active ghost chats keep showing the button so you can turn them off.", "Добавляет кнопку невидимки в каждый чат: прочтение, прослушивание и набор текста в этом чате никто не увидит. В чатах с активной невидимкой кнопка остаётся видимой, чтобы её можно было выключить.")
     case .hiddenChatsEnabled:
         return text("Enables the Hide Chat action. Hidden chat data stays on this device.", "Включает действие «Скрыть чат». Данные скрытых чатов хранятся только на этом устройстве.")
     case .hideTypingStatus:
