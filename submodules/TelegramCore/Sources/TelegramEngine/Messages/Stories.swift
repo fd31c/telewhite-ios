@@ -2071,7 +2071,7 @@ func _internal_deleteStories(account: Account, peerId: PeerId, ids: [Int32]) -> 
 }
 
 func _internal_markStoryAsSeen(account: Account, peerId: PeerId, id: Int32, asPinned: Bool) -> Signal<Never, NoError> {
-    if UserDefaults.standard.bool(forKey: "telewhite.mods.ghostStories") {
+    if UserDefaults.standard.bool(forKey: "telewhite.mods.ghostMode") {
         return .complete()
     }
     if asPinned {

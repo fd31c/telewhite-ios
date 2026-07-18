@@ -2294,17 +2294,11 @@ public final class PendingMessageManager {
     
     // Telewhite: sending a message makes the server mark the account online,
     // which would leak presence ("last seen recently") even in a ghost chat.
-    // Immediately reassert offline after every send to a ghost chat (or while
-    // "Hide Online Status" is on), with a delayed second pass to outlast the
-    // server-side online window.
+    // Immediately reassert offline after every send while global Ghost Mode is on,
+    // with delayed follow-up passes to outlast the server-side online window.
     private func telewhiteReassertOfflineAfterSend(peerId: PeerId) {
         let defaults = UserDefaults.standard
-        var shouldHide = defaults.bool(forKey: "telewhite.mods.hideOnlineStatus")
-        if !shouldHide {
-            let ghostPeerIds = defaults.array(forKey: "telewhite.mods.ghostPeerIds") as? [NSNumber] ?? []
-            shouldHide = ghostPeerIds.contains(NSNumber(value: peerId.toInt64()))
-        }
-        guard shouldHide else {
+        guard defaults.bool(forKey: "telewhite.mods.ghostMode") else {
             return
         }
         let network = self.network

@@ -456,9 +456,9 @@ func secondaryRightNavigationButtonForChatInterfaceState(context: AccountContext
     if let ghostPeerId = telewhiteGhostPeerId {
         let settings = TelewhiteModsSettings.current
         let isEnabled = settings.isGhostEnabled(for: ghostPeerId)
-        // Keep the button visible for already-ghosted chats even when the global
-        // button switch is off, so users can always see and disable active ghost.
-        if settings.ghostChatButtonEnabled || isEnabled {
+        // Per-chat ghost buttons are deprecated: the Stealth settings screen has
+        // one global Ghost Mode switch that controls the full invisibility preset.
+        if settings.ghostChatButtonEnabled {
             let rawPeerId = ghostPeerId.toInt64()
             if currentButton?.action == .toggleGhostMode(peerId: rawPeerId, isEnabled: isEnabled) {
                 return currentButton

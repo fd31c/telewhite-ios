@@ -125,11 +125,11 @@ public struct TelewhiteModsSettings: Equatable {
         return TelewhiteModsSettings(
             vpnEnabled: defaults.bool(forKey: Key.vpnEnabled),
             vpnSubscription: defaults.string(forKey: Key.vpnSubscription) ?? "",
-            // Telewhite: global ghost mode is removed; always read as disabled so a
-            // stale stored value from older builds can never keep the account
-            // permanently invisible. Per-chat ghostPeerIds is the only ghost control.
-            ghostMode: false,
-            ghostChatButtonEnabled: defaults.object(forKey: Key.ghostChatButtonEnabled) as? Bool ?? true,
+            // Telewhite: one global Ghost Mode switch controls the full invisibility preset.
+            ghostMode: defaults.bool(forKey: Key.ghostMode),
+            // Per-chat ghost buttons are deprecated; keep the stored value ignored so
+            // the Stealth UI has one source of truth.
+            ghostChatButtonEnabled: false,
             hiddenChatsEnabled: defaults.bool(forKey: Key.hiddenChatsEnabled),
             preserveDeletedMessages: defaults.bool(forKey: Key.preserveDeletedMessages),
             hideOnlineStatus: defaults.bool(forKey: Key.hideOnlineStatus),
@@ -461,10 +461,8 @@ private enum TelewhiteModsEntry: ItemListNodeEntry, Equatable {
     case privacyInfo(String)
     
     case stealthHeader(String)
-    case maximumStealth(String)
     case ghostMessages(String, Bool)
     case ghostStories(String, Bool)
-    case clearGhostChats(String)
     case stealthInfo(String)
 
     case channelsHeader(String)
@@ -525,7 +523,7 @@ private enum TelewhiteModsEntry: ItemListNodeEntry, Equatable {
             return TelewhiteModsSection.vpn.rawValue
         case .privacyHeader, .hiddenChatsEnabled, .screenshotProtectionBypass, .contentRestrictionBypass, .hidePhoneInSettings, .groupEventLog, .showProfileIds, .showUserIds, .showChatIds, .showMessageIds, .privacyInfo:
             return TelewhiteModsSection.privacy.rawValue
-        case .stealthHeader, .maximumStealth, .ghostMode, .hideOnlineStatus, .ghostMessages, .hideReadReceipts, .hideTypingStatus, .ghostChatButtonEnabled, .ghostStories, .clearGhostChats, .stealthInfo:
+        case .stealthHeader, .ghostMode, .hideOnlineStatus, .ghostMessages, .hideReadReceipts, .hideTypingStatus, .ghostChatButtonEnabled, .ghostStories, .stealthInfo:
             return TelewhiteModsSection.stealth.rawValue
         case .channelsHeader, .channelContentRestrictionBypass, .channelHideReactions, .channelHideComments, .channelHideShareButton, .channelsInfo:
             return TelewhiteModsSection.channels.rawValue
@@ -632,16 +630,12 @@ private enum TelewhiteModsEntry: ItemListNodeEntry, Equatable {
             return 205
         case .stealthHeader:
             return 300
-        case .maximumStealth:
-            return 301
         case .ghostMessages:
-            return 302
+            return 301
         case .ghostStories:
-            return 303
-        case .clearGhostChats:
-            return 304
+            return 302
         case .stealthInfo:
-            return 305
+            return 303
         case .channelsHeader:
             return 400
         case .channelContentRestrictionBypass:
@@ -930,17 +924,6 @@ private enum TelewhiteModsEntry: ItemListNodeEntry, Equatable {
             })
         case let .messengerInfo(text), let .vpnInfo(text), let .privacyInfo(text), let .stealthInfo(text), let .channelsInfo(text), let .mediaInfo(text), let .callsInfo(text), let .developerInfo(text), let .appearanceInfo(text):
             return ItemListTextItem(presentationData: presentationData, text: .plain(text), sectionId: self.section)
-        case let .maximumStealth(text):
-            return ItemListActionItem(presentationData: presentationData, systemStyle: .glass, title: text, kind: .generic, alignment: .natural, sectionId: self.section, style: .blocks, action: {
-                arguments.updateSettings { current in
-                    var updated = current
-                    updated.hideOnlineStatus = true
-                    updated.hideTypingStatus = true
-                    updated.ghostStories = true
-                    updated.ghostChatButtonEnabled = true
-                    return updated
-                }
-            })
         case let .hideOnlineStatus(text, value):
             return self.switchItem(presentationData: presentationData, arguments: arguments, text: text, value: value) { settings, value in
                 settings.hideOnlineStatus = value
@@ -948,6 +931,14 @@ private enum TelewhiteModsEntry: ItemListNodeEntry, Equatable {
         case let .ghostMode(text, value):
             return self.switchItem(presentationData: presentationData, arguments: arguments, text: text, value: value) { settings, value in
                 settings.ghostMode = value
+                settings.hideOnlineStatus = value
+                settings.hideTypingStatus = value
+                settings.hideReadReceipts = value
+                settings.ghostStories = value
+                settings.ghostChatButtonEnabled = false
+                if !value {
+                    settings.ghostPeerIds.removeAll()
+                }
             }
         case let .ghostChatButtonEnabled(text, value):
             return self.switchItem(presentationData: presentationData, arguments: arguments, text: text, value: value) { settings, value in
@@ -992,14 +983,6 @@ private enum TelewhiteModsEntry: ItemListNodeEntry, Equatable {
             return self.switchItem(presentationData: presentationData, arguments: arguments, text: text, value: value) { settings, value in
                 settings.ghostStories = value
             }
-        case let .clearGhostChats(text):
-            return ItemListActionItem(presentationData: presentationData, systemStyle: .glass, title: text, kind: .generic, alignment: .natural, sectionId: self.section, style: .blocks, action: {
-                arguments.updateSettings { current in
-                    var updated = current
-                    updated.ghostPeerIds.removeAll()
-                    return updated
-                }
-            })
         case let .channelContentRestrictionBypass(text, value):
             return self.switchItem(presentationData: presentationData, arguments: arguments, text: text, value: value) { settings, value in
                 settings.contentRestrictionBypass = value
@@ -1351,7 +1334,7 @@ private func telewhiteTabTitle(_ tab: TelewhiteModsTab, strings: TelewhiteModsSt
 private func telewhiteMenuEntries(strings: TelewhiteModsStrings) -> [TelewhiteModsEntry] {
     return [
         .menuItem(0, .privacy, telewhiteTabTitle(.privacy, strings: strings), strings.text("Hidden chats, content protection, phone and technical IDs.", "Скрытые чаты, защита контента, номер и технические ID."), .privacy),
-        .menuItem(1, .ghost, telewhiteTabTitle(.stealth, strings: strings), strings.text("Online, read receipts, typing, stories and per-chat ghost.", "Онлайн, прочтение, набор текста, истории и невидимка для чата."), .stealth),
+        .menuItem(1, .ghost, telewhiteTabTitle(.stealth, strings: strings), strings.text("One switch for online, read receipts, typing and stories.", "Один переключатель для онлайна, прочтения, набора текста и историй."), .stealth),
         .menuItem(2, .messages, telewhiteTabTitle(.messenger, strings: strings), strings.text("Deleted messages, one-time media, uploads and translation.", "\u{0423}\u{0434}\u{0430}\u{043b}\u{0451}\u{043d}\u{043d}\u{044b}\u{0435} \u{0441}\u{043e}\u{043e}\u{0431}\u{0449}\u{0435}\u{043d}\u{0438}\u{044f}, \u{043e}\u{0434}\u{043d}\u{043e}\u{0440}\u{0430}\u{0437}\u{043e}\u{0432}\u{044b}\u{0435} \u{043c}\u{0435}\u{0434}\u{0438}\u{0430}, \u{0437}\u{0430}\u{0433}\u{0440}\u{0443}\u{0437}\u{043a}\u{0438} \u{0438} \u{043f}\u{0435}\u{0440}\u{0435}\u{0432}\u{043e}\u{0434}."), .messenger),
         .menuItem(3, .groups, telewhiteTabTitle(.channels, strings: strings), strings.text("Channel and group content controls.", "\u{0424}\u{0443}\u{043d}\u{043a}\u{0446}\u{0438}\u{0438} \u{0434}\u{043b}\u{044f} \u{043a}\u{0430}\u{043d}\u{0430}\u{043b}\u{043e}\u{0432} \u{0438} \u{0433}\u{0440}\u{0443}\u{043f}\u{043f}."), .channels),
         .menuItem(4, .media, telewhiteTabTitle(.media, strings: strings), strings.text("Stories, downloads and media actions.", "\u{0418}\u{0441}\u{0442}\u{043e}\u{0440}\u{0438}\u{0438}, \u{0441}\u{043a}\u{0430}\u{0447}\u{0438}\u{0432}\u{0430}\u{043d}\u{0438}\u{0435} \u{0438} \u{043c}\u{0435}\u{0434}\u{0438}\u{0430}-\u{0434}\u{0435}\u{0439}\u{0441}\u{0442}\u{0432}\u{0438}\u{044f}."), .media),
@@ -1400,12 +1383,10 @@ private func telewhiteEntryDescription(_ entry: TelewhiteModsEntry, presentation
         return text("Lets you save view-once photos and videos.", "Позволяет сохранять одноразовые фото и видео.")
     case .vpnEnabled:
         return text("Routes Telegram traffic through a proxy server. Other apps are not affected.", "Пропускает трафик Telegram через прокси-сервер. Другие приложения не затрагиваются.")
-    case .maximumStealth:
-        return text("Enables the strongest safe privacy preset: hide online, hide typing, anonymous story viewing, and the per-chat Ghost button.", "Включает самый сильный безопасный пресет приватности: скрыть онлайн, скрыть набор текста, анонимные истории и кнопку невидимки в чатах.")
     case .hideOnlineStatus:
         return text("Others won't see you online.", "Другие не будут видеть вас в сети.")
     case .ghostMode:
-        return text("Full invisibility: hides reads, typing and online status.", "Полная невидимость: скрывает прочтение, набор текста и онлайн.")
+        return text("One switch for full invisibility: hides online, typing/recording, read receipts, voice/video consumption, and story views.", "Один переключатель полной невидимки: скрывает онлайн, набор/запись, прочтение, прослушивание/просмотр и просмотры историй.")
     case .ghostChatButtonEnabled:
         return text("Adds a ghost button to each chat: reads, voice playback and typing in that chat stay invisible. Active ghost chats keep showing the button so you can turn them off.", "Добавляет кнопку невидимки в каждый чат: прочтение, прослушивание и набор текста в этом чате никто не увидит. В чатах с активной невидимкой кнопка остаётся видимой, чтобы её можно было выключить.")
     case .hiddenChatsEnabled:
@@ -1416,8 +1397,6 @@ private func telewhiteEntryDescription(_ entry: TelewhiteModsEntry, presentation
         return text("Works everywhere in Telegram: private chats, groups and channels. Read messages and play voice/video notes without anyone seeing read checkmarks.", "Действует на всё в Telegram: личные чаты, группы и каналы. Читайте сообщения и слушайте голос��вые/видео — никто не увидит галочки прочтения.")
     case .ghostStories:
         return text("Watch stories without the author knowing.", "Смотрите истории так, что автор об этом не узнает.")
-    case .clearGhostChats:
-        return text("Turns off per-chat Ghost Mode everywhere and allows online presence again unless Hide Online Status is enabled.", "Выключает невидимку во всех чатах и снова разрешает онлайн-статус, если не включено скрытие онлайна.")
     case .screenshotProtectionBypass:
         return text("Removes screenshot blocks in protected chats.", "Убирает блокировку скриншотов в защищённых чатах.")
     case .contentRestrictionBypass, .channelContentRestrictionBypass:
@@ -1487,23 +1466,8 @@ private func telewhiteModsEntries(tab: TelewhiteModsTab, settings: TelewhiteMods
 
     case .stealth:
         entries.append(.stealthHeader(telewhiteTabTitle(.stealth, strings: strings)))
-        let maximumStealthEnabled = settings.hideOnlineStatus && settings.hideTypingStatus && settings.ghostStories && settings.ghostChatButtonEnabled
-        if !maximumStealthEnabled {
-            entries.append(.maximumStealth(strings.text("Enable Maximum Stealth", "Включить максимум невидимки")))
-        }
-        // Telewhite: "Global Ghost Mode" removed — invisibility is now per-chat only,
-        // via the ghost button in each chat. The individual global toggles below
-        // (online / read receipts / typing) remain as separate, understandable switches.
-        entries.append(.hideOnlineStatus(strings.text("Hide Online Status", "Скрыть статус онлайн"), settings.hideOnlineStatus))
-        // Telewhite: global "Hide Read Receipts" removed — hiding read receipts is
-        // per-chat only, via the ghost button in each chat.
-        entries.append(.hideTypingStatus(strings.text("Hide Typing Status", "Скрыть набор текста"), settings.hideTypingStatus))
-        entries.append(.ghostChatButtonEnabled(strings.text("Per-Chat Ghost Button", "Кнопка невидимки в чатах"), settings.ghostChatButtonEnabled))
-        if !settings.ghostPeerIds.isEmpty {
-            entries.append(.clearGhostChats(strings.text("Disable Ghost in All Chats (\(settings.ghostPeerIds.count))", "Выключить невидимку во всех чатах (\(settings.ghostPeerIds.count))")))
-        }
-        entries.append(.ghostStories(strings.text("Anonymous Story Viewing", "Анонимный просмотр историй"), settings.ghostStories))
-        entries.append(.stealthInfo(strings.text("Maximum Stealth enables online, typing and story protections globally. Read receipts stay per-chat with the ghost button so you can choose exactly where to stay invisible.", "Максимум невидимки глобально включает защиту онлайна, набора текста и историй. Прочтение остаётся по чатам через кнопку невидимки, чтобы выбирать, где именно быть невидимым.")))
+        entries.append(.ghostMode(strings.text("Ghost Mode", "Невидимка"), settings.ghostMode))
+        entries.append(.stealthInfo(strings.text("Ghost Mode is one full invisibility switch. When enabled it hides online status, typing/recording, read receipts, voice/video consumption and story views.", "Невидимка — это один полный переключатель. Когда он включён, скрываются онлайн, набор/запись, прочтение, прослушивание/просмотр и просмотры историй.")))
 
     case .channels:
         entries.append(.channelsHeader(telewhiteTabTitle(.channels, strings: strings)))
@@ -1674,10 +1638,8 @@ public func telewhiteModsController(context: AccountContext) -> ViewController {
             updated.save()
             return updated
         }
-        // Telewhite: presence is suppressed by "Hide Online Status" or while any
-        // per-chat ghost is active (matches ManagedAccountPresence logic).
-        let shouldHidePresence = updated.hideOnlineStatus || !updated.ghostPeerIds.isEmpty
-        context.account.shouldKeepOnlinePresence.set(.single(!shouldHidePresence))
+        // Telewhite: one global Ghost Mode switch is the only presence control.
+        context.account.shouldKeepOnlinePresence.set(.single(!updated.ghostMode))
         let cacheLimit = updated.autoCacheCleanup ? updated.cacheLimitGigabytes : Int32.max
         let _ = updateCacheStorageSettingsInteractively(accountManager: context.sharedContext.accountManager, { current in
             var current = current

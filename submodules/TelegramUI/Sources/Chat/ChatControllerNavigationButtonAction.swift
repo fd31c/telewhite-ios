@@ -125,9 +125,8 @@ extension ChatControllerImpl {
         case .spacer, .toggleInfoPanel:
             break
         case let .toggleGhostMode(peerId, _):
-            // Telewhite: per-chat ghost toggle. While enabled for this chat:
-            // no "typing...", no read receipts, and the account presence stays
-            // suppressed so sending a message never flips you to "online".
+            // Legacy per-chat ghost toggle. New UI uses one global Ghost Mode switch;
+            // this path is kept only for old navigation actions.
             var settings = TelewhiteModsSettings.current
             if settings.ghostPeerIds.contains(peerId) {
                 settings.ghostPeerIds.remove(peerId)
@@ -135,8 +134,8 @@ extension ChatControllerImpl {
                 settings.ghostPeerIds.insert(peerId)
             }
             settings.save()
-            // Presence is allowed only when "Hide Online Status" is off AND no
-            // chat is ghosted (Telegram cannot hide online per-contact).
+            // Legacy path: keep using the old per-chat presence guard if an older
+            // navigation button instance fires before the UI refreshes.
             self.context.account.shouldKeepOnlinePresence.set(.single(!settings.hideOnlineStatus && settings.ghostPeerIds.isEmpty))
 
             let isEnabled = settings.ghostPeerIds.contains(peerId)

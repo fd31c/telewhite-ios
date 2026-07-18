@@ -420,10 +420,10 @@ public final class ChatControllerImpl: TelegramBaseController, ChatController, G
     var computedCanReadHistoryPromise = ValuePromise<Bool>(false, ignoreRepeated: true)
     var telewhiteModsSettings = TelewhiteModsSettings.current
     private var telewhiteDisablesReadHistory: Bool {
-        return self.telewhiteModsSettings.hideReadReceipts || self.telewhiteModsSettings.isGhostEnabled(for: self.chatLocation.peerId)
+        return self.telewhiteModsSettings.ghostMode
     }
     private var telewhiteDisablesActivity: Bool {
-        return self.telewhiteModsSettings.hideTypingStatus || self.telewhiteModsSettings.isGhostEnabled(for: self.chatLocation.peerId)
+        return self.telewhiteModsSettings.ghostMode
     }
     
     var chatThemeAndDarkAppearancePreviewPromise = Promise<(ChatTheme?, Bool?)>((nil, nil))

@@ -917,10 +917,8 @@ public final class PeerMessagesMediaPlaylist: SharedMediaPlaylist {
                 default:
                     break
             }
-            // Telewhite: in per-chat ghost, don't report voice/video messages as listened/watched.
-            let ghostPeerIds = UserDefaults.standard.array(forKey: "telewhite.mods.ghostPeerIds") as? [NSNumber] ?? []
-            let isGhostChat = ghostPeerIds.contains(NSNumber(value: item.message.id.peerId.toInt64()))
-            if !isGhostChat {
+            // Telewhite: in global Ghost Mode, don't report voice/video messages as listened/watched.
+            if !UserDefaults.standard.bool(forKey: "telewhite.mods.ghostMode") {
                 let _ = self.context.engine.messages.markMessageContentAsConsumedInteractively(messageId: item.message.id).startStandalone()
             }
         }

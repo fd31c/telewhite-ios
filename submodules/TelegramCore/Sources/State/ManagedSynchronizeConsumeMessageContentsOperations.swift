@@ -79,9 +79,8 @@ func managedSynchronizeConsumeMessageContentOperations(postbox: Postbox, network
             }
             
             for (entry, disposable) in beginOperations {
-                // Telewhite: per-chat ghost is the only read-receipt control.
-                let ghostPeerIds = UserDefaults.standard.array(forKey: "telewhite.mods.ghostPeerIds") as? [NSNumber] ?? []
-                if ghostPeerIds.contains(NSNumber(value: entry.peerId.toInt64())) {
+                // Telewhite: global Ghost Mode hides voice/video consumption receipts.
+                if UserDefaults.standard.bool(forKey: "telewhite.mods.ghostMode") {
                     continue
                 }
                 let signal = withTakenOperation(postbox: postbox, peerId: entry.peerId, tagLocalIndex: entry.tagLocalIndex, { transaction, entry -> Signal<Void, NoError> in
