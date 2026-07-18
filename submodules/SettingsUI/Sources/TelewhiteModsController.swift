@@ -127,29 +127,25 @@ public struct TelewhiteModsSettings: Equatable {
             vpnSubscription: defaults.string(forKey: Key.vpnSubscription) ?? "",
             // Telewhite: one global Ghost Mode switch controls the full invisibility preset.
             ghostMode: defaults.bool(forKey: Key.ghostMode),
-            // Per-chat ghost buttons are deprecated; keep the stored value ignored so
-            // the Stealth UI has one source of truth.
+            // Legacy stealth fields are derived from the one global Ghost Mode switch.
             ghostChatButtonEnabled: false,
             hiddenChatsEnabled: defaults.bool(forKey: Key.hiddenChatsEnabled),
             preserveDeletedMessages: defaults.bool(forKey: Key.preserveDeletedMessages),
-            hideOnlineStatus: defaults.bool(forKey: Key.hideOnlineStatus),
-            hideTypingStatus: defaults.bool(forKey: Key.hideTypingStatus),
-            // Telewhite: global "Hide Read Receipts" removed — read receipts are
-            // hidden per-chat via the ghost button only. Read as false so stale
-            // values from older builds have no effect.
-            hideReadReceipts: false,
+            hideOnlineStatus: defaults.bool(forKey: Key.ghostMode),
+            hideTypingStatus: defaults.bool(forKey: Key.ghostMode),
+            hideReadReceipts: defaults.bool(forKey: Key.ghostMode),
             screenshotProtectionBypass: defaults.bool(forKey: Key.screenshotProtectionBypass),
             contentRestrictionBypass: defaults.bool(forKey: Key.contentRestrictionBypass),
             hidePhoneInSettings: defaults.bool(forKey: Key.hidePhoneInSettings),
             hideStories: defaults.bool(forKey: Key.hideStories),
-            ghostStories: defaults.bool(forKey: Key.ghostStories),
+            ghostStories: defaults.bool(forKey: Key.ghostMode),
             compactChatList: defaults.bool(forKey: Key.compactChatList),
             chatSplitLandscape: defaults.bool(forKey: Key.chatSplitLandscape),
             amoledMode: defaults.bool(forKey: Key.amoledMode),
             showUserIds: defaults.bool(forKey: Key.showUserIds),
             showChatIds: defaults.bool(forKey: Key.showChatIds),
             showMessageIds: defaults.bool(forKey: Key.showMessageIds),
-            ghostPeerIds: Set((defaults.array(forKey: Key.ghostPeerIds) as? [NSNumber] ?? []).map { $0.int64Value }),
+            ghostPeerIds: Set(),
             autoTranslateEnglish: defaults.object(forKey: Key.autoTranslateEnglish) as? Bool ?? true,
             translationTargetLanguage: defaults.string(forKey: Key.translationTargetLanguage) ?? "ru",
             oneTimeMediaUnlimited: defaults.bool(forKey: Key.oneTimeMediaUnlimited),
@@ -249,17 +245,17 @@ public struct TelewhiteModsSettings: Equatable {
         defaults.set(self.vpnEnabled, forKey: Key.vpnEnabled)
         defaults.set(self.vpnSubscription, forKey: Key.vpnSubscription)
         defaults.set(self.ghostMode, forKey: Key.ghostMode)
-        defaults.set(self.ghostChatButtonEnabled, forKey: Key.ghostChatButtonEnabled)
+        defaults.removeObject(forKey: Key.ghostChatButtonEnabled)
         defaults.set(self.hiddenChatsEnabled, forKey: Key.hiddenChatsEnabled)
         defaults.set(self.preserveDeletedMessages, forKey: Key.preserveDeletedMessages)
-        defaults.set(self.hideOnlineStatus, forKey: Key.hideOnlineStatus)
-        defaults.set(self.hideTypingStatus, forKey: Key.hideTypingStatus)
-        defaults.set(self.hideReadReceipts, forKey: Key.hideReadReceipts)
+        defaults.removeObject(forKey: Key.hideOnlineStatus)
+        defaults.removeObject(forKey: Key.hideTypingStatus)
+        defaults.removeObject(forKey: Key.hideReadReceipts)
         defaults.set(self.screenshotProtectionBypass, forKey: Key.screenshotProtectionBypass)
         defaults.set(self.contentRestrictionBypass, forKey: Key.contentRestrictionBypass)
         defaults.set(self.hidePhoneInSettings, forKey: Key.hidePhoneInSettings)
         defaults.set(self.hideStories, forKey: Key.hideStories)
-        defaults.set(self.ghostStories, forKey: Key.ghostStories)
+        defaults.removeObject(forKey: Key.ghostStories)
         defaults.set(self.compactChatList, forKey: Key.compactChatList)
         defaults.set(self.chatSplitLandscape, forKey: Key.chatSplitLandscape)
         TelewhiteSplitViewSettings.splitInCompactLandscape = self.chatSplitLandscape
@@ -267,7 +263,7 @@ public struct TelewhiteModsSettings: Equatable {
         defaults.set(self.showUserIds, forKey: Key.showUserIds)
         defaults.set(self.showChatIds, forKey: Key.showChatIds)
         defaults.set(self.showMessageIds, forKey: Key.showMessageIds)
-        defaults.set(self.ghostPeerIds.map { NSNumber(value: $0) }, forKey: Key.ghostPeerIds)
+        defaults.removeObject(forKey: Key.ghostPeerIds)
         defaults.set(self.autoTranslateEnglish, forKey: Key.autoTranslateEnglish)
         defaults.set(self.translationTargetLanguage, forKey: Key.translationTargetLanguage)
         defaults.set(self.oneTimeMediaUnlimited, forKey: Key.oneTimeMediaUnlimited)
