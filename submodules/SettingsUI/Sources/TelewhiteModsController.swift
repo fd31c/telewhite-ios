@@ -461,6 +461,7 @@ private enum TelewhiteModsEntry: ItemListNodeEntry, Equatable {
     case privacyInfo(String)
     
     case stealthHeader(String)
+    case maximumStealth(String)
     case ghostMessages(String, Bool)
     case ghostStories(String, Bool)
     case clearGhostChats(String)
@@ -524,7 +525,7 @@ private enum TelewhiteModsEntry: ItemListNodeEntry, Equatable {
             return TelewhiteModsSection.vpn.rawValue
         case .privacyHeader, .hiddenChatsEnabled, .screenshotProtectionBypass, .contentRestrictionBypass, .hidePhoneInSettings, .groupEventLog, .showProfileIds, .showUserIds, .showChatIds, .showMessageIds, .privacyInfo:
             return TelewhiteModsSection.privacy.rawValue
-        case .stealthHeader, .ghostMode, .hideOnlineStatus, .ghostMessages, .hideReadReceipts, .hideTypingStatus, .ghostChatButtonEnabled, .ghostStories, .clearGhostChats, .stealthInfo:
+        case .stealthHeader, .maximumStealth, .ghostMode, .hideOnlineStatus, .ghostMessages, .hideReadReceipts, .hideTypingStatus, .ghostChatButtonEnabled, .ghostStories, .clearGhostChats, .stealthInfo:
             return TelewhiteModsSection.stealth.rawValue
         case .channelsHeader, .channelContentRestrictionBypass, .channelHideReactions, .channelHideComments, .channelHideShareButton, .channelsInfo:
             return TelewhiteModsSection.channels.rawValue
@@ -631,14 +632,16 @@ private enum TelewhiteModsEntry: ItemListNodeEntry, Equatable {
             return 205
         case .stealthHeader:
             return 300
-        case .ghostMessages:
+        case .maximumStealth:
             return 301
-        case .ghostStories:
+        case .ghostMessages:
             return 302
-        case .clearGhostChats:
+        case .ghostStories:
             return 303
-        case .stealthInfo:
+        case .clearGhostChats:
             return 304
+        case .stealthInfo:
+            return 305
         case .channelsHeader:
             return 400
         case .channelContentRestrictionBypass:
@@ -927,6 +930,17 @@ private enum TelewhiteModsEntry: ItemListNodeEntry, Equatable {
             })
         case let .messengerInfo(text), let .vpnInfo(text), let .privacyInfo(text), let .stealthInfo(text), let .channelsInfo(text), let .mediaInfo(text), let .callsInfo(text), let .developerInfo(text), let .appearanceInfo(text):
             return ItemListTextItem(presentationData: presentationData, text: .plain(text), sectionId: self.section)
+        case let .maximumStealth(text):
+            return ItemListActionItem(presentationData: presentationData, systemStyle: .glass, title: text, kind: .generic, alignment: .natural, sectionId: self.section, style: .blocks, action: {
+                arguments.updateSettings { current in
+                    var updated = current
+                    updated.hideOnlineStatus = true
+                    updated.hideTypingStatus = true
+                    updated.ghostStories = true
+                    updated.ghostChatButtonEnabled = true
+                    return updated
+                }
+            })
         case let .hideOnlineStatus(text, value):
             return self.switchItem(presentationData: presentationData, arguments: arguments, text: text, value: value) { settings, value in
                 settings.hideOnlineStatus = value
@@ -1386,6 +1400,8 @@ private func telewhiteEntryDescription(_ entry: TelewhiteModsEntry, presentation
         return text("Lets you save view-once photos and videos.", "Позволяет сохранять одноразовые фото и видео.")
     case .vpnEnabled:
         return text("Routes Telegram traffic through a proxy server. Other apps are not affected.", "Пропускает трафик Telegram через прокси-сервер. Другие приложения не затрагиваются.")
+    case .maximumStealth:
+        return text("Enables the strongest safe privacy preset: hide online, hide typing, anonymous story viewing, and the per-chat Ghost button.", "Включает самый сильный безопасный пресет приватности: скрыть онлайн, скрыть набор текста, анонимные истории и кнопку невидимки в чатах.")
     case .hideOnlineStatus:
         return text("Others won't see you online.", "Другие не будут видеть вас в сети.")
     case .ghostMode:
@@ -1471,6 +1487,10 @@ private func telewhiteModsEntries(tab: TelewhiteModsTab, settings: TelewhiteMods
 
     case .stealth:
         entries.append(.stealthHeader(telewhiteTabTitle(.stealth, strings: strings)))
+        let maximumStealthEnabled = settings.hideOnlineStatus && settings.hideTypingStatus && settings.ghostStories && settings.ghostChatButtonEnabled
+        if !maximumStealthEnabled {
+            entries.append(.maximumStealth(strings.text("Enable Maximum Stealth", "Включить максимум невидимки")))
+        }
         // Telewhite: "Global Ghost Mode" removed — invisibility is now per-chat only,
         // via the ghost button in each chat. The individual global toggles below
         // (online / read receipts / typing) remain as separate, understandable switches.
@@ -1483,7 +1503,7 @@ private func telewhiteModsEntries(tab: TelewhiteModsTab, settings: TelewhiteMods
             entries.append(.clearGhostChats(strings.text("Disable Ghost in All Chats (\(settings.ghostPeerIds.count))", "Выключить невидимку во всех чатах (\(settings.ghostPeerIds.count))")))
         }
         entries.append(.ghostStories(strings.text("Anonymous Story Viewing", "Анонимный просмотр историй"), settings.ghostStories))
-        entries.append(.stealthInfo(strings.text("Global switches above hide your online and typing everywhere. Read receipts are hidden per chat with the ghost button.", "Переключатели выше скрывают ваш онлайн и набор текста везде. Прочтение скрывается отдельно в каждом чате кнопкой невидимки.")))
+        entries.append(.stealthInfo(strings.text("Maximum Stealth enables online, typing and story protections globally. Read receipts stay per-chat with the ghost button so you can choose exactly where to stay invisible.", "Максимум невидимки глобально включает защиту онлайна, набора текста и историй. Прочтение остаётся по чатам через кнопку невидимки, чтобы выбирать, где именно быть невидимым.")))
 
     case .channels:
         entries.append(.channelsHeader(telewhiteTabTitle(.channels, strings: strings)))
