@@ -463,6 +463,7 @@ private enum TelewhiteModsEntry: ItemListNodeEntry, Equatable {
     case stealthHeader(String)
     case ghostMessages(String, Bool)
     case ghostStories(String, Bool)
+    case clearGhostChats(String)
     case stealthInfo(String)
 
     case channelsHeader(String)
@@ -523,7 +524,7 @@ private enum TelewhiteModsEntry: ItemListNodeEntry, Equatable {
             return TelewhiteModsSection.vpn.rawValue
         case .privacyHeader, .hiddenChatsEnabled, .screenshotProtectionBypass, .contentRestrictionBypass, .hidePhoneInSettings, .groupEventLog, .showProfileIds, .showUserIds, .showChatIds, .showMessageIds, .privacyInfo:
             return TelewhiteModsSection.privacy.rawValue
-        case .stealthHeader, .ghostMode, .hideOnlineStatus, .ghostMessages, .hideReadReceipts, .hideTypingStatus, .ghostChatButtonEnabled, .ghostStories, .stealthInfo:
+        case .stealthHeader, .ghostMode, .hideOnlineStatus, .ghostMessages, .hideReadReceipts, .hideTypingStatus, .ghostChatButtonEnabled, .ghostStories, .clearGhostChats, .stealthInfo:
             return TelewhiteModsSection.stealth.rawValue
         case .channelsHeader, .channelContentRestrictionBypass, .channelHideReactions, .channelHideComments, .channelHideShareButton, .channelsInfo:
             return TelewhiteModsSection.channels.rawValue
@@ -634,8 +635,10 @@ private enum TelewhiteModsEntry: ItemListNodeEntry, Equatable {
             return 301
         case .ghostStories:
             return 302
-        case .stealthInfo:
+        case .clearGhostChats:
             return 303
+        case .stealthInfo:
+            return 304
         case .channelsHeader:
             return 400
         case .channelContentRestrictionBypass:
@@ -975,6 +978,14 @@ private enum TelewhiteModsEntry: ItemListNodeEntry, Equatable {
             return self.switchItem(presentationData: presentationData, arguments: arguments, text: text, value: value) { settings, value in
                 settings.ghostStories = value
             }
+        case let .clearGhostChats(text):
+            return ItemListActionItem(presentationData: presentationData, systemStyle: .glass, title: text, kind: .generic, alignment: .natural, sectionId: self.section, style: .blocks, action: {
+                arguments.updateSettings { current in
+                    var updated = current
+                    updated.ghostPeerIds.removeAll()
+                    return updated
+                }
+            })
         case let .channelContentRestrictionBypass(text, value):
             return self.switchItem(presentationData: presentationData, arguments: arguments, text: text, value: value) { settings, value in
                 settings.contentRestrictionBypass = value
@@ -1389,6 +1400,8 @@ private func telewhiteEntryDescription(_ entry: TelewhiteModsEntry, presentation
         return text("Works everywhere in Telegram: private chats, groups and channels. Read messages and play voice/video notes without anyone seeing read checkmarks.", "Действует на всё в Telegram: личные чаты, группы и каналы. Читайте сообщения и слушайте голос��вые/видео — никто не увидит галочки прочтения.")
     case .ghostStories:
         return text("Watch stories without the author knowing.", "Смотрите истории так, что автор об этом не узнает.")
+    case .clearGhostChats:
+        return text("Turns off per-chat Ghost Mode everywhere and allows online presence again unless Hide Online Status is enabled.", "Выключает невидимку во всех чатах и снова разрешает онлайн-статус, если не включено скрытие онлайна.")
     case .screenshotProtectionBypass:
         return text("Removes screenshot blocks in protected chats.", "Убирает блокировку скриншотов в защищённых чатах.")
     case .contentRestrictionBypass, .channelContentRestrictionBypass:
@@ -1466,6 +1479,9 @@ private func telewhiteModsEntries(tab: TelewhiteModsTab, settings: TelewhiteMods
         // per-chat only, via the ghost button in each chat.
         entries.append(.hideTypingStatus(strings.text("Hide Typing Status", "Скрыть набор текста"), settings.hideTypingStatus))
         entries.append(.ghostChatButtonEnabled(strings.text("Per-Chat Ghost Button", "Кнопка невидимки в чатах"), settings.ghostChatButtonEnabled))
+        if !settings.ghostPeerIds.isEmpty {
+            entries.append(.clearGhostChats(strings.text("Disable Ghost in All Chats (\(settings.ghostPeerIds.count))", "Выключить невидимку во всех чатах (\(settings.ghostPeerIds.count))")))
+        }
         entries.append(.ghostStories(strings.text("Anonymous Story Viewing", "Анонимный просмотр историй"), settings.ghostStories))
         entries.append(.stealthInfo(strings.text("Global switches above hide your online and typing everywhere. Read receipts are hidden per chat with the ghost button.", "Переключатели выше скрывают ваш онлайн и набор текста везде. Прочтение скрывается отдельно в каждом чате кнопкой невидимки.")))
 
