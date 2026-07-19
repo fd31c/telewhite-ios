@@ -5,6 +5,18 @@ import TelegramApi
 import MtProtoKit
 import CryptoUtils
 
+private func telewhiteHideReadReceiptsEnabled(for peerId: PeerId?) -> Bool {
+    let defaults = UserDefaults.standard
+    if defaults.bool(forKey: "telewhite.mods.ghostMode") || defaults.bool(forKey: "telewhite.mods.hideReadReceipts") {
+        return true
+    }
+    guard let peerId = peerId else {
+        return false
+    }
+    let ghostPeerIds = Set((defaults.array(forKey: "telewhite.mods.ghostPeerIds") as? [NSNumber] ?? []).map { $0.int64Value })
+    return ghostPeerIds.contains(peerId.toInt64())
+}
+
 private struct Md5Hash: Hashable {
     public let data: Data
     
@@ -251,7 +263,35 @@ func managedReadReactionOrPollVoteActions(postbox: Postbox, network: Network, st
     }
 }
 
+private func telewhiteClearConsumeContentState(postbox: Postbox, id: MessageId) -> Signal<Void, NoError> {
+    // Ghost mode: skip the readMessageContents network call so the sender never
+    // sees the "listened"/"watched"/"opened" receipt, but still clear the local
+    // pending action + unseen tag so the message does not re-queue forever.
+    return postbox.transaction { transaction -> Void in
+        transaction.setPendingMessageAction(type: .consumeUnseenPersonalMessage, id: id, action: nil)
+        transaction.updateMessage(id, update: { currentMessage in
+            var storeForwardInfo: StoreMessageForwardInfo?
+            if let forwardInfo = currentMessage.forwardInfo {
+                storeForwardInfo = StoreMessageForwardInfo(authorId: forwardInfo.author?.id, sourceId: forwardInfo.source?.id, sourceMessageId: forwardInfo.sourceMessageId, date: forwardInfo.date, authorSignature: forwardInfo.authorSignature, psaType: forwardInfo.psaType, flags: forwardInfo.flags)
+            }
+            var attributes = currentMessage.attributes
+            loop: for j in 0 ..< attributes.count {
+                if let attribute = attributes[j] as? ConsumablePersonalMentionMessageAttribute, !attribute.consumed {
+                    attributes[j] = ConsumablePersonalMentionMessageAttribute(consumed: true, pending: false)
+                    break loop
+                }
+            }
+            var updatedTags = currentMessage.tags
+            updatedTags.remove(.unseenPersonalMessage)
+            return .update(StoreMessage(id: currentMessage.id, customStableId: nil, globallyUniqueId: currentMessage.globallyUniqueId, groupingKey: currentMessage.groupingKey, threadId: currentMessage.threadId, timestamp: currentMessage.timestamp, flags: StoreMessageFlags(currentMessage.flags), tags: updatedTags, globalTags: currentMessage.globalTags, localTags: currentMessage.localTags, forwardInfo: storeForwardInfo, authorId: currentMessage.author?.id, text: currentMessage.text, attributes: attributes, media: currentMessage.media))
+        })
+    }
+}
+
 private func synchronizeConsumeMessageContents(transaction: Transaction, postbox: Postbox, network: Network, stateManager: AccountStateManager, id: MessageId) -> Signal<Void, NoError> {
+    if telewhiteHideReadReceiptsEnabled(for: id.peerId) {
+        return telewhiteClearConsumeContentState(postbox: postbox, id: id)
+    }
     if id.peerId.namespace == Namespaces.Peer.CloudUser || id.peerId.namespace == Namespaces.Peer.CloudGroup {
         return network.request(Api.functions.messages.readMessageContents(id: [id.id]))
             |> map(Optional.init)

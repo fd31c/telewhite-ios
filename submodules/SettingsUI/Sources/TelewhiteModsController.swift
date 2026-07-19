@@ -78,10 +78,9 @@ public struct TelewhiteModsSettings: Equatable {
         static let outgoingTranslateButtonEnabled = "telewhite.mods.outgoingTranslateButtonEnabled"
         static let outgoingTranslationPeerIds = "telewhite.mods.outgoingTranslationPeerIds"
         static let outgoingTranslationLanguages = "telewhite.mods.outgoingTranslationLanguages"
-    }
         static let hdPhotos = "telewhite.mods.hdPhotos"
     }
-    
+
     public static var current: TelewhiteModsSettings {
         let defaults = UserDefaults.standard
         return TelewhiteModsSettings(
@@ -410,7 +409,7 @@ private enum TelewhiteModsEntry: ItemListNodeEntry, Equatable {
         case .outgoingTranslateButtonEnabled:
             return 11
         case .hdPhotos:
-            return 12
+            return 13
         case .messengerInfo:
             return 12
         case .privacyHeader:
@@ -789,6 +788,8 @@ private func telewhiteEntryDescription(_ entry: TelewhiteModsEntry, presentation
         return text("Prepares outgoing messages for automatic translation to the selected language.", "Готовит исходящие сообщения к автопереводу на выбранный язык.")
     case .outgoingTranslateButtonEnabled:
         return text("Shows the translator button in private chats; tap toggles per-chat outgoing translation, long press picks the language.", "Показывает кнопку переводчика в личных чатах: тап включает перевод исходящих для чата, долгий тап выбирает язык.")
+    case .hdPhotos:
+        return text("Sends photos at up to 2560px instead of the default 1280px, preserving more detail at the cost of larger uploads.", "Отправляет фото до 2560px вместо стандартных 1280px — больше деталей ценой большего размера загрузки.")
     case .oneTimeMediaUnlimited, .downloadOneTimeMedia:
         return text("Loosens local view-once media limits and screenshot blocking where the client controls the UI.", "\u{041e}\u{0441}\u{043b}\u{0430}\u{0431}\u{043b}\u{044f}\u{0435}\u{0442} \u{043b}\u{043e}\u{043a}\u{0430}\u{043b}\u{044c}\u{043d}\u{044b}\u{0435} \u{043b}\u{0438}\u{043c}\u{0438}\u{0442}\u{044b} \u{043e}\u{0434}\u{043d}\u{043e}\u{0440}\u{0430}\u{0437}\u{043e}\u{0432}\u{044b}\u{0445} \u{043c}\u{0435}\u{0434}\u{0438}\u{0430} \u{0438} \u{0431}\u{043b}\u{043e}\u{043a} \u{0441}\u{043a}\u{0440}\u{0438}\u{043d}\u{0448}\u{043e}\u{0442}\u{043e}\u{0432}.")
     case .uploadVoice:
@@ -842,6 +843,7 @@ private func telewhiteModsEntries(tab: TelewhiteModsTab, settings: TelewhiteMods
         entries.append(.uploadVoice(strings.text("Upload Voice Message", "Загрузить голосовое"), settings.uploadVoice))
         entries.append(.voiceChangeSettings(strings.text("Voice Change Settings", "Настройки изменения голоса")))
         entries.append(.uploadVideoMessage(strings.text("Upload Video Message", "Загрузить видеосообщение"), settings.uploadVideoMessage))
+        entries.append(.hdPhotos(strings.text("Send Photos in HD", "Отправлять фото в HD"), settings.hdPhotos))
         entries.append(.translateMessages(strings.text("Show Translate Button", "Показывать кнопку перевода"), translationSettings.showTranslate))
         entries.append(.translateChats(strings.text("Translate Entire Chats", "Перевод чатов"), translationSettings.translateChats))
         entries.append(.autoTranslateEnglish(strings.text("Translate Before Sending", "Перевод перед отправкой"), settings.autoTranslateEnglish))

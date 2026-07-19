@@ -5,6 +5,19 @@ import TelegramApi
 import MtProtoKit
 
 
+private func telewhiteHideReadReceiptsEnabled(for peerId: PeerId?) -> Bool {
+    let defaults = UserDefaults.standard
+    if defaults.bool(forKey: "telewhite.mods.ghostMode") || defaults.bool(forKey: "telewhite.mods.hideReadReceipts") {
+        return true
+    }
+    guard let peerId = peerId else {
+        return false
+    }
+    let ghostPeerIds = Set((defaults.array(forKey: "telewhite.mods.ghostPeerIds") as? [NSNumber] ?? []).map { $0.int64Value })
+    return ghostPeerIds.contains(peerId.toInt64())
+}
+
+
 public enum CallListViewType {
     case all
     case missed
@@ -952,6 +965,11 @@ public final class AccountViewTracker {
             }
             if !addedMessageIds.isEmpty {
                 for (peerId, messageIds) in messagesIdsGroupedByPeerId(Set(addedMessageIds)) {
+                    // Ghost mode: do not report seen live locations, the sender
+                    // would otherwise learn the message content was viewed.
+                    if telewhiteHideReadReceiptsEnabled(for: peerId) {
+                        continue
+                    }
                     let disposableId = self.nextSeenLiveLocationDisposableId
                     self.nextSeenLiveLocationDisposableId += 1
                     

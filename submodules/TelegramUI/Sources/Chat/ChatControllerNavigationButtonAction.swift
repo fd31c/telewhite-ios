@@ -126,10 +126,11 @@ extension ChatControllerImpl {
             break
         case let .toggleGhostMode(peerId, _):
             var settings = TelewhiteModsSettings.current
-            if settings.ghostMode {
-                settings.ghostMode = false
-                settings.ghostPeerIds = [peerId]
-            } else if settings.ghostPeerIds.contains(peerId) {
+            // Per-chat ghost is independent for every chat: it only flips this
+            // peer's membership in ghostPeerIds and never touches the global
+            // ghostMode switch, so "invisible here, visible there" holds per chat.
+            let globalGhost = settings.ghostMode
+            if settings.ghostPeerIds.contains(peerId) {
                 settings.ghostPeerIds.remove(peerId)
             } else {
                 settings.ghostPeerIds.insert(peerId)
@@ -142,10 +143,18 @@ extension ChatControllerImpl {
 
             self.updateChatPresentationInterfaceState(transition: .immediate, interactive: false, force: true, { $0 })
 
-            let isEnabled = settings.ghostPeerIds.contains(peerId)
+            let perChatEnabled = settings.ghostPeerIds.contains(peerId)
+            let text: String
+            if globalGhost {
+                // Global ghost overrides everything; make it clear the per-chat
+                // switch is stored but has no visible effect until global is off.
+                text = "Global Ghost Mode is on — you are hidden in every chat"
+            } else {
+                text = perChatEnabled ? "Ghost Mode enabled for this chat" : "Ghost Mode disabled for this chat"
+            }
             self.present(UndoOverlayController(
                 presentationData: self.presentationData,
-                content: .info(title: nil, text: isEnabled ? "Ghost Mode enabled for this chat" : "Ghost Mode disabled for this chat", timeout: nil, customUndoText: nil),
+                content: .info(title: nil, text: text, timeout: nil, customUndoText: nil),
                 elevatedLayout: false,
                 action: { _ in
                     return false
