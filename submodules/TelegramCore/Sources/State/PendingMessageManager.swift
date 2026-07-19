@@ -214,6 +214,19 @@ public final class PendingMessageManager {
         case didMove(fromThreadId: Int64, toThreadId: Int64)
     }
     
+    private var telewhiteForceOfflineEnabled: Bool {
+        let defaults = UserDefaults.standard
+        return defaults.bool(forKey: "telewhite.mods.ghostMode") || defaults.bool(forKey: "telewhite.mods.hideOnlineStatus")
+    }
+    
+    private func telewhiteForceOfflineIfNeeded() {
+        guard self.telewhiteForceOfflineEnabled else {
+            return
+        }
+        let network = self.network
+        network.request(Api.functions.account.updateStatus(offline: .boolTrue)).start()
+    }
+    
     private let network: Network
     private let postbox: Postbox
     private let accountPeerId: PeerId
@@ -1521,6 +1534,7 @@ public final class PendingMessageManager {
                 |> deliverOn(queue)
                 |> mapToSignal { result -> Signal<Void, MTRpcError> in
                     if let strongSelf = self {
+                        strongSelf.telewhiteForceOfflineIfNeeded()
                         return strongSelf.applySentGroupMessages(postbox: postbox, stateManager: stateManager, messages: messages.map { $0.0 }, result: result)
                         |> mapError { _ -> MTRpcError in
                         }
@@ -2205,10 +2219,12 @@ public final class PendingMessageManager {
                         case .progress:
                             return .complete()
                         case .acknowledged:
+                            strongSelf.telewhiteForceOfflineIfNeeded()
                             return strongSelf.applyAcknowledgedMessage(postbox: postbox, message: message)
                             |> mapError { _ -> MTRpcError in
                             }
                         case let .result(result):
+                            strongSelf.telewhiteForceOfflineIfNeeded()
                             return strongSelf.applySentMessage(postbox: postbox, stateManager: stateManager, message: message, content: content, result: result)
                             |> mapError { _ -> MTRpcError in
                             }
