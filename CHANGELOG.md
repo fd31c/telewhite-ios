@@ -7,6 +7,10 @@
 
 ---
 
+## 2026-07-19
+
+- **[Исправлено]** Сборка master: кнопка переводчика исходящих не компилировалась — `UIBarButtonItem(customDisplayNode:)` возвращает optional, добавлен force unwrap (`!`), как в остальном коде (`ChatController.swift`). Ошибки CI run 29660414277: строки 475-488 `ChatInterfaceStateNavigationButtons.swift`.
+
 ## 2026-07-18
 
 - **[Возвращено]** Глобальный режим невидимки (откат `f0e137f`). В `Telewhite Mods → Ghost Mode` возвращён тогл

@@ -471,7 +471,7 @@ func quaternaryRightNavigationButtonForChatInterfaceState(context: AccountContex
     } else {
         let buttonNode = TelewhiteOutgoingTranslationButtonNode()
         buttonNode.setImage(telewhiteOutgoingTranslationIcon(theme: presentationInterfaceState.theme, isEnabled: isEnabled), for: [])
-        let buttonItem = UIBarButtonItem(customDisplayNode: buttonNode)
+        let buttonItem = UIBarButtonItem(customDisplayNode: buttonNode)!
         buttonItem.target = target as AnyObject?
         buttonItem.action = selector
         buttonNode.pressed = { [weak buttonItem] in
