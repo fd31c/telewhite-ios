@@ -4,6 +4,18 @@ import SwiftSignalKit
 import TelegramApi
 import MtProtoKit
 
+private func telewhiteHideReadReceiptsEnabled(for peerId: PeerId?) -> Bool {
+    let defaults = UserDefaults.standard
+    if defaults.bool(forKey: "telewhite.mods.ghostMode") || defaults.bool(forKey: "telewhite.mods.hideReadReceipts") {
+        return true
+    }
+    guard let peerId = peerId else {
+        return false
+    }
+    let ghostPeerIds = Set((defaults.array(forKey: "telewhite.mods.ghostPeerIds") as? [NSNumber] ?? []).map { $0.int64Value })
+    return ghostPeerIds.contains(peerId.toInt64())
+}
+
 
 private final class ManagedSynchronizeConsumeMessageContentsOperationHelper {
     var operationDisposables: [Int32: Disposable] = [:]
@@ -114,6 +126,12 @@ func managedSynchronizeConsumeMessageContentOperations(postbox: Postbox, network
 }
 
 private func synchronizeConsumeMessageContents(transaction: Transaction, network: Network, stateManager: AccountStateManager, peerId: PeerId, operation: SynchronizeConsumeMessageContentsOperation) -> Signal<Void, NoError> {
+    // Ghost mode: drop the readMessageContents call. The operation-log entry is
+    // still removed by the caller's `then`, so nothing re-queues; only the
+    // server-visible "content read" receipt is suppressed.
+    if telewhiteHideReadReceiptsEnabled(for: peerId) {
+        return .complete()
+    }
     if peerId.namespace == Namespaces.Peer.CloudUser || peerId.namespace == Namespaces.Peer.CloudGroup {
         return network.request(Api.functions.messages.readMessageContents(id: operation.messageIds.map { $0.id }))
         |> map(Optional.init)

@@ -946,8 +946,13 @@ final class ChatItemGalleryFooterContentNode: GalleryFooterContentNode, ASScroll
         }
         
         if message.isCopyProtected() || peerIsCopyProtected || message.paidContent != nil {
-            canShare = false
-            canEdit = false
+            // Telewhite: when the content restriction bypass is on, keep share/save
+            // available for copy-protected media (paid content stays locked).
+            let telewhiteBypass = UserDefaults.standard.bool(forKey: "telewhite.mods.contentRestrictionBypass")
+            if !telewhiteBypass || message.paidContent != nil {
+                canShare = false
+                canEdit = false
+            }
         }
         
         if message.containsSecretMedia {

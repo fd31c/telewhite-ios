@@ -123,6 +123,8 @@ public func fetchPhotoLibraryResource(localIdentifier: String, width: Int32?, he
             } else {
                 if hd {
                     size = CGSize(width: 2560.0, height: 2560.0)
+                } else if UserDefaults.standard.object(forKey: "telewhite.mods.hdPhotos") as? Bool ?? false {
+                    size = CGSize(width: 2560.0, height: 2560.0)
                 } else {
                     size = CGSize(width: 1280.0, height: 1280.0)
                 }

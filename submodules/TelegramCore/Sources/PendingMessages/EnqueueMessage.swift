@@ -240,6 +240,70 @@ func augmentMediaWithReference(_ mediaReference: AnyMediaReference) -> Media {
     }
 }
 
+// Telewhite: rebuild a copy-protected source message as a set of fresh outgoing
+// messages so the server treats them as new uploads instead of a rejected
+// forward. Each media item is cloned into the Local namespace AND has its cloud
+// reference stripped, which forces the pending-message uploader past its
+// "re-send by reference" shortcut into a genuine byte re-upload from the locally
+// cached resource — dropping the copy-protection lineage entirely. Returns nil
+// when the message carries no re-sendable media (the caller sends text instead).
+private func telewhiteStrippedResendableMedia(_ media: Media) -> Media? {
+    if let image = media as? TelegramMediaImage {
+        return TelegramMediaImage(imageId: MediaId(namespace: Namespaces.Media.LocalImage, id: Int64.random(in: Int64.min ... Int64.max)), representations: image.representations, immediateThumbnailData: image.immediateThumbnailData, reference: nil, partialReference: nil, flags: [])
+    } else if let file = media as? TelegramMediaFile {
+        let strippedResource: TelegramMediaResource
+        if let cloud = file.resource as? CloudDocumentMediaResource {
+            strippedResource = CloudDocumentMediaResource(datacenterId: cloud.datacenterId, fileId: cloud.fileId, accessHash: cloud.accessHash, size: cloud.size, fileReference: nil, fileName: cloud.fileName)
+        } else {
+            strippedResource = file.resource
+        }
+        return TelegramMediaFile(fileId: MediaId(namespace: Namespaces.Media.LocalFile, id: Int64.random(in: Int64.min ... Int64.max)), partialReference: nil, resource: strippedResource, previewRepresentations: file.previewRepresentations, videoThumbnails: file.videoThumbnails, immediateThumbnailData: file.immediateThumbnailData, mimeType: file.mimeType, size: file.size, attributes: file.attributes, alternativeRepresentations: [])
+    } else {
+        return nil
+    }
+}
+
+public func telewhiteResendableMessagesFromProtectedSource(_ message: Message) -> [EnqueueMessage]? {
+    var resendableMedia: [Media] = []
+    for media in message.media {
+        if media is TelegramMediaImage || media is TelegramMediaFile {
+            guard let stripped = telewhiteStrippedResendableMedia(media) else {
+                return nil
+            }
+            resendableMedia.append(stripped)
+        } else if media is TelegramMediaWebpage || media is TelegramMediaAction {
+            continue
+        } else {
+            return nil
+        }
+    }
+
+    let text = message.text
+    var textAttributes: [MessageAttribute] = []
+    if let entities = message.textEntitiesAttribute {
+        textAttributes.append(TextEntitiesMessageAttribute(entities: entities.entities))
+    }
+    if let spoiler = message.attributes.first(where: { $0 is MediaSpoilerMessageAttribute }) {
+        textAttributes.append(spoiler)
+    }
+
+    if resendableMedia.isEmpty {
+        if text.isEmpty {
+            return nil
+        }
+        return [.message(text: text, attributes: textAttributes, inlineStickers: [:], mediaReference: nil, threadId: nil, replyToMessageId: nil, replyToStoryId: nil, localGroupingKey: nil, correlationId: nil, bubbleUpEmojiOrStickersets: [])]
+    }
+
+    let groupingKey: Int64? = resendableMedia.count > 1 ? Int64.random(in: Int64.min ... Int64.max) : nil
+    var result: [EnqueueMessage] = []
+    for (index, media) in resendableMedia.enumerated() {
+        let itemText = index == 0 ? text : ""
+        let itemAttributes = index == 0 ? textAttributes : []
+        result.append(.message(text: itemText, attributes: itemAttributes, inlineStickers: [:], mediaReference: .standalone(media: media), threadId: nil, replyToMessageId: nil, replyToStoryId: nil, localGroupingKey: groupingKey, correlationId: nil, bubbleUpEmojiOrStickersets: []))
+    }
+    return result
+}
+
 private func convertForwardedMediaForSecretChat(_ media: Media) -> Media {
     if let file = media as? TelegramMediaFile {
         return TelegramMediaFile(fileId: MediaId(namespace: Namespaces.Media.LocalFile, id: Int64.random(in: Int64.min ... Int64.max)), partialReference: file.partialReference, resource: file.resource, previewRepresentations: file.previewRepresentations, videoThumbnails: file.videoThumbnails, immediateThumbnailData: file.immediateThumbnailData, mimeType: file.mimeType, size: file.size, attributes: file.attributes, alternativeRepresentations: [])
