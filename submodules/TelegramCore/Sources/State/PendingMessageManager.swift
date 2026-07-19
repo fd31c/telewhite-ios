@@ -224,7 +224,7 @@ public final class PendingMessageManager {
             return
         }
         let network = self.network
-        network.request(Api.functions.account.updateStatus(offline: .boolTrue)).start()
+        let _ = network.request(Api.functions.account.updateStatus(offline: .boolTrue)).start()
     }
     
     private let network: Network
