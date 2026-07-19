@@ -747,7 +747,10 @@ public func updatedPresentationData(accountManager: AccountManager<TelegramAccou
         if let themeSpecificWallpaper = themeSpecificWallpaper {
             currentWallpaper = themeSpecificWallpaper
         } else {
-            let theme = makePresentationTheme(mediaBox: accountManager.mediaBox, themeReference: themeSettings.theme, accentColor: currentColors?.color, bubbleColors: currentColors?.customBubbleColors ?? [], wallpaper: currentColors?.wallpaper, baseColor: currentColors?.baseColor) ?? defaultPresentationTheme
+            var theme = makePresentationTheme(mediaBox: accountManager.mediaBox, themeReference: themeSettings.theme, accentColor: currentColors?.color, bubbleColors: currentColors?.customBubbleColors ?? [], wallpaper: currentColors?.wallpaper, baseColor: currentColors?.baseColor) ?? defaultPresentationTheme
+            if telewhiteAmoledModeEnabled() {
+                theme = makeTelewhiteAmoledPresentationTheme(theme)
+            }
             currentWallpaper = theme.chat.defaultWallpaper
         }
         

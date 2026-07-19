@@ -135,7 +135,10 @@ extension ChatControllerImpl {
                 settings.ghostPeerIds.insert(peerId)
             }
             settings.save()
-            self.context.account.shouldKeepOnlinePresence.set(.single(false))
+            // Per-chat ghost must not toggle account-level presence: the API
+            // cannot hide online status per peer. Only global toggles affect it.
+            let shouldHidePresence = settings.ghostMode || settings.hideOnlineStatus
+            self.context.account.shouldKeepOnlinePresence.set(.single(!shouldHidePresence))
 
             self.updateChatPresentationInterfaceState(transition: .immediate, interactive: false, force: true, { $0 })
 

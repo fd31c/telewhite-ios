@@ -17,7 +17,7 @@ import TelegramCallsUI
 
 private func telewhiteAllowsStoryCaptureProtectionBypass() -> Bool {
     let defaults = UserDefaults.standard
-    return defaults.bool(forKey: "telewhite.mods.screenshotProtectionBypass") || defaults.bool(forKey: "telewhite.mods.contentRestrictionBypass") || defaults.bool(forKey: "telewhite.mods.downloadStories")
+    return defaults.bool(forKey: "telewhite.mods.screenshotProtectionBypass") || defaults.bool(forKey: "telewhite.mods.contentRestrictionBypass")
 }
 
 final class StoryItemContentComponent: Component {

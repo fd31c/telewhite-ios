@@ -1223,7 +1223,11 @@ final class PeerInfoHeaderNode: ASDisplayNode {
             }
             if title.isEmpty {
                 if case let .user(user) = peer, let phone = user.phone {
-                    title = formatPhoneNumber(context: self.context, number: phone)
+                    if self.isSettings && TelewhiteModsSettings.current.hidePhoneInSettings {
+                        title = "—"
+                    } else {
+                        title = formatPhoneNumber(context: self.context, number: phone)
+                    }
                 } else if let addressName = peer.addressName {
                     title = "@\(addressName)"
                 } else {
@@ -1236,10 +1240,10 @@ final class PeerInfoHeaderNode: ASDisplayNode {
             smallTitleAttributes = MultiScaleTextState.Attributes(font: Font.medium(28.0), color: .white, shadowColor: titleShadowColor)
             
             if self.isSettings, case let .user(user) = peer {
-                var subtitle = TelewhiteModsSettings.current.hidePhoneInSettings ? "" : formatPhoneNumber(context: self.context, number: user.phone ?? "")
-                
+                var subtitle = TelewhiteModsSettings.current.hidePhoneInSettings ? "—" : formatPhoneNumber(context: self.context, number: user.phone ?? "")
+
                 if let mainUsername = user.addressName, !mainUsername.isEmpty {
-                    subtitle = subtitle.isEmpty ? "@\(mainUsername)" : "\(subtitle) • @\(mainUsername)"
+                    subtitle = subtitle.isEmpty || subtitle == "—" ? "@\(mainUsername)" : "\(subtitle) • @\(mainUsername)"
                 }
                 subtitleStringText = subtitle
                 subtitleAttributes = MultiScaleTextState.Attributes(font: Font.regular(17.0), color: .white)

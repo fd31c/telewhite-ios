@@ -458,6 +458,7 @@ class ChatControllerNode: ASDisplayNode, ASScrollViewDelegate {
     private var openStickersBeginWithEmoji: Bool = false
     private var openStickersDisposable: Disposable?
     private var displayVideoUnmuteTipDisposable: Disposable?
+    private var outgoingTranslationDisposable: Disposable?
     
     private var onLayoutCompletions: [(ContainedViewLayoutTransition) -> Void] = []
 
@@ -1017,6 +1018,7 @@ class ChatControllerNode: ASDisplayNode, ASScrollViewDelegate {
         self.inputMediaNodeDataDisposable?.dispose()
         self.inlineSearchResultsReadyDisposable?.dispose()
         self.loadMoreSearchResultsDisposable?.dispose()
+        self.outgoingTranslationDisposable?.dispose()
     }
     
     override func didLoad() {
@@ -4720,10 +4722,15 @@ class ChatControllerNode: ASDisplayNode, ASScrollViewDelegate {
             completion(messages)
             return
         }
-        
-        let _ = (combineLatest(translationSignals)
+
+        self.outgoingTranslationDisposable?.dispose()
+        self.outgoingTranslationDisposable = (combineLatest(translationSignals)
         |> take(1)
-        |> deliverOnMainQueue).startStandalone(next: { [weak self] results in
+        |> deliverOnMainQueue).start(next: { [weak self] results in
+            guard let self else {
+                completion(messages)
+                return
+            }
             var messages = messages
             var failedCount = 0
             for result in results {
@@ -4740,11 +4747,11 @@ class ChatControllerNode: ASDisplayNode, ASScrollViewDelegate {
                 }
                 messages[index] = .message(text: translatedText, attributes: updatedAttributes, inlineStickers: inlineStickers, mediaReference: mediaReference, threadId: threadId, replyToMessageId: replyToMessageId, replyToStoryId: replyToStoryId, localGroupingKey: localGroupingKey, correlationId: correlationId, bubbleUpEmojiOrStickersets: bubbleUpEmojiOrStickersets)
             }
-            
-            if failedCount > 0, let self {
+
+            if failedCount > 0 {
                 self.controllerInteraction.displayUndo(.info(title: nil, text: "Translation failed, message sent as typed", timeout: nil, customUndoText: nil))
             }
-            
+
             completion(messages)
         })
     }

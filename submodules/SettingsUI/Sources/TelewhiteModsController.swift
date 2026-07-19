@@ -945,7 +945,9 @@ public func telewhiteModsController(context: AccountContext) -> ViewController {
             updated.save()
             return updated
         }
-        let shouldHidePresence = updated.hideOnlineStatus || updated.ghostMode || !updated.ghostPeerIds.isEmpty
+        // Per-chat ghost (ghostPeerIds) must not hide account-level presence:
+        // the API cannot hide online status per peer. Only global toggles do.
+        let shouldHidePresence = updated.hideOnlineStatus || updated.ghostMode
         context.account.shouldKeepOnlinePresence.set(.single(!shouldHidePresence))
         statePromise.set(updated)
     }

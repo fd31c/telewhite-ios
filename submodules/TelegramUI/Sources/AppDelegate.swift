@@ -1609,9 +1609,9 @@ private func extractAccountManagerState(records: AccountRecordsView<TelegramAcco
         if #available(iOS 12.0, *) {
             // Telewhite: mark that registration was requested. If the status never
             // advances past this, Apple never returned a token nor an error.
-            if UserDefaults.standard.string(forKey: "telewhite.push.status") == nil {
-                UserDefaults.standard.set("Requested (waiting for Apple)", forKey: "telewhite.push.status")
-            }
+            // Reset on every launch so a stale "Registered" from a previous run
+            // cannot mask a current registration failure.
+            UserDefaults.standard.set("Requested (waiting for Apple)", forKey: "telewhite.push.status")
             UIApplication.shared.registerForRemoteNotifications()
         }
         

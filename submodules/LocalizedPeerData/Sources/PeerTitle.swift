@@ -12,8 +12,8 @@ public extension EnginePeer {
                 return firstName
             } else if let lastName = user.lastName, !lastName.isEmpty {
                 return lastName
-            } else if let _ = user.phone {
-                return "" //formatPhoneNumber("+\(phone)")
+            } else if let phone = user.phone, !phone.isEmpty {
+                return "+\(phone)"
             } else {
                 return "Deleted Account"
             }
@@ -45,11 +45,11 @@ public extension EnginePeer {
                 }
             } else if let lastName = user.lastName, !lastName.isEmpty {
                 return lastName
-            } else if let _ = user.phone {
+            } else if let phone = user.phone, !phone.isEmpty {
                 if UserDefaults.standard.bool(forKey: "telewhite.mods.hidePhoneInSettings") {
                     return "—"
                 }
-                return "" //formatPhoneNumber("+\(phone)")
+                return "+\(phone)"
             } else {
                 return strings.User_DeletedAccount
             }

@@ -2071,10 +2071,11 @@ func _internal_deleteStories(account: Account, peerId: PeerId, ids: [Int32]) -> 
 }
 
 func _internal_markStoryAsSeen(account: Account, peerId: PeerId, id: Int32, asPinned: Bool) -> Signal<Never, NoError> {
-    if UserDefaults.standard.bool(forKey: "telewhite.mods.ghostStories") || UserDefaults.standard.bool(forKey: "telewhite.mods.ghostMode") {
-        return .complete()
-    }
+    let isGhostMode = UserDefaults.standard.bool(forKey: "telewhite.mods.ghostStories") || UserDefaults.standard.bool(forKey: "telewhite.mods.ghostMode")
     if asPinned {
+        if isGhostMode {
+            return .complete()
+        }
         return account.postbox.transaction { transaction -> Api.InputPeer? in
             return transaction.getPeer(peerId).flatMap(apiInputPeer)
         }
@@ -2082,13 +2083,13 @@ func _internal_markStoryAsSeen(account: Account, peerId: PeerId, id: Int32, asPi
             guard let inputPeer = inputPeer else {
                 return .complete()
             }
-            
+
             #if DEBUG && false
             if "".isEmpty {
                 return .complete()
             }
             #endif
-            
+
             return account.network.request(Api.functions.stories.incrementStoryViews(peer: inputPeer, id: [id]))
             |> `catch` { _ -> Signal<Api.Bool, NoError> in
                 return .single(.boolFalse)
@@ -2102,17 +2103,21 @@ func _internal_markStoryAsSeen(account: Account, peerId: PeerId, id: Int32, asPi
                     maxReadId: max(peerStoryState.maxReadId, id)
                 ).postboxRepresentation)
             }
-            
+
             #if DEBUG && false
             #else
-            _internal_addSynchronizeViewStoriesOperation(peerId: peerId, storyId: id, transaction: transaction)
+            // Telewhite: in ghost mode keep the local read state update but skip
+            // the server-side view sync so the author does not see the view.
+            if !isGhostMode {
+                _internal_addSynchronizeViewStoriesOperation(peerId: peerId, storyId: id, transaction: transaction)
+            }
             #endif
-            
+
             return transaction.getPeer(peerId).flatMap(apiInputUser)
         }
         |> mapToSignal { _ -> Signal<Never, NoError> in
             account.stateManager.injectStoryUpdates(updates: [.read(peerId: peerId, maxId: id)])
-            
+
             return .complete()
         }
     }

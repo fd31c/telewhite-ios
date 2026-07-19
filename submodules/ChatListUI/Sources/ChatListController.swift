@@ -232,6 +232,7 @@ public class ChatListControllerImpl: TelegramBaseController, ChatListController 
     private var preloadStoryResourceDisposables: [MediaId: Disposable] = [:]
     
     private var sharedOpenStoryProgressDisposable = MetaDisposable()
+    private var telewhiteModsSettingsObserver: NSObjectProtocol?
     
     var currentTooltipUpdateTimer: Foundation.Timer?
     
@@ -782,6 +783,19 @@ public class ChatListControllerImpl: TelegramBaseController, ChatListController 
             self.globalControlPanelsContextState = state
             self.requestLayout(transition: .animated(duration: 0.4, curve: .spring))
         })
+
+        // Telewhite: refresh the navigation bar (stories row visibility) when
+        // mods settings change so the Hide Stories toggle applies immediately.
+        self.telewhiteModsSettingsObserver = NotificationCenter.default.addObserver(
+            forName: NSNotification.Name("TelewhiteModsSettingsDidChange"),
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            guard let self else {
+                return
+            }
+            self.requestLayout(transition: .animated(duration: 0.3, curve: .spring))
+        }
     }
 
     required public init(coder aDecoder: NSCoder) {
@@ -816,6 +830,9 @@ public class ChatListControllerImpl: TelegramBaseController, ChatListController 
             disposable.dispose()
         }
         self.globalControlPanelsContextStateDisposable?.dispose()
+        if let observer = self.telewhiteModsSettingsObserver {
+            NotificationCenter.default.removeObserver(observer)
+        }
     }
     
     private func updateNavigationMetadata() {

@@ -53,7 +53,9 @@ private let backgroundTaskSubmissionDelay: Double = 10.0
 
 private func telewhiteBlocksOnlinePresence() -> Bool {
     let defaults = UserDefaults.standard
-    return defaults.bool(forKey: "telewhite.mods.hideOnlineStatus") || defaults.bool(forKey: "telewhite.mods.ghostMode") || defaults.bool(forKey: "telewhite.mods.hideReadReceipts")
+    // Only the explicit online-presence toggles block presence. hideReadReceipts
+    // has its own dedicated toggle and must not hide online status implicitly.
+    return defaults.bool(forKey: "telewhite.mods.hideOnlineStatus") || defaults.bool(forKey: "telewhite.mods.ghostMode")
 }
 
 private struct PendingMediaUploadKey: Hashable {

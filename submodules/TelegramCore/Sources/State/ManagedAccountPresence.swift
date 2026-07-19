@@ -8,10 +8,10 @@ private typealias SignalKitTimer = SwiftSignalKit.Timer
 
 private func telewhiteGhostPresenceEnabled() -> Bool {
     let defaults = UserDefaults.standard
-    if defaults.bool(forKey: "telewhite.mods.hideOnlineStatus") || defaults.bool(forKey: "telewhite.mods.ghostMode") {
-        return true
-    }
-    return !(defaults.array(forKey: "telewhite.mods.ghostPeerIds") as? [NSNumber] ?? []).isEmpty
+    return defaults.bool(forKey: "telewhite.mods.hideOnlineStatus") || defaults.bool(forKey: "telewhite.mods.ghostMode")
+    // Note: ghostPeerIds is intentionally NOT checked here. Online presence is
+    // account-level; the Telegram API cannot hide online status for specific
+    // peers only, so enabling per-chat ghost must not hide presence globally.
 }
 
 private final class AccountPresenceManagerImpl {

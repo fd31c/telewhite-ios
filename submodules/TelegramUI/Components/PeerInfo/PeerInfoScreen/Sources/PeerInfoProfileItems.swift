@@ -552,7 +552,7 @@ func infoItems(
         let ItemTelewhiteId = 12
 
         if TelewhiteModsSettings.current.showChatIds {
-            let idText = "\(channel.id.id._internalGetInt64Value())"
+            let idText = "-100\(channel.id.id._internalGetInt64Value())"
             items[currentPeerInfoSection]!.append(PeerInfoScreenLabeledValueItem(id: ItemTelewhiteId, label: "Telewhite ID", text: idText, textColor: .accent, action: { _, _ in
                 UIPasteboard.general.string = idText
             }, longTapAction: { _ in

@@ -3,14 +3,21 @@ import Postbox
 import TelegramApi
 import SwiftSignalKit
 
-private func telewhiteHideReadReceiptsEnabled() -> Bool {
+private func telewhiteHideReadReceiptsEnabled(for peerId: PeerId?) -> Bool {
     let defaults = UserDefaults.standard
-    return defaults.bool(forKey: "telewhite.mods.ghostMode") || defaults.bool(forKey: "telewhite.mods.hideReadReceipts")
+    if defaults.bool(forKey: "telewhite.mods.ghostMode") || defaults.bool(forKey: "telewhite.mods.hideReadReceipts") {
+        return true
+    }
+    guard let peerId = peerId else {
+        return false
+    }
+    let ghostPeerIds = Set((defaults.array(forKey: "telewhite.mods.ghostPeerIds") as? [NSNumber] ?? []).map { $0.int64Value })
+    return ghostPeerIds.contains(peerId.toInt64())
 }
 
 func _internal_installInteractiveReadMessagesAction(postbox: Postbox, stateManager: AccountStateManager, peerId: PeerId, threadId: Int64?) -> Disposable {
     return postbox.installStoreMessageAction(peerId: peerId, { messages, transaction in
-        if telewhiteHideReadReceiptsEnabled() {
+        if telewhiteHideReadReceiptsEnabled(for: peerId) {
             return
         }
         var consumeMessageIds: [MessageId] = []
