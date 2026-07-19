@@ -2415,7 +2415,32 @@ func contextMenuForChatPresentationInterfaceState(chatPresentationInterfaceState
                 f(.default)
             })))
         }
-        
+
+        if let editHistory = message.attributes.first(where: { $0 is TelewhiteEditHistoryAttribute }) as? TelewhiteEditHistoryAttribute, !editHistory.versions.isEmpty {
+            if !actions.isEmpty {
+                actions.append(.separator)
+            }
+            let isRussian = chatPresentationInterfaceState.strings.baseLanguageCode.lowercased().hasPrefix("ru")
+            let title = isRussian ? "История правок (\(editHistory.versions.count))" : "Edit History (\(editHistory.versions.count))"
+            actions.append(.action(ContextMenuActionItem(text: title, icon: { theme in
+                return generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/Edit"), color: theme.actionSheet.primaryTextColor)
+            }, action: { _, f in
+                let dateFormatter = DateFormatter()
+                dateFormatter.dateFormat = "dd.MM HH:mm"
+                var lines: [String] = []
+                for (index, version) in editHistory.versions.enumerated() {
+                    let date = dateFormatter.string(from: Date(timeIntervalSince1970: TimeInterval(version.timestamp)))
+                    lines.append("\(index + 1). [\(date)]\n\(version.text)")
+                }
+                let currentDate = dateFormatter.string(from: Date(timeIntervalSince1970: TimeInterval(message.timestamp)))
+                lines.append((isRussian ? "Сейчас" : "Now") + " [\(currentDate)]\n\(message.text)")
+                let bodyText = lines.joined(separator: "\n\n")
+                let presentationData = context.sharedContext.currentPresentationData.with { $0 }
+                controllerInteraction.presentController(textAlertController(context: context, title: isRussian ? "История правок" : "Edit History", text: bodyText, actions: [TextAlertAction(type: .defaultAction, title: presentationData.strings.Common_OK, action: {})]), nil)
+                f(.default)
+            })))
+        }
+
         return ContextController.Items(content: .list(actions), tip: nil)
     }
 }

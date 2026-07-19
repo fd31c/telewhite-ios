@@ -18,6 +18,7 @@ public struct TelewhiteModsSettings: Equatable {
     public var ghostMode: Bool
     public var ghostChatButtonEnabled: Bool
     public var preserveDeletedMessages: Bool
+    public var logEdits: Bool
     public var hideOnlineStatus: Bool
     public var hideTypingStatus: Bool
     public var hideReadReceipts: Bool
@@ -52,6 +53,7 @@ public struct TelewhiteModsSettings: Equatable {
         static let ghostMode = "telewhite.mods.ghostMode"
         static let ghostChatButtonEnabled = "telewhite.mods.ghostChatButtonEnabled"
         static let preserveDeletedMessages = "telewhite.mods.preserveDeletedMessages"
+        static let logEdits = "telewhite.mods.logEdits"
         static let hideOnlineStatus = "telewhite.mods.hideOnlineStatus"
         static let hideTypingStatus = "telewhite.mods.hideTypingStatus"
         static let hideReadReceipts = "telewhite.mods.hideReadReceipts"
@@ -89,6 +91,7 @@ public struct TelewhiteModsSettings: Equatable {
             ghostMode: defaults.bool(forKey: Key.ghostMode),
             ghostChatButtonEnabled: defaults.object(forKey: Key.ghostChatButtonEnabled) as? Bool ?? true,
             preserveDeletedMessages: defaults.bool(forKey: Key.preserveDeletedMessages),
+            logEdits: defaults.bool(forKey: Key.logEdits),
             hideOnlineStatus: defaults.bool(forKey: Key.hideOnlineStatus),
             hideTypingStatus: defaults.bool(forKey: Key.hideTypingStatus),
             hideReadReceipts: defaults.bool(forKey: Key.hideReadReceipts),
@@ -190,6 +193,7 @@ public struct TelewhiteModsSettings: Equatable {
         defaults.set(self.ghostMode, forKey: Key.ghostMode)
         defaults.set(self.ghostChatButtonEnabled, forKey: Key.ghostChatButtonEnabled)
         defaults.set(self.preserveDeletedMessages, forKey: Key.preserveDeletedMessages)
+        defaults.set(self.logEdits, forKey: Key.logEdits)
         defaults.set(self.hideOnlineStatus, forKey: Key.hideOnlineStatus)
         defaults.set(self.hideTypingStatus, forKey: Key.hideTypingStatus)
         defaults.set(self.hideReadReceipts, forKey: Key.hideReadReceipts)
@@ -292,6 +296,7 @@ private enum TelewhiteModsEntry: ItemListNodeEntry, Equatable {
 
     case messengerHeader(String)
     case preserveDeletedMessages(String, Bool)
+    case logEdits(String, Bool)
     case translateMessages(String, Bool)
     case translateChats(String, Bool)
     case autoTranslateEnglish(String, Bool)
@@ -359,7 +364,7 @@ private enum TelewhiteModsEntry: ItemListNodeEntry, Equatable {
         switch self {
         case .menuItem:
             return TelewhiteModsSection.menu.rawValue
-        case .messengerHeader, .preserveDeletedMessages, .translateMessages, .translateChats, .autoTranslateEnglish, .translationTargetLanguage, .outgoingTranslateButtonEnabled, .hdPhotos, .messengerInfo, .oneTimeMediaUnlimited, .downloadOneTimeMedia, .uploadVoice, .voiceChangeSettings, .uploadVideoMessage:
+        case .messengerHeader, .preserveDeletedMessages, .logEdits, .translateMessages, .translateChats, .autoTranslateEnglish, .translationTargetLanguage, .outgoingTranslateButtonEnabled, .hdPhotos, .messengerInfo, .oneTimeMediaUnlimited, .downloadOneTimeMedia, .uploadVoice, .voiceChangeSettings, .uploadVideoMessage:
             return TelewhiteModsSection.messenger.rawValue
         case .vpnHeader, .vpnEnabled, .vpnSubscription, .vpnStatus, .vpnStart, .vpnInfo:
             return TelewhiteModsSection.vpn.rawValue
@@ -388,6 +393,8 @@ private enum TelewhiteModsEntry: ItemListNodeEntry, Equatable {
             return 0
         case .preserveDeletedMessages:
             return 1
+        case .logEdits:
+            return 14
         case .oneTimeMediaUnlimited:
             return 2
         case .downloadOneTimeMedia:
@@ -525,6 +532,10 @@ private enum TelewhiteModsEntry: ItemListNodeEntry, Equatable {
         case let .preserveDeletedMessages(text, value):
             return self.switchItem(presentationData: presentationData, arguments: arguments, text: text, value: value) { settings, value in
                 settings.preserveDeletedMessages = value
+            }
+        case let .logEdits(text, value):
+            return self.switchItem(presentationData: presentationData, arguments: arguments, text: text, value: value) { settings, value in
+                settings.logEdits = value
             }
         case let .translateMessages(text, value):
             return ItemListSwitchItem(presentationData: presentationData, systemStyle: .glass, title: text, text: telewhiteEntryDescription(self, presentationData: presentationData), value: value, maximumNumberOfLines: 3, sectionId: self.section, style: .blocks, updated: { value in
@@ -780,6 +791,8 @@ private func telewhiteEntryDescription(_ entry: TelewhiteModsEntry, presentation
     switch entry {
     case .preserveDeletedMessages:
         return text("Keeps deleted cloud messages visible locally; deleting the marked copy again removes it from this device.", "\u{0423}\u{0434}\u{0430}\u{043b}\u{0451}\u{043d}\u{043d}\u{044b}\u{0435} \u{043e}\u{0431}\u{043b}\u{0430}\u{0447}\u{043d}\u{044b}\u{0435} \u{0441}\u{043e}\u{043e}\u{0431}\u{0449}\u{0435}\u{043d}\u{0438}\u{044f} \u{043e}\u{0441}\u{0442}\u{0430}\u{044e}\u{0442}\u{0441}\u{044f} \u{043b}\u{043e}\u{043a}\u{0430}\u{043b}\u{044c}\u{043d}\u{043e}; \u{043f}\u{043e}\u{0432}\u{0442}\u{043e}\u{0440}\u{043d}\u{043e}\u{0435} \u{0443}\u{0434}\u{0430}\u{043b}\u{0435}\u{043d}\u{0438}\u{0435} \u{0443}\u{0431}\u{0438}\u{0440}\u{0430}\u{0435}\u{0442} \u{043a}\u{043e}\u{043f}\u{0438}\u{044e}.")
+    case .logEdits:
+        return text("Records the previous text of edited messages so the full edit history can be viewed from the message menu.", "Сохраняет прошлый текст отредактированных сообщений — историю правок можно открыть из меню сообщения.")
     case .translateMessages:
         return text("Shows the manual translate action in message menus.", "Показывает ручную кнопку перевода в меню сообщений.")
     case .translateChats:
@@ -838,6 +851,7 @@ private func telewhiteModsEntries(tab: TelewhiteModsTab, settings: TelewhiteMods
     case .messenger:
         entries.append(.messengerHeader(telewhiteTabTitle(.messenger, strings: strings)))
         entries.append(.preserveDeletedMessages(strings.text("Keep Deleted Messages", "Сохранять удалённые сообщения"), settings.preserveDeletedMessages))
+        entries.append(.logEdits(strings.text("Log Message Edits", "Лог редактирований"), settings.logEdits))
         entries.append(.oneTimeMediaUnlimited(strings.text("Unlimited One-Time View", "Одноразовый просмотр без ограничений"), settings.oneTimeMediaUnlimited))
         entries.append(.downloadOneTimeMedia(strings.text("Download One-Time Media", "Скачать одноразовые медиа"), settings.downloadOneTimeMedia))
         entries.append(.uploadVoice(strings.text("Upload Voice Message", "Загрузить голосовое"), settings.uploadVoice))

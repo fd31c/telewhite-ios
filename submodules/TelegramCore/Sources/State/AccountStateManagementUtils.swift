@@ -4557,6 +4557,23 @@ func replayFinalState(
                             }
                         }
                     }
+
+                    // Telewhite: when enabled, record the pre-edit text so the
+                    // edit history can be shown later. Only text changes are
+                    // logged; media-only edits are ignored.
+                    if UserDefaults.standard.bool(forKey: "telewhite.mods.logEdits"), !previousMessage.text.isEmpty, previousMessage.text != message.text {
+                        let existingHistory = (previousMessage.attributes.first(where: { $0 is TelewhiteEditHistoryAttribute }) as? TelewhiteEditHistoryAttribute) ?? TelewhiteEditHistoryAttribute(versions: [])
+                        let entry = TelewhiteEditHistoryEntry(text: previousMessage.text, timestamp: previousMessage.timestamp)
+                        let updatedHistory = existingHistory.withAppendedVersion(entry)
+                        updatedAttributes.removeAll(where: { $0 is TelewhiteEditHistoryAttribute })
+                        updatedAttributes.append(updatedHistory)
+                    } else if let existingHistory = previousMessage.attributes.first(where: { $0 is TelewhiteEditHistoryAttribute }) as? TelewhiteEditHistoryAttribute {
+                        // Preserve prior history across subsequent edits even if
+                        // this particular edit did not add a new version.
+                        if message.attributes.firstIndex(where: { $0 is TelewhiteEditHistoryAttribute }) == nil {
+                            updatedAttributes.append(existingHistory)
+                        }
+                    }
                     
                     if let previousFactCheckAttribute = previousMessage.attributes.first(where: { $0 is FactCheckMessageAttribute }) as? FactCheckMessageAttribute, let updatedFactCheckAttribute = message.attributes.first(where: { $0 is FactCheckMessageAttribute }) as? FactCheckMessageAttribute {
                         if case .Pending = updatedFactCheckAttribute.content, updatedFactCheckAttribute.hash == previousFactCheckAttribute.hash {
