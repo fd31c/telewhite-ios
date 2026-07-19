@@ -122,10 +122,7 @@ public func fetchPhotoLibraryResource(localIdentifier: String, width: Int32?, he
                 size = CGSize(width: CGFloat(width), height: CGFloat(height))
             } else {
                 if hd {
-                    size = CGSize(width: 2560.0, height: 2560.0)
-                } else {
-                    size = CGSize(width: 1280.0, height: 1280.0)
-                }
+                    size = CGSize(width: 2560.0, height: 2560.0)`r`n                } else if resource.forceHd || (UserDefaults.standard.object(forKey: "telewhite.mods.hdPhotos") as? Bool ?? false) {`r`n                    size = CGSize(width: 2560.0, height: 2560.0)`r`n                } else {`r`n                    size = CGSize(width: 1280.0, height: 1280.0)`r`n                }
             }
             
             var targetSize = PHImageManagerMaximumSize

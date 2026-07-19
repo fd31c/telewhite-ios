@@ -405,7 +405,7 @@ public func legacyAssetPickerEnqueueMessages(
                                     var randomId: Int64 = 0
                                     arc4random_buf(&randomId, 8)
                                     let tempFilePath = NSTemporaryDirectory() + "\(randomId).jpeg"
-                                    let maxSize = item.forceHd ? CGSize(width: 2560.0, height: 2560.0) : CGSize(width: 1280.0, height: 1280.0)
+                                    let hdEnabled = item.forceHd || (UserDefaults.standard.object(forKey: "telewhite.mods.hdPhotos") as? Bool ?? false)`r`n                                    let maxSize = hdEnabled ? CGSize(width: 2560.0, height: 2560.0) : CGSize(width: 1280.0, height: 1280.0)
                                     let scaledSize = image.size.aspectFittedOrSmaller(maxSize)
                                 
                                     if let scaledImage = TGScaleImageToPixelSize(image, scaledSize) {
@@ -619,8 +619,7 @@ public func legacyAssetPickerEnqueueMessages(
                                         var randomId: Int64 = 0
                                         arc4random_buf(&randomId, 8)
                                         let size = CGSize(width: CGFloat(asset.pixelWidth), height: CGFloat(asset.pixelHeight))
-                                        let scaledSize = size.aspectFittedOrSmaller(CGSize(width: 1280.0, height: 1280.0))
-                                        let resource = PhotoLibraryMediaResource(localIdentifier: asset.localIdentifier, uniqueId: Int64.random(in: Int64.min ... Int64.max), forceHd: item.forceHd)
+                                        let hdEnabled = item.forceHd || (UserDefaults.standard.object(forKey: "telewhite.mods.hdPhotos") as? Bool ?? false)`r`n                                        let scaledSize = size.aspectFittedOrSmaller(CGSize(width: hdEnabled ? 2560.0 : 1280.0, height: hdEnabled ? 2560.0 : 1280.0))`r`n                                        let resource = PhotoLibraryMediaResource(localIdentifier: asset.localIdentifier, uniqueId: Int64.random(in: Int64.min ... Int64.max), forceHd: hdEnabled)
                                     
                                         let media: EngineRawMedia
                                         representations.append(TelegramMediaImageRepresentation(dimensions: PixelDimensions(scaledSize), resource: resource, progressiveSizes: [], immediateThumbnailData: nil, hasVideo: false, isPersonal: false))

@@ -44,6 +44,7 @@ public struct TelewhiteModsSettings: Equatable {
     public var outgoingTranslateButtonEnabled: Bool
     public var outgoingTranslationPeerIds: Set<Int64>
     public var outgoingTranslationLanguages: [Int64: String]
+    public var hdPhotos: Bool
 
     private enum Key {
         static let vpnEnabled = "telewhite.mods.vpnEnabled"
@@ -78,6 +79,8 @@ public struct TelewhiteModsSettings: Equatable {
         static let outgoingTranslationPeerIds = "telewhite.mods.outgoingTranslationPeerIds"
         static let outgoingTranslationLanguages = "telewhite.mods.outgoingTranslationLanguages"
     }
+        static let hdPhotos = "telewhite.mods.hdPhotos"
+    }
     
     public static var current: TelewhiteModsSettings {
         let defaults = UserDefaults.standard
@@ -111,6 +114,7 @@ public struct TelewhiteModsSettings: Equatable {
             autoRecordCalls: defaults.bool(forKey: Key.autoRecordCalls),
             callRecordButton: defaults.object(forKey: Key.callRecordButton) as? Bool ?? true,
             outgoingTranslateButtonEnabled: defaults.object(forKey: Key.outgoingTranslateButtonEnabled) as? Bool ?? true,
+            hdPhotos: defaults.object(forKey: Key.hdPhotos) as? Bool ?? false,
             outgoingTranslationPeerIds: Set((defaults.array(forKey: Key.outgoingTranslationPeerIds) as? [NSNumber] ?? []).map { $0.int64Value }),
             outgoingTranslationLanguages: {
                 var result: [Int64: String] = [:]
@@ -211,6 +215,7 @@ public struct TelewhiteModsSettings: Equatable {
         defaults.set(self.autoRecordCalls, forKey: Key.autoRecordCalls)
         defaults.set(self.callRecordButton, forKey: Key.callRecordButton)
         defaults.set(self.outgoingTranslateButtonEnabled, forKey: Key.outgoingTranslateButtonEnabled)
+        defaults.set(self.hdPhotos, forKey: Key.hdPhotos)
         defaults.set(self.outgoingTranslationPeerIds.map { NSNumber(value: $0) }, forKey: Key.outgoingTranslationPeerIds)
         defaults.set(Dictionary(uniqueKeysWithValues: self.outgoingTranslationLanguages.map { (String($0.key), $0.value) }), forKey: Key.outgoingTranslationLanguages)
         NotificationCenter.default.post(name: TelewhiteModsSettings.didChangeNotification, object: nil)
@@ -293,6 +298,7 @@ private enum TelewhiteModsEntry: ItemListNodeEntry, Equatable {
     case autoTranslateEnglish(String, Bool)
     case translationTargetLanguage(String, String)
     case outgoingTranslateButtonEnabled(String, Bool)
+    case hdPhotos(String, Bool)
     case messengerInfo(String)
     case oneTimeMediaUnlimited(String, Bool)
     case downloadOneTimeMedia(String, Bool)
@@ -354,7 +360,7 @@ private enum TelewhiteModsEntry: ItemListNodeEntry, Equatable {
         switch self {
         case .menuItem:
             return TelewhiteModsSection.menu.rawValue
-        case .messengerHeader, .preserveDeletedMessages, .translateMessages, .translateChats, .autoTranslateEnglish, .translationTargetLanguage, .outgoingTranslateButtonEnabled, .messengerInfo, .oneTimeMediaUnlimited, .downloadOneTimeMedia, .uploadVoice, .voiceChangeSettings, .uploadVideoMessage:
+        case .messengerHeader, .preserveDeletedMessages, .translateMessages, .translateChats, .autoTranslateEnglish, .translationTargetLanguage, .outgoingTranslateButtonEnabled, .hdPhotos, .messengerInfo, .oneTimeMediaUnlimited, .downloadOneTimeMedia, .uploadVoice, .voiceChangeSettings, .uploadVideoMessage:
             return TelewhiteModsSection.messenger.rawValue
         case .vpnHeader, .vpnEnabled, .vpnSubscription, .vpnStatus, .vpnStart, .vpnInfo:
             return TelewhiteModsSection.vpn.rawValue
@@ -403,6 +409,8 @@ private enum TelewhiteModsEntry: ItemListNodeEntry, Equatable {
             return 10
         case .outgoingTranslateButtonEnabled:
             return 11
+        case .hdPhotos:
+            return 12
         case .messengerInfo:
             return 12
         case .privacyHeader:
@@ -559,6 +567,10 @@ private enum TelewhiteModsEntry: ItemListNodeEntry, Equatable {
         case let .outgoingTranslateButtonEnabled(text, value):
             return self.switchItem(presentationData: presentationData, arguments: arguments, text: text, value: value) { settings, value in
                 settings.outgoingTranslateButtonEnabled = value
+            }
+        case let .hdPhotos(text, value):
+            return self.switchItem(presentationData: presentationData, arguments: arguments, text: text, value: value) { settings, value in
+                settings.hdPhotos = value
             }
         case let .oneTimeMediaUnlimited(text, value):
             return self.switchItem(presentationData: presentationData, arguments: arguments, text: text, value: value) { settings, value in
