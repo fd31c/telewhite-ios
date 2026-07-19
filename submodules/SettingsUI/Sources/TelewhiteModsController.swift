@@ -45,6 +45,7 @@ public struct TelewhiteModsSettings: Equatable {
     public var outgoingTranslateButtonEnabled: Bool
     public var outgoingTranslationPeerIds: Set<Int64>
     public var outgoingTranslationLanguages: [Int64: String]
+    public var userNotes: [Int64: String]
     public var hdPhotos: Bool
 
     private enum Key {
@@ -80,6 +81,7 @@ public struct TelewhiteModsSettings: Equatable {
         static let outgoingTranslateButtonEnabled = "telewhite.mods.outgoingTranslateButtonEnabled"
         static let outgoingTranslationPeerIds = "telewhite.mods.outgoingTranslationPeerIds"
         static let outgoingTranslationLanguages = "telewhite.mods.outgoingTranslationLanguages"
+        static let userNotes = "telewhite.mods.userNotes"
         static let hdPhotos = "telewhite.mods.hdPhotos"
     }
 
@@ -116,7 +118,6 @@ public struct TelewhiteModsSettings: Equatable {
             autoRecordCalls: defaults.bool(forKey: Key.autoRecordCalls),
             callRecordButton: defaults.object(forKey: Key.callRecordButton) as? Bool ?? true,
             outgoingTranslateButtonEnabled: defaults.object(forKey: Key.outgoingTranslateButtonEnabled) as? Bool ?? true,
-            hdPhotos: defaults.object(forKey: Key.hdPhotos) as? Bool ?? false,
             outgoingTranslationPeerIds: Set((defaults.array(forKey: Key.outgoingTranslationPeerIds) as? [NSNumber] ?? []).map { $0.int64Value }),
             outgoingTranslationLanguages: {
                 var result: [Int64: String] = [:]
@@ -128,7 +129,19 @@ public struct TelewhiteModsSettings: Equatable {
                     }
                 }
                 return result
-            }()
+            }(),
+            userNotes: {
+                var result: [Int64: String] = [:]
+                if let stored = defaults.dictionary(forKey: Key.userNotes) as? [String: String] {
+                    for (key, value) in stored {
+                        if let rawId = Int64(key) {
+                            result[rawId] = value
+                        }
+                    }
+                }
+                return result
+            }(),
+            hdPhotos: defaults.object(forKey: Key.hdPhotos) as? Bool ?? false
         )
     }
 
@@ -142,8 +155,30 @@ public struct TelewhiteModsSettings: Equatable {
         return self.ghostPeerIds.contains(peerId.toInt64())
     }
 
-    public func withToggledGhostPeer(_ peerId: EnginePeer.Id) -> TelewhiteModsSettings {
+    public func note(for peerId: EnginePeer.Id?) -> String? {
+        guard let peerId else {
+            return nil
+        }
+        let note = self.userNotes[peerId.toInt64()]
+        if let note, !note.isEmpty {
+            return note
+        }
+        return nil
+    }
+
+    public func withUpdatedNote(_ note: String, for peerId: EnginePeer.Id) -> TelewhiteModsSettings {
         var updated = self
+        let rawId = peerId.toInt64()
+        let trimmed = note.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmed.isEmpty {
+            updated.userNotes.removeValue(forKey: rawId)
+        } else {
+            updated.userNotes[rawId] = trimmed
+        }
+        return updated
+    }
+
+    public func withToggledGhostPeer(_ peerId: EnginePeer.Id) -> TelewhiteModsSettings {        var updated = self
         let rawId = peerId.toInt64()
         if updated.ghostPeerIds.contains(rawId) {
             updated.ghostPeerIds.remove(rawId)
@@ -221,6 +256,7 @@ public struct TelewhiteModsSettings: Equatable {
         defaults.set(self.hdPhotos, forKey: Key.hdPhotos)
         defaults.set(self.outgoingTranslationPeerIds.map { NSNumber(value: $0) }, forKey: Key.outgoingTranslationPeerIds)
         defaults.set(Dictionary(uniqueKeysWithValues: self.outgoingTranslationLanguages.map { (String($0.key), $0.value) }), forKey: Key.outgoingTranslationLanguages)
+        defaults.set(Dictionary(uniqueKeysWithValues: self.userNotes.map { (String($0.key), $0.value) }), forKey: Key.userNotes)
         NotificationCenter.default.post(name: TelewhiteModsSettings.didChangeNotification, object: nil)
     }
 

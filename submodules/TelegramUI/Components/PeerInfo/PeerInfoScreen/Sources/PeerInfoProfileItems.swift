@@ -17,6 +17,7 @@ import AvatarNode
 import PeerNameColorItem
 import BoostLevelIconComponent
 import SettingsUI
+import PromptUI
 
 private let enabledPublicBioEntities: EnabledEntityTypes = [.allUrl, .mention, .hashtag]
 private let enabledPrivateBioEntities: EnabledEntityTypes = [.internalUrl, .mention, .hashtag]
@@ -191,6 +192,39 @@ func infoItems(
                 UIPasteboard.general.string = idText
             }, longTapAction: { _ in
                 UIPasteboard.general.string = idText
+            }, requestLayout: { animated in
+                interaction.requestLayout(animated)
+            }))
+        }
+
+        if !isMyProfile {
+            let ItemTelewhiteNote = 3007
+            let isRussian = presentationData.strings.baseLanguageCode.lowercased().hasPrefix("ru")
+            let existingNote = TelewhiteModsSettings.current.note(for: user.id)
+            let noteLabel = isRussian ? "Заметка" : "Note"
+            let noteText = existingNote ?? (isRussian ? "Нажмите, чтобы добавить" : "Tap to add")
+            let openNoteEditor: (ASDisplayNode, Promise<Bool>?) -> Void = { _, _ in
+                let controller = promptController(
+                    context: context,
+                    updatedPresentationData: nil,
+                    text: isRussian ? "Приватная заметка" : "Private Note",
+                    subtitle: isRussian ? "Видна только вам" : "Visible only to you",
+                    value: existingNote ?? "",
+                    placeholder: isRussian ? "Заметка о пользователе" : "Note about this user",
+                    characterLimit: 500,
+                    apply: { value in
+                        guard let value = value else {
+                            return
+                        }
+                        let updated = TelewhiteModsSettings.current.withUpdatedNote(value, for: user.id)
+                        updated.save()
+                        interaction.requestLayout(true)
+                    }
+                )
+                interaction.getController()?.present(controller, in: .window(.root))
+            }
+            items[currentPeerInfoSection]!.append(PeerInfoScreenLabeledValueItem(id: ItemTelewhiteNote, label: noteLabel, text: noteText, textColor: existingNote != nil ? .primary : .accent, textBehavior: existingNote != nil ? .multiLine(maxLines: 8, enabledEntities: []) : .singleLine, action: { node, _ in
+                openNoteEditor(node, nil)
             }, requestLayout: { animated in
                 interaction.requestLayout(animated)
             }))
