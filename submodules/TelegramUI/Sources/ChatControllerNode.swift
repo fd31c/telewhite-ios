@@ -4680,53 +4680,50 @@ class ChatControllerNode: ASDisplayNode, ASScrollViewDelegate {
         }
     }
     
-    private static func telewhiteOpenRouterTranslate(text: String, toLang: String, apiKey: String) -> Signal<String?, NoError> {
+    private static func telewhiteFreeTranslate(text: String, toLang: String) -> Signal<String?, NoError> {
         return Signal { subscriber in
-            guard let url = URL(string: "https://openrouter.ai/api/v1/chat/completions") else {
+            // Free Google Translate endpoint — no API key, no tokens. Same approach
+            // Teledark uses. "sl=auto" auto-detects the source language.
+            var components = URLComponents(string: "https://translate.googleapis.com/translate_a/single")
+            components?.queryItems = [
+                URLQueryItem(name: "client", value: "gtx"),
+                URLQueryItem(name: "sl", value: "auto"),
+                URLQueryItem(name: "tl", value: toLang),
+                URLQueryItem(name: "dt", value: "t"),
+                URLQueryItem(name: "q", value: text)
+            ]
+            guard let url = components?.url else {
                 subscriber.putNext(nil)
                 subscriber.putCompletion()
                 return EmptyDisposable
             }
             var request = URLRequest(url: url)
-            request.httpMethod = "POST"
-            request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
-            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-            let systemPrompt = "You are a translation engine. Translate the user's message into the language with ISO 639-1 code \"\(toLang)\". Preserve the tone, formatting, emojis and line breaks. Output ONLY the translated text with no explanations, no quotes and no extra words. If the text is already in the target language, output it unchanged."
-            let body: [String: Any] = [
-                "model": "google/gemini-2.0-flash-exp:free",
-                "messages": [
-                    ["role": "system", "content": systemPrompt],
-                    ["role": "user", "content": text]
-                ],
-                "temperature": 0.2
-            ]
-            guard let httpBody = try? JSONSerialization.data(withJSONObject: body) else {
-                subscriber.putNext(nil)
-                subscriber.putCompletion()
-                return EmptyDisposable
-            }
-            request.httpBody = httpBody
+            request.httpMethod = "GET"
             // Keep this short: this request blocks message sending, so a slow
-            // OpenRouter response must not hold the message hostage.
+            // response must not hold the message hostage.
             request.timeoutInterval = 6.0
-            
+
             let task = URLSession.shared.dataTask(with: request) { data, response, error in
+                // Response is a nested JSON array: [[["translated","original",...],...],...]
                 guard error == nil, let data = data,
-                      let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-                      let choices = json["choices"] as? [[String: Any]],
-                      let firstChoice = choices.first,
-                      let message = firstChoice["message"] as? [String: Any],
-                      let content = message["content"] as? String else {
+                      let json = try? JSONSerialization.jsonObject(with: data) as? [Any],
+                      let segments = json.first as? [Any] else {
                     subscriber.putNext(nil)
                     subscriber.putCompletion()
                     return
                 }
-                let translated = content.trimmingCharacters(in: .whitespacesAndNewlines)
+                var translated = ""
+                for segment in segments {
+                    if let parts = segment as? [Any], let piece = parts.first as? String {
+                        translated += piece
+                    }
+                }
+                translated = translated.trimmingCharacters(in: .whitespacesAndNewlines)
                 subscriber.putNext(translated.isEmpty ? nil : translated)
                 subscriber.putCompletion()
             }
             task.resume()
-            
+
             return ActionDisposable {
                 task.cancel()
             }
@@ -4765,8 +4762,7 @@ class ChatControllerNode: ASDisplayNode, ASScrollViewDelegate {
             return
         }
         let toLang = settings.outgoingTranslationLanguage(for: peerId)
-        let openRouterKey = settings.openRouterApiKey
-        
+
         var translationSignals: [Signal<(Int, String, [MessageTextEntity])?, NoError>] = []
         for (index, message) in messages.enumerated() {
             guard case let .message(text, attributes, _, _, _, _, _, _, _, _) = message, !text.isEmpty else {
@@ -4782,40 +4778,27 @@ class ChatControllerNode: ASDisplayNode, ASScrollViewDelegate {
                     entities = attribute.entities
                 }
             }
-            let signal: Signal<(Int, String, [MessageTextEntity])?, NoError>
-            if !openRouterKey.isEmpty {
-                let telegramFallback: Signal<(Int, String, [MessageTextEntity])?, NoError> = self.context.engine.messages.translate(text: text, toLang: toLang, entities: entities)
-                |> map { result -> (Int, String, [MessageTextEntity])? in
-                    guard let (translatedText, translatedEntities) = result else {
-                        return nil
-                    }
-                    return (index, translatedText, translatedEntities)
+            // Primary: free Google Translate (no key). Fallback: Telegram's built-in
+            // translation, which preserves entities, if the free endpoint fails.
+            let telegramFallback: Signal<(Int, String, [MessageTextEntity])?, NoError> = self.context.engine.messages.translate(text: text, toLang: toLang, entities: entities)
+            |> map { result -> (Int, String, [MessageTextEntity])? in
+                guard let (translatedText, translatedEntities) = result else {
+                    return nil
                 }
-                |> `catch` { _ -> Signal<(Int, String, [MessageTextEntity])?, NoError> in
-                    return .single(nil)
-                }
-                signal = ChatControllerNode.telewhiteOpenRouterTranslate(text: text, toLang: toLang, apiKey: openRouterKey)
-                |> mapToSignal { translated -> Signal<(Int, String, [MessageTextEntity])?, NoError> in
-                    if let translated {
-                        return .single((index, translated, []))
-                    } else {
-                        return telegramFallback
-                    }
-                }
-                |> timeout(10.0, queue: Queue.mainQueue(), alternate: .single(nil))
-            } else {
-                signal = self.context.engine.messages.translate(text: text, toLang: toLang, entities: entities)
-                |> map { result -> (Int, String, [MessageTextEntity])? in
-                    guard let (translatedText, translatedEntities) = result else {
-                        return nil
-                    }
-                    return (index, translatedText, translatedEntities)
-                }
-                |> `catch` { _ -> Signal<(Int, String, [MessageTextEntity])?, NoError> in
-                    return .single(nil)
-                }
-                |> timeout(10.0, queue: Queue.mainQueue(), alternate: .single(nil))
+                return (index, translatedText, translatedEntities)
             }
+            |> `catch` { _ -> Signal<(Int, String, [MessageTextEntity])?, NoError> in
+                return .single(nil)
+            }
+            let signal: Signal<(Int, String, [MessageTextEntity])?, NoError> = ChatControllerNode.telewhiteFreeTranslate(text: text, toLang: toLang)
+            |> mapToSignal { translated -> Signal<(Int, String, [MessageTextEntity])?, NoError> in
+                if let translated {
+                    return .single((index, translated, []))
+                } else {
+                    return telegramFallback
+                }
+            }
+            |> timeout(10.0, queue: Queue.mainQueue(), alternate: .single(nil))
             translationSignals.append(signal)
         }
         

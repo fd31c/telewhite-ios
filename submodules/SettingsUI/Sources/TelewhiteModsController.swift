@@ -601,7 +601,7 @@ private enum TelewhiteModsEntry: ItemListNodeEntry, Equatable {
         case .ghostMode:
             return 102
         case .ghostChatButtonEnabled:
-            return 103
+            return 303
         case .hideTypingStatus:
             return 104
         case .hideReadReceipts:
@@ -639,9 +639,9 @@ private enum TelewhiteModsEntry: ItemListNodeEntry, Equatable {
         case .ghostStories:
             return 302
         case .clearGhostChats:
-            return 303
-        case .stealthInfo:
             return 304
+        case .stealthInfo:
+            return 305
         case .channelsHeader:
             return 400
         case .channelContentRestrictionBypass:
@@ -1465,8 +1465,8 @@ private func telewhiteModsEntries(tab: TelewhiteModsTab, settings: TelewhiteMods
         entries.append(.translationTargetLanguage(strings.text("Translation Language", "Язык перевода"), settings.translationTargetLanguage))
         entries.append(.outgoingTranslateButtonEnabled(strings.text("Per-Chat Translator Button", "Кнопка переводчика в чатах"), settings.outgoingTranslateButtonEnabled))
         // Telewhite: "Smart Auto-Translate" removed — outgoing translation is now
-        // strictly manual via the per-chat translator button.
-        entries.append(.openRouterApiKey(strings.text("OpenRouter API Key", "Ключ OpenRouter API"), settings.openRouterApiKey))
+        // strictly manual via the per-chat translator button. Translation uses a
+        // free translation service, so no API key is required.
         entries.append(.messageFiltersEnabled(strings.text("Message Filters", "Фильтры сообщений"), settings.messageFiltersEnabled))
         entries.append(.messageFiltersUseRegex(strings.text("Use Regex Rules", "Использовать regex"), settings.messageFiltersUseRegex))
         entries.append(.messageFilterRules(strings.text("Filter Rules", "Правила фильтра"), settings.messageFilterRules))
@@ -1487,7 +1487,8 @@ private func telewhiteModsEntries(tab: TelewhiteModsTab, settings: TelewhiteMods
         entries.append(.stealthHeader(telewhiteTabTitle(.stealth, strings: strings)))
         entries.append(.ghostMessages(strings.text("Ghost Mode (Messages)", "Режим невидимки (сообщения)"), settings.hideReadReceipts))
         entries.append(.ghostStories(strings.text("Ghost Mode (Stories)", "Режим невидимки (истории)"), settings.ghostStories))
-        entries.append(.stealthInfo(strings.text("Read messages without sending read-receipt notifications, and view stories anonymously — you won't appear in the viewer list.", "Читайте сообщения без отправки уведомлений о прочтении и смотрите истории анонимно — вы не появитесь в списке зрителей.")))
+        entries.append(.ghostChatButtonEnabled(strings.text("Per-Chat Ghost Button", "Кнопка невидимки в чате"), settings.ghostChatButtonEnabled))
+        entries.append(.stealthInfo(strings.text("Read messages without sending read-receipt notifications, and view stories anonymously — you won't appear in the viewer list. The per-chat ghost button adds a header icon in every chat so you can toggle ghost mode for a single conversation.", "Читайте сообщения без отправки уведомлений о прочтении и смотрите истории анонимно — вы не появитесь в списке зрителей. Кнопка невидимки в чате добавляет иконку в шапку каждого чата, чтобы включать невидимку для отдельного диалога.")))
 
     case .channels:
         entries.append(.channelsHeader(telewhiteTabTitle(.channels, strings: strings)))
