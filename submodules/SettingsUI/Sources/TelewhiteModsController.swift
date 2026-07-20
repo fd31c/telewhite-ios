@@ -983,6 +983,10 @@ private enum TelewhiteModsEntry: ItemListNodeEntry, Equatable {
             }
         case let .ghostMessages(text, value):
             return self.switchItem(presentationData: presentationData, arguments: arguments, text: text, value: value) { settings, value in
+                // Telewhite: the "messages" ghost toggle bundles the full DM stealth
+                // set — hidden online, typing/recording, reads and content receipts.
+                settings.hideOnlineStatus = value
+                settings.hideTypingStatus = value
                 settings.hideReadReceipts = value
             }
         case let .ghostStories(text, value):
@@ -1348,7 +1352,7 @@ private func telewhiteTabTitle(_ tab: TelewhiteModsTab, strings: TelewhiteModsSt
 private func telewhiteMenuEntries(strings: TelewhiteModsStrings) -> [TelewhiteModsEntry] {
     return [
         .menuItem(0, .privacy, telewhiteTabTitle(.privacy, strings: strings), strings.text("Hidden chats, content protection, phone and technical IDs.", "Скрытые чаты, защита контента, номер и технические ID."), .privacy),
-        .menuItem(1, .ghost, telewhiteTabTitle(.stealth, strings: strings), strings.text("One switch for online, read receipts, typing and stories.", "Один переключатель для онлайна, прочтения, набора текста и историй."), .stealth),
+        .menuItem(1, .ghost, telewhiteTabTitle(.stealth, strings: strings), strings.text("Invisible reading and anonymous story viewing.", "Невидимое чтение и анонимный просмотр историй."), .stealth),
         .menuItem(2, .messages, telewhiteTabTitle(.messenger, strings: strings), strings.text("Deleted messages, one-time media, uploads and translation.", "\u{0423}\u{0434}\u{0430}\u{043b}\u{0451}\u{043d}\u{043d}\u{044b}\u{0435} \u{0441}\u{043e}\u{043e}\u{0431}\u{0449}\u{0435}\u{043d}\u{0438}\u{044f}, \u{043e}\u{0434}\u{043d}\u{043e}\u{0440}\u{0430}\u{0437}\u{043e}\u{0432}\u{044b}\u{0435} \u{043c}\u{0435}\u{0434}\u{0438}\u{0430}, \u{0437}\u{0430}\u{0433}\u{0440}\u{0443}\u{0437}\u{043a}\u{0438} \u{0438} \u{043f}\u{0435}\u{0440}\u{0435}\u{0432}\u{043e}\u{0434}."), .messenger),
         .menuItem(3, .groups, telewhiteTabTitle(.channels, strings: strings), strings.text("Channel and group content controls.", "\u{0424}\u{0443}\u{043d}\u{043a}\u{0446}\u{0438}\u{0438} \u{0434}\u{043b}\u{044f} \u{043a}\u{0430}\u{043d}\u{0430}\u{043b}\u{043e}\u{0432} \u{0438} \u{0433}\u{0440}\u{0443}\u{043f}\u{043f}."), .channels),
         .menuItem(4, .media, telewhiteTabTitle(.media, strings: strings), strings.text("Stories, downloads and media actions.", "\u{0418}\u{0441}\u{0442}\u{043e}\u{0440}\u{0438}\u{0438}, \u{0441}\u{043a}\u{0430}\u{0447}\u{0438}\u{0432}\u{0430}\u{043d}\u{0438}\u{0435} \u{0438} \u{043c}\u{0435}\u{0434}\u{0438}\u{0430}-\u{0434}\u{0435}\u{0439}\u{0441}\u{0442}\u{0432}\u{0438}\u{044f}."), .media),
@@ -1408,9 +1412,9 @@ private func telewhiteEntryDescription(_ entry: TelewhiteModsEntry, presentation
     case .hideTypingStatus:
         return text("Others won't see when you're typing or recording.", "Другие не увидят, что вы печатаете или записываете.")
     case .hideReadReceipts, .ghostMessages:
-        return text("Works everywhere in Telegram: private chats, groups and channels. Read messages and play voice/video notes without anyone seeing read checkmarks.", "Действует на всё в Telegram: личные чаты, группы и каналы. Читайте сообщения и слушайте голос��вые/видео — никто не увидит галочки прочтения.")
+        return text("Read messages without sending read-receipt notifications.", "Читайте сообщения без отправки уведомлений о прочтении.")
     case .ghostStories:
-        return text("Watch stories without the author knowing.", "Смотрите истории так, что автор об этом не узнает.")
+        return text("Watch stories anonymously. You won't appear in the viewer list.", "Смотрите истории анонимно. Вы не появитесь в списке зрителей.")
     case .screenshotProtectionBypass:
         return text("Removes screenshot blocks in protected chats.", "Убирает блокировку скриншотов в защищённых чатах.")
     case .contentRestrictionBypass, .channelContentRestrictionBypass:
@@ -1481,16 +1485,9 @@ private func telewhiteModsEntries(tab: TelewhiteModsTab, settings: TelewhiteMods
 
     case .stealth:
         entries.append(.stealthHeader(telewhiteTabTitle(.stealth, strings: strings)))
-        entries.append(.ghostMode(strings.text("Ghost Mode", "Невидимка"), settings.ghostMode))
-        entries.append(.hideOnlineStatus(strings.text("Hide Online Status", "Скрыть онлайн"), settings.hideOnlineStatus))
-        entries.append(.hideTypingStatus(strings.text("Hide Typing Status", "Скрыть набор текста"), settings.hideTypingStatus))
-        entries.append(.ghostMessages(strings.text("Hide Read Receipts", "Скрыть прочтение"), settings.hideReadReceipts))
-        entries.append(.ghostStories(strings.text("Anonymous Story Views", "Анонимный просмотр историй"), settings.ghostStories))
-        entries.append(.ghostChatButtonEnabled(strings.text("Per-Chat Ghost Button", "Кнопка невидимки в чате"), settings.ghostChatButtonEnabled))
-        if !settings.ghostPeerIds.isEmpty {
-            entries.append(.clearGhostChats(strings.text("Clear Per-Chat Ghost (\(settings.ghostPeerIds.count))", "Сбросить невидимку по чатам (\(settings.ghostPeerIds.count))")))
-        }
-        entries.append(.stealthInfo(strings.text("Ghost Mode is a master switch for full invisibility. The toggles below control each part independently, and the per-chat button lets you enable ghost for a single conversation from its header.", "Невидимка — общий переключатель полной невидимости. Тумблеры ниже управляют каждой частью отдельно, а кнопка в чате включает невидимку для отдельного диалога из его шапки.")))
+        entries.append(.ghostMessages(strings.text("Ghost Mode (Messages)", "Режим невидимки (сообщения)"), settings.hideReadReceipts))
+        entries.append(.ghostStories(strings.text("Ghost Mode (Stories)", "Режим невидимки (истории)"), settings.ghostStories))
+        entries.append(.stealthInfo(strings.text("Read messages without sending read-receipt notifications, and view stories anonymously — you won't appear in the viewer list.", "Читайте сообщения без отправки уведомлений о прочтении и смотрите истории анонимно — вы не появитесь в списке зрителей.")))
 
     case .channels:
         entries.append(.channelsHeader(telewhiteTabTitle(.channels, strings: strings)))
