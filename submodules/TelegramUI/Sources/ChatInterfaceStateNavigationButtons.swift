@@ -455,18 +455,16 @@ func secondaryRightNavigationButtonForChatInterfaceState(context: AccountContext
     }
     if let ghostPeerId = telewhiteGhostPeerId {
         let settings = TelewhiteModsSettings.current
-        let isEnabled = settings.isGhostEnabled(for: ghostPeerId)
-        // Per-chat ghost buttons are deprecated: the Stealth settings screen has
-        // one global Ghost Mode switch that controls the full invisibility preset.
-        if settings.ghostChatButtonEnabled {
-            let rawPeerId = ghostPeerId.toInt64()
-            if currentButton?.action == .toggleGhostMode(peerId: rawPeerId, isEnabled: isEnabled) {
-                return currentButton
-            } else {
-                let buttonItem = UIBarButtonItem(image: telewhiteGhostModeIcon(theme: presentationInterfaceState.theme, isEnabled: isEnabled), style: .plain, target: target, action: selector)
-                buttonItem.accessibilityLabel = isEnabled ? "Disable Ghost Mode for this chat" : "Enable Ghost Mode for this chat"
-                return ChatNavigationButton(action: .toggleGhostMode(peerId: rawPeerId, isEnabled: isEnabled), buttonItem: buttonItem)
-            }
+        // Ghost icon is shown in every DM and group header. Tapping it toggles
+        // per-chat ghost mode via ghostPeerIds; the global switch enables it everywhere.
+        let isEnabled = settings.ghostMode || settings.isGhostEnabled(for: ghostPeerId)
+        let rawPeerId = ghostPeerId.toInt64()
+        if currentButton?.action == .toggleGhostMode(peerId: rawPeerId, isEnabled: isEnabled) {
+            return currentButton
+        } else {
+            let buttonItem = UIBarButtonItem(image: telewhiteGhostModeIcon(theme: presentationInterfaceState.theme, isEnabled: isEnabled), style: .plain, target: target, action: selector)
+            buttonItem.accessibilityLabel = isEnabled ? "Disable Ghost Mode for this chat" : "Enable Ghost Mode for this chat"
+            return ChatNavigationButton(action: .toggleGhostMode(peerId: rawPeerId, isEnabled: isEnabled), buttonItem: buttonItem)
         }
     }
 

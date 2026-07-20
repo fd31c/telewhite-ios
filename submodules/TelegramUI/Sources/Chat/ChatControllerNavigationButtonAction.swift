@@ -125,8 +125,7 @@ extension ChatControllerImpl {
         case .spacer, .toggleInfoPanel:
             break
         case let .toggleGhostMode(peerId, _):
-            // Legacy per-chat ghost toggle. New UI uses one global Ghost Mode switch;
-            // this path is kept only for old navigation actions.
+            // Per-chat ghost toggle fired by the ghost icon in the chat header.
             var settings = TelewhiteModsSettings.current
             if settings.ghostPeerIds.contains(peerId) {
                 settings.ghostPeerIds.remove(peerId)
