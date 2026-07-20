@@ -4,10 +4,15 @@ import SwiftSignalKit
 import TelegramApi
 import MtProtoKit
 
-// Telewhite: global Ghost Mode suppresses all local typing/recording activity.
+// Telewhite: typing/recording is hidden by global Ghost Mode, by the standalone
+// "Hide Typing Status" toggle, or when per-chat ghost is on for this peer.
 private func telewhiteHideTypingStatusEnabled(peerId: PeerId) -> Bool {
     let defaults = UserDefaults.standard
-    return defaults.bool(forKey: "telewhite.mods.ghostMode")
+    if defaults.bool(forKey: "telewhite.mods.ghostMode") || defaults.bool(forKey: "telewhite.mods.hideTypingStatus") {
+        return true
+    }
+    let ghostPeerIds = defaults.array(forKey: "telewhite.mods.ghostPeerIds") as? [NSNumber] ?? []
+    return ghostPeerIds.contains(NSNumber(value: peerId.toInt64()))
 }
 
 public struct PeerActivitySpace: Hashable {

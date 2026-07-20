@@ -3,9 +3,15 @@ import Postbox
 import TelegramApi
 import SwiftSignalKit
 
-// Telewhite: global Ghost Mode suppresses interactive read receipts.
+// Telewhite: interactive read receipts are suppressed by global Ghost Mode, by the
+// standalone "Hide Read Receipts" toggle, or when per-chat ghost is on for this peer.
 private func telewhiteHideReadReceiptsEnabled(peerId: PeerId) -> Bool {
-    return UserDefaults.standard.bool(forKey: "telewhite.mods.ghostMode")
+    let defaults = UserDefaults.standard
+    if defaults.bool(forKey: "telewhite.mods.ghostMode") || defaults.bool(forKey: "telewhite.mods.hideReadReceipts") {
+        return true
+    }
+    let ghostPeerIds = defaults.array(forKey: "telewhite.mods.ghostPeerIds") as? [NSNumber] ?? []
+    return ghostPeerIds.contains(NSNumber(value: peerId.toInt64()))
 }
 
 func _internal_applyMaxReadIndexInteractively(postbox: Postbox, stateManager: AccountStateManager, index: MessageIndex) -> Signal<Void, NoError> {

@@ -2298,7 +2298,10 @@ public final class PendingMessageManager {
     // with delayed follow-up passes to outlast the server-side online window.
     private func telewhiteReassertOfflineAfterSend(peerId: PeerId) {
         let defaults = UserDefaults.standard
-        guard defaults.bool(forKey: "telewhite.mods.ghostMode") else {
+        let onlineHidden = defaults.bool(forKey: "telewhite.mods.ghostMode") || defaults.bool(forKey: "telewhite.mods.hideOnlineStatus")
+        let ghostPeerIds = defaults.array(forKey: "telewhite.mods.ghostPeerIds") as? [NSNumber] ?? []
+        let perChatGhost = ghostPeerIds.contains(NSNumber(value: peerId.toInt64()))
+        guard onlineHidden || perChatGhost else {
             return
         }
         let network = self.network

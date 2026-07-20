@@ -127,27 +127,27 @@ public struct TelewhiteModsSettings: Equatable {
         return TelewhiteModsSettings(
             vpnEnabled: defaults.bool(forKey: Key.vpnEnabled),
             vpnSubscription: defaults.string(forKey: Key.vpnSubscription) ?? "",
-            // Telewhite: one global Ghost Mode switch controls the full invisibility preset.
+            // Telewhite: global Ghost Mode is an optional master switch; the granular
+            // stealth toggles below are independent and persist on their own keys.
             ghostMode: defaults.bool(forKey: Key.ghostMode),
-            // Legacy stealth fields are derived from the one global Ghost Mode switch.
-            ghostChatButtonEnabled: false,
+            ghostChatButtonEnabled: defaults.object(forKey: Key.ghostChatButtonEnabled) as? Bool ?? true,
             hiddenChatsEnabled: defaults.bool(forKey: Key.hiddenChatsEnabled),
             preserveDeletedMessages: defaults.bool(forKey: Key.preserveDeletedMessages),
-            hideOnlineStatus: defaults.bool(forKey: Key.ghostMode),
-            hideTypingStatus: defaults.bool(forKey: Key.ghostMode),
-            hideReadReceipts: defaults.bool(forKey: Key.ghostMode),
+            hideOnlineStatus: defaults.bool(forKey: Key.hideOnlineStatus),
+            hideTypingStatus: defaults.bool(forKey: Key.hideTypingStatus),
+            hideReadReceipts: defaults.bool(forKey: Key.hideReadReceipts),
             screenshotProtectionBypass: defaults.bool(forKey: Key.screenshotProtectionBypass),
             contentRestrictionBypass: defaults.bool(forKey: Key.contentRestrictionBypass),
             hidePhoneInSettings: defaults.bool(forKey: Key.hidePhoneInSettings),
             hideStories: defaults.bool(forKey: Key.hideStories),
-            ghostStories: defaults.bool(forKey: Key.ghostMode),
+            ghostStories: defaults.bool(forKey: Key.ghostStories),
             compactChatList: defaults.bool(forKey: Key.compactChatList),
             chatSplitLandscape: defaults.bool(forKey: Key.chatSplitLandscape),
             amoledMode: defaults.bool(forKey: Key.amoledMode),
             showUserIds: defaults.bool(forKey: Key.showUserIds),
             showChatIds: defaults.bool(forKey: Key.showChatIds),
             showMessageIds: defaults.bool(forKey: Key.showMessageIds),
-            ghostPeerIds: Set(),
+            ghostPeerIds: Set((defaults.array(forKey: Key.ghostPeerIds) as? [NSNumber] ?? []).map { $0.int64Value }),
             autoTranslateEnglish: defaults.object(forKey: Key.autoTranslateEnglish) as? Bool ?? true,
             translationTargetLanguage: defaults.string(forKey: Key.translationTargetLanguage) ?? "ru",
             oneTimeMediaUnlimited: defaults.bool(forKey: Key.oneTimeMediaUnlimited),
@@ -248,17 +248,17 @@ public struct TelewhiteModsSettings: Equatable {
         defaults.set(self.vpnEnabled, forKey: Key.vpnEnabled)
         defaults.set(self.vpnSubscription, forKey: Key.vpnSubscription)
         defaults.set(self.ghostMode, forKey: Key.ghostMode)
-        defaults.removeObject(forKey: Key.ghostChatButtonEnabled)
+        defaults.set(self.ghostChatButtonEnabled, forKey: Key.ghostChatButtonEnabled)
         defaults.set(self.hiddenChatsEnabled, forKey: Key.hiddenChatsEnabled)
         defaults.set(self.preserveDeletedMessages, forKey: Key.preserveDeletedMessages)
-        defaults.removeObject(forKey: Key.hideOnlineStatus)
-        defaults.removeObject(forKey: Key.hideTypingStatus)
-        defaults.removeObject(forKey: Key.hideReadReceipts)
+        defaults.set(self.hideOnlineStatus, forKey: Key.hideOnlineStatus)
+        defaults.set(self.hideTypingStatus, forKey: Key.hideTypingStatus)
+        defaults.set(self.hideReadReceipts, forKey: Key.hideReadReceipts)
         defaults.set(self.screenshotProtectionBypass, forKey: Key.screenshotProtectionBypass)
         defaults.set(self.contentRestrictionBypass, forKey: Key.contentRestrictionBypass)
         defaults.set(self.hidePhoneInSettings, forKey: Key.hidePhoneInSettings)
         defaults.set(self.hideStories, forKey: Key.hideStories)
-        defaults.removeObject(forKey: Key.ghostStories)
+        defaults.set(self.ghostStories, forKey: Key.ghostStories)
         defaults.set(self.compactChatList, forKey: Key.compactChatList)
         defaults.set(self.chatSplitLandscape, forKey: Key.chatSplitLandscape)
         TelewhiteSplitViewSettings.splitInCompactLandscape = self.chatSplitLandscape
@@ -266,7 +266,7 @@ public struct TelewhiteModsSettings: Equatable {
         defaults.set(self.showUserIds, forKey: Key.showUserIds)
         defaults.set(self.showChatIds, forKey: Key.showChatIds)
         defaults.set(self.showMessageIds, forKey: Key.showMessageIds)
-        defaults.removeObject(forKey: Key.ghostPeerIds)
+        defaults.set(self.ghostPeerIds.map { NSNumber(value: $0) }, forKey: Key.ghostPeerIds)
         defaults.set(self.autoTranslateEnglish, forKey: Key.autoTranslateEnglish)
         defaults.set(self.translationTargetLanguage, forKey: Key.translationTargetLanguage)
         defaults.set(self.oneTimeMediaUnlimited, forKey: Key.oneTimeMediaUnlimited)
@@ -464,6 +464,7 @@ private enum TelewhiteModsEntry: ItemListNodeEntry, Equatable {
     case stealthHeader(String)
     case ghostMessages(String, Bool)
     case ghostStories(String, Bool)
+    case clearGhostChats(String)
     case stealthInfo(String)
 
     case channelsHeader(String)
@@ -524,7 +525,7 @@ private enum TelewhiteModsEntry: ItemListNodeEntry, Equatable {
             return TelewhiteModsSection.vpn.rawValue
         case .privacyHeader, .hiddenChatsEnabled, .screenshotProtectionBypass, .contentRestrictionBypass, .hidePhoneInSettings, .groupEventLog, .showProfileIds, .showUserIds, .showChatIds, .showMessageIds, .privacyInfo:
             return TelewhiteModsSection.privacy.rawValue
-        case .stealthHeader, .ghostMode, .hideOnlineStatus, .ghostMessages, .hideReadReceipts, .hideTypingStatus, .ghostChatButtonEnabled, .ghostStories, .stealthInfo:
+        case .stealthHeader, .ghostMode, .hideOnlineStatus, .ghostMessages, .hideReadReceipts, .hideTypingStatus, .ghostChatButtonEnabled, .ghostStories, .clearGhostChats, .stealthInfo:
             return TelewhiteModsSection.stealth.rawValue
         case .channelsHeader, .channelContentRestrictionBypass, .channelHideReactions, .channelHideComments, .channelHideShareButton, .channelsInfo:
             return TelewhiteModsSection.channels.rawValue
@@ -637,8 +638,10 @@ private enum TelewhiteModsEntry: ItemListNodeEntry, Equatable {
             return 301
         case .ghostStories:
             return 302
-        case .stealthInfo:
+        case .clearGhostChats:
             return 303
+        case .stealthInfo:
+            return 304
         case .channelsHeader:
             return 400
         case .channelContentRestrictionBypass:
@@ -942,10 +945,6 @@ private enum TelewhiteModsEntry: ItemListNodeEntry, Equatable {
                 settings.hideTypingStatus = value
                 settings.hideReadReceipts = value
                 settings.ghostStories = value
-                settings.ghostChatButtonEnabled = false
-                if !value {
-                    settings.ghostPeerIds.removeAll()
-                }
             }
         case let .ghostChatButtonEnabled(text, value):
             return self.switchItem(presentationData: presentationData, arguments: arguments, text: text, value: value) { settings, value in
@@ -990,6 +989,14 @@ private enum TelewhiteModsEntry: ItemListNodeEntry, Equatable {
             return self.switchItem(presentationData: presentationData, arguments: arguments, text: text, value: value) { settings, value in
                 settings.ghostStories = value
             }
+        case let .clearGhostChats(text):
+            return ItemListActionItem(presentationData: presentationData, systemStyle: .glass, title: text, kind: .generic, alignment: .natural, sectionId: self.section, style: .blocks, action: {
+                arguments.updateSettings { current in
+                    var updated = current
+                    updated.ghostPeerIds.removeAll()
+                    return updated
+                }
+            })
         case let .channelContentRestrictionBypass(text, value):
             return self.switchItem(presentationData: presentationData, arguments: arguments, text: text, value: value) { settings, value in
                 settings.contentRestrictionBypass = value
@@ -1475,7 +1482,15 @@ private func telewhiteModsEntries(tab: TelewhiteModsTab, settings: TelewhiteMods
     case .stealth:
         entries.append(.stealthHeader(telewhiteTabTitle(.stealth, strings: strings)))
         entries.append(.ghostMode(strings.text("Ghost Mode", "Невидимка"), settings.ghostMode))
-        entries.append(.stealthInfo(strings.text("Ghost Mode is one full invisibility switch. When enabled it hides online status, typing/recording, read receipts, voice/video consumption and story views.", "Невидимка — это один полный переключатель. Когда он включён, скрываются онлайн, набор/запись, прочтение, прослушивание/просмотр и просмотры историй.")))
+        entries.append(.hideOnlineStatus(strings.text("Hide Online Status", "Скрыть онлайн"), settings.hideOnlineStatus))
+        entries.append(.hideTypingStatus(strings.text("Hide Typing Status", "Скрыть набор текста"), settings.hideTypingStatus))
+        entries.append(.ghostMessages(strings.text("Hide Read Receipts", "Скрыть прочтение"), settings.hideReadReceipts))
+        entries.append(.ghostStories(strings.text("Anonymous Story Views", "Анонимный просмотр историй"), settings.ghostStories))
+        entries.append(.ghostChatButtonEnabled(strings.text("Per-Chat Ghost Button", "Кнопка невидимки в чате"), settings.ghostChatButtonEnabled))
+        if !settings.ghostPeerIds.isEmpty {
+            entries.append(.clearGhostChats(strings.text("Clear Per-Chat Ghost (\(settings.ghostPeerIds.count))", "Сбросить невидимку по чатам (\(settings.ghostPeerIds.count))")))
+        }
+        entries.append(.stealthInfo(strings.text("Ghost Mode is a master switch for full invisibility. The toggles below control each part independently, and the per-chat button lets you enable ghost for a single conversation from its header.", "Невидимка — общий переключатель полной невидимости. Тумблеры ниже управляют каждой частью отдельно, а кнопка в чате включает невидимку для отдельного диалога из его шапки.")))
 
     case .channels:
         entries.append(.channelsHeader(telewhiteTabTitle(.channels, strings: strings)))
