@@ -895,6 +895,11 @@ private enum TelewhiteModsEntry: ItemListNodeEntry, Equatable {
                 settings.oneTimeMediaUnlimited = value
                 settings.downloadOneTimeMedia = value
             }
+        case let .downloadOneTimeMedia(text, value):
+            // Merged into oneTimeMediaUnlimited; kept for enum exhaustiveness.
+            return self.switchItem(presentationData: presentationData, arguments: arguments, text: text, value: value) { settings, value in
+                settings.downloadOneTimeMedia = value
+            }
         case let .uploadVoice(text, value):
             return self.switchItem(presentationData: presentationData, arguments: arguments, text: text, value: value) { settings, value in
                 settings.uploadVoice = value
