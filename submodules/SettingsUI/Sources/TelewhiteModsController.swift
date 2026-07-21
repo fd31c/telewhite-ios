@@ -68,6 +68,7 @@ public struct TelewhiteModsSettings: Equatable {
     public var hdPhotos: Bool
     public var translateVoiceMessages: Bool
     public var quickForwardToSaved: Bool
+    public var preciseLastSeen: Bool
 
     private enum Key {
         static let vpnEnabled = "telewhite.mods.vpnEnabled"
@@ -124,6 +125,7 @@ public struct TelewhiteModsSettings: Equatable {
         static let hdPhotos = "telewhite.mods.hdPhotos"
         static let translateVoiceMessages = "telewhite.mods.translateVoiceMessages"
         static let quickForwardToSaved = "telewhite.mods.quickForwardToSaved"
+        static let preciseLastSeen = "telewhite.mods.preciseLastSeen"
     }
     
     public static var current: TelewhiteModsSettings {
@@ -194,7 +196,8 @@ public struct TelewhiteModsSettings: Equatable {
             channelHideShareButton: defaults.bool(forKey: Key.channelHideShareButton),
             hdPhotos: defaults.object(forKey: Key.hdPhotos) as? Bool ?? false,
             translateVoiceMessages: defaults.bool(forKey: Key.translateVoiceMessages),
-            quickForwardToSaved: defaults.bool(forKey: Key.quickForwardToSaved)
+            quickForwardToSaved: defaults.bool(forKey: Key.quickForwardToSaved),
+            preciseLastSeen: defaults.bool(forKey: Key.preciseLastSeen)
         )
     }
 
@@ -326,6 +329,7 @@ public struct TelewhiteModsSettings: Equatable {
         defaults.set(self.hdPhotos, forKey: Key.hdPhotos)
         defaults.set(self.translateVoiceMessages, forKey: Key.translateVoiceMessages)
         defaults.set(self.quickForwardToSaved, forKey: Key.quickForwardToSaved)
+        defaults.set(self.preciseLastSeen, forKey: Key.preciseLastSeen)
         NotificationCenter.default.post(name: TelewhiteModsSettings.didChangeNotification, object: nil)
     }
 
@@ -447,6 +451,7 @@ private enum TelewhiteModsEntry: ItemListNodeEntry, Equatable {
     case hdPhotos(String, Bool)
     case translateVoiceMessages(String, Bool)
     case quickForwardToSaved(String, Bool)
+    case preciseLastSeen(String, Bool)
     case voiceChangeSettings(String)
     case uploadVideoMessage(String, Bool)
 
@@ -533,7 +538,7 @@ private enum TelewhiteModsEntry: ItemListNodeEntry, Equatable {
             return TelewhiteModsSection.messenger.rawValue
         case .vpnHeader, .vpnEnabled, .vpnSubscription, .vpnStatus, .vpnStart, .vpnInfo:
             return TelewhiteModsSection.vpn.rawValue
-        case .privacyHeader, .hiddenChatsEnabled, .screenshotProtectionBypass, .contentRestrictionBypass, .hidePhoneInSettings, .groupEventLog, .showProfileIds, .showUserIds, .showChatIds, .showMessageIds, .privacyInfo:
+        case .privacyHeader, .hiddenChatsEnabled, .screenshotProtectionBypass, .contentRestrictionBypass, .hidePhoneInSettings, .groupEventLog, .showProfileIds, .showUserIds, .showChatIds, .showMessageIds, .preciseLastSeen, .privacyInfo:
             return TelewhiteModsSection.privacy.rawValue
         case .stealthHeader, .ghostMode, .hideOnlineStatus, .ghostMessages, .hideReadReceipts, .hideTypingStatus, .ghostChatButtonEnabled, .ghostStories, .clearGhostChats, .stealthInfo:
             return TelewhiteModsSection.stealth.rawValue
@@ -634,6 +639,8 @@ private enum TelewhiteModsEntry: ItemListNodeEntry, Equatable {
             return 111
         case .groupEventLog:
             return 112
+        case .preciseLastSeen:
+            return 113
         case .vpnHeader:
             return 200
         case .vpnEnabled:
@@ -919,6 +926,10 @@ private enum TelewhiteModsEntry: ItemListNodeEntry, Equatable {
         case let .quickForwardToSaved(text, value):
             return self.switchItem(presentationData: presentationData, arguments: arguments, text: text, value: value) { settings, value in
                 settings.quickForwardToSaved = value
+            }
+        case let .preciseLastSeen(text, value):
+            return self.switchItem(presentationData: presentationData, arguments: arguments, text: text, value: value) { settings, value in
+                settings.preciseLastSeen = value
             }
         case let .voiceChangeSettings(text):
             return ItemListDisclosureItem(presentationData: presentationData, systemStyle: .glass, title: text, label: "", labelStyle: .text, sectionId: self.section, style: .blocks, disclosureStyle: .arrow, action: nil)
@@ -1421,6 +1432,8 @@ private func telewhiteEntryDescription(_ entry: TelewhiteModsEntry, presentation
         return text("Adds a translation under the transcript of voice messages when their language differs from yours. Uses a free translation service.", "Добавляет перевод под расшифровкой голосовых, если их язык отличается от вашего. Использует бесплатный переводчик.")
     case .quickForwardToSaved:
         return text("Adds a \"Forward to Saved Messages\" action to the message menu that sends a copy to your Saved Messages instantly, without the chat picker.", "Добавляет в меню сообщения действие «Переслать в Избранное», которое мгновенно отправляет копию в ваши Избранные без выбора чата.")
+    case .preciseLastSeen:
+        return text("Shows the exact seconds in \"last seen\" statuses (e.g. \"last seen 12 seconds ago\") instead of \"last seen just now\".", "Показывает точные секунды в статусе «был(а) в сети» (например «был 12 секунд назад») вместо «был только что».")
     case .oneTimeMediaUnlimited:
         return text("View-once photos and videos can be opened multiple times.", "Одноразовые фото и видео можно открывать сколько угодно раз.")
     case .downloadOneTimeMedia:
@@ -1509,6 +1522,7 @@ private func telewhiteModsEntries(tab: TelewhiteModsTab, settings: TelewhiteMods
         let groupEventCount = TelewhiteGroupEventLog.entries.count
         entries.append(.groupEventLog(strings.text("Group Removal Log", "Журнал удалений из групп"), groupEventCount == 0 ? "" : "\(groupEventCount)"))
         entries.append(.showProfileIds(strings.text("Show IDs", "Показывать ID"), settings.showUserIds && settings.showChatIds))
+        entries.append(.preciseLastSeen(strings.text("Precise Last Seen", "Точное «был в сети»"), settings.preciseLastSeen))
         entries.append(.privacyInfo(strings.text("Hidden chats, content protection and optional technical IDs are managed here.", "Здесь собраны скрытые чаты, защита контента и показ технических ID.")))
 
     case .stealth:
