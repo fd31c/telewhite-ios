@@ -1908,6 +1908,23 @@ func contextMenuForChatPresentationInterfaceState(chatPresentationInterfaceState
                     interfaceInteraction.forwardMessages(selectAll || isImage ? messages : [message])
                     f(.dismissWithoutContent)
                 })))
+
+                // Telewhite: quick forward to Saved Messages, no chat picker.
+                if TelewhiteModsSettings.current.quickForwardToSaved {
+                    let forwardedMessages = selectAll || isImage ? messages : [message]
+                    let isRussian = chatPresentationInterfaceState.strings.baseLanguageCode.lowercased().hasPrefix("ru")
+                    let quickForwardTitle = isRussian ? "Переслать в Избранное" : "Forward to Saved Messages"
+                    actions.append(.action(ContextMenuActionItem(text: quickForwardTitle, icon: { theme in
+                        return generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/Forward"), color: theme.actionSheet.primaryTextColor)
+                    }, action: { _, f in
+                        let messagesToForward: [EnqueueMessage] = forwardedMessages.map { message in
+                            return .forward(source: message.id, threadId: nil, grouping: .auto, attributes: [], correlationId: nil)
+                        }
+                        let _ = enqueueMessages(account: context.account, peerId: context.account.peerId, messages: messagesToForward).startStandalone()
+                        controllerInteraction?.displayUndo(.succeed(text: chatPresentationInterfaceState.strings.Conversation_ForwardTooltip_SavedMessages_One, timeout: nil, customUndoText: nil))
+                        f(.dismissWithoutContent)
+                    })))
+                }
             }
         }
         
