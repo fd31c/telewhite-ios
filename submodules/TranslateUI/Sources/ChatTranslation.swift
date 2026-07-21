@@ -288,6 +288,18 @@ public func chatTranslationState(context: AccountContext, peerId: EnginePeer.Id,
                     if let toLang = state.toLang, state.fromLang == toLang {
                         return false
                     }
+                    // Telewhite: never auto-translate a message that is already in
+                    // the target language (e.g. Russian when the target is Russian).
+                    let targetLanguage = telewhiteTranslationTargetLanguage(fallback: baseLang)
+                    if normalizeTranslationLanguage(state.fromLang) == normalizeTranslationLanguage(targetLanguage) {
+                        return false
+                    }
+                    // Telewhite: also respect the ignored-language list even in
+                    // auto mode — languages the user reads (Russian, the app
+                    // language, system languages) are left untouched.
+                    if dontTranslateLanguages.contains(state.fromLang) {
+                        return false
+                    }
                     if state.isEnabled {
                         return true
                     }
@@ -412,14 +424,18 @@ public func chatTranslationState(context: AccountContext, peerId: EnginePeer.Id,
                             // wins while its cache entry is fresh (< 1h, refreshed on
                             // every toggle).
                             let targetLanguage = telewhiteTranslationTargetLanguage(fallback: baseLang)
-                            // Telewhite: incoming translation is strictly manual — the
-                            // translation bar is shown, but nothing is translated until
-                            // the user turns it on for this chat themselves.
+                            // Telewhite: with auto incoming translation on, non-target
+                            // languages are translated automatically (no manual tap);
+                            // otherwise the bar is shown but nothing is translated until
+                            // the user turns it on for this chat.
                             var isEnabled = cached?.isEnabled ?? false
+                            if telewhiteIncomingTranslationEnabled, !fromLang.isEmpty, normalizeTranslationLanguage(fromLang) != normalizeTranslationLanguage(targetLanguage) {
+                                isEnabled = true
+                            }
                             // Never translate a chat that is already in the target
                             // language (e.g. Russian chats with a Russian target),
                             // and never auto-enable when detection failed.
-                            if fromLang.isEmpty || fromLang == targetLanguage {
+                            if fromLang.isEmpty || normalizeTranslationLanguage(fromLang) == normalizeTranslationLanguage(targetLanguage) {
                                 isEnabled = false
                             }
                             let state = ChatTranslationState(

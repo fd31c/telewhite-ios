@@ -891,12 +891,9 @@ private enum TelewhiteModsEntry: ItemListNodeEntry, Equatable {
             })
         case let .oneTimeMediaUnlimited(text, value):
             return self.switchItem(presentationData: presentationData, arguments: arguments, text: text, value: value) { settings, value in
-                // One combined switch: open view-once media repeatedly AND allow saving it.
                 settings.oneTimeMediaUnlimited = value
-                settings.downloadOneTimeMedia = value
             }
         case let .downloadOneTimeMedia(text, value):
-            // Merged into oneTimeMediaUnlimited; kept for enum exhaustiveness.
             return self.switchItem(presentationData: presentationData, arguments: arguments, text: text, value: value) { settings, value in
                 settings.downloadOneTimeMedia = value
             }
@@ -1394,7 +1391,7 @@ private func telewhiteEntryDescription(_ entry: TelewhiteModsEntry, presentation
     case .translateChats:
         return text("Shows a translate bar at the top of foreign-language chats.", "Показывает панель перевода сверху в чатах на иностранном языке.")
     case .autoTranslateEnglish:
-        return text("Shows a translate bar in foreign-language chats. Nothing is translated until you turn it on in that chat.", "Показывает панель перевода в иностранных чатах. Ничего не переводится, пока вы сами не включите её в чате.")
+        return text("Automatically translates incoming messages in foreign-language chats into your translation language. Chats already in the target language (e.g. Russian) are never touched.", "Автоматически переводит входящие сообщения в иностранных чатах на ваш язык перевода. Чаты уже на целевом языке (например, русский) не трогаются.")
     case .outgoingTranslateButtonEnabled:
         return text("Translator button in private chats: tap to translate your outgoing messages, long press to pick the language.", "Кнопка переводчика в личных чатах: тап — перевод ваших сообщений, долгий тап — выбор языка.")
     case .outgoingTranslationAutoEnabled:
@@ -1412,7 +1409,7 @@ private func telewhiteEntryDescription(_ entry: TelewhiteModsEntry, presentation
     case .translateVoiceMessages:
         return text("Adds a translation under the transcript of voice messages when their language differs from yours. Uses a free translation service.", "Добавляет перевод под расшифровкой голосовых, если их язык отличается от вашего. Использует бесплатный переводчик.")
     case .oneTimeMediaUnlimited:
-        return text("Photos and videos sent as \"view once\" won't disappear — you can reopen and save them like normal media.", "Фото и видео, отправленные как «одноразовые», не исчезнут — их можно открывать заново и сохранять как обычные.")
+        return text("View-once photos and videos can be opened multiple times.", "Одноразовые фото и видео можно открывать сколько угодно раз.")
     case .downloadOneTimeMedia:
         return text("Lets you save view-once photos and videos.", "Позволяет сохранять одноразовые фото и видео.")
     case .vpnEnabled:
@@ -1422,9 +1419,9 @@ private func telewhiteEntryDescription(_ entry: TelewhiteModsEntry, presentation
     case .ghostMode:
         return text("One switch for full invisibility: hides online, typing/recording, read receipts, voice/video consumption, and story views.", "Один переключатель полной невидимки: скрывает онлайн, набор/запись, прочтение, прослушивание/просмотр и просмотры историй.")
     case .ghostChatButtonEnabled:
-        return text("Adds a small ghost icon to the top of every chat. Tap it to become invisible in just that one chat — your reads, typing and voice playback stay hidden there.", "Добавляет маленькую иконку призрака вверху каждого чата. Нажмите — и станете невидимы только в этом чате: прочтение, набор текста и прослушивание там скрыты.")
+        return text("Adds a ghost button to each chat: reads, voice playback and typing in that chat stay invisible. Active ghost chats keep showing the button so you can turn them off.", "Добавляет кнопку невидимки в каждый чат: прочтение, прослушивание и набор текста в этом чате никто не увидит. В чатах с активной невидимкой кнопка остаётся видимой, чтобы её можно было выключить.")
     case .hiddenChatsEnabled:
-        return text("Lets you hide chats behind Face ID / passcode. They disappear from the list and only you can open them on this phone.", "Позволяет прятать чаты за Face ID / паролем. Они исчезают из списка, и открыть их можете только вы на этом телефоне.")
+        return text("Enables the Hide Chat action. Hidden chat data stays on this device.", "Включает действие «Скрыть чат». Данные скрытых чатов хранятся только на этом устройстве.")
     case .hideTypingStatus:
         return text("Others won't see when you're typing or recording.", "Другие не увидят, что вы печатаете или записываете.")
     case .hideReadReceipts, .ghostMessages:
@@ -1432,19 +1429,19 @@ private func telewhiteEntryDescription(_ entry: TelewhiteModsEntry, presentation
     case .ghostStories:
         return text("Watch stories anonymously. You won't appear in the viewer list.", "Смотрите истории анонимно. Вы не появитесь в списке зрителей.")
     case .screenshotProtectionBypass:
-        return text("Take screenshots even in chats where the sender turned screenshots off. They won't be notified.", "Делайте скриншоты даже в чатах, где отправитель их запретил. Он об этом не узнает.")
+        return text("Removes screenshot blocks in protected chats.", "Убирает блокировку скриншотов в защищённых чатах.")
     case .contentRestrictionBypass, .channelContentRestrictionBypass:
-        return text("Forward, copy and save messages and media even when the chat or channel forbids it.", "Пересылайте, копируйте и сохраняйте сообщения и медиа, даже если чат или канал это запрещает.")
+        return text("Lets you forward, copy and save from protected chats and channels.", "Позволяет пересылать, копировать и сохранять из защищённых чатов и каналов.")
     case .channelHideReactions:
-        return text("Hides the row of reactions under channel posts. Only affects how they look on this phone.", "Убирает строку реакций под постами каналов. Меняет только вид на этом телефоне.")
+        return text("Hides reaction rows under channel posts on this device.", "Скрывает реакции под постами каналов на этом устройстве.")
     case .channelHideComments:
-        return text("Hides the comments bar under channel posts. Only affects how they look on this phone.", "Убирает панель комментариев под постами каналов. Меняет только вид на этом телефоне.")
+        return text("Hides the comments bar under channel posts on this device.", "Скрывает панель комментариев под постами каналов на этом устройстве.")
     case .channelHideShareButton:
-        return text("Hides the share button that floats next to channel posts.", "Убирает кнопку «Поделиться», которая висит рядом с постами каналов.")
+        return text("Hides the floating share button next to channel posts.", "Скрывает плавающую кнопку «Поделиться» рядом с постами каналов.")
     case .hidePhoneInSettings:
-        return text("Hides your phone number and username on your own profile and settings screen — useful when showing your screen to someone.", "Прячет ваш номер и юзернейм в вашем профиле и настройках — удобно, когда показываете экран кому-то.")
+        return text("Hides your phone number and username in Settings and your profile.", "Скрывает ваш номер телефона и юзернейм в настройках и профиле.")
     case .showProfileIds, .showUserIds, .showChatIds, .showMessageIds:
-        return text("Shows the internal ID numbers of users and chats in profiles. Mainly useful for developers.", "Показывает внутренние ID-номера пользователей и чатов в профилях. В основном нужно разработчикам.")
+        return text("Shows user and chat IDs in profiles. Tap an ID to copy it.", "Показывает ID пользователей и чатов в профилях. Нажмите на ID, чтобы скопировать.")
     case .downloadStories:
         return text("Adds a save button to stories.", "Добавляет кнопку сохранения в истории.")
     case .autoCacheCleanup:
@@ -1471,7 +1468,8 @@ private func telewhiteModsEntries(tab: TelewhiteModsTab, settings: TelewhiteMods
         entries.append(.preserveDeletedMessages(strings.text("Keep Deleted Messages", "Сохранять удалённые сообщения"), settings.preserveDeletedMessages))
         entries.append(.forwardHideNamesByDefault(strings.text("Forward Without Author", "Пересылать без имени автора"), settings.forwardHideNamesByDefault))
         entries.append(.showPreviousEditedText(strings.text("Show Previous Edited Text", "Показывать предыдущую версию"), settings.showPreviousEditedText))
-        entries.append(.oneTimeMediaUnlimited(strings.text("Keep One-Time Photos & Videos", "Оставлять одноразовые фото и видео"), settings.oneTimeMediaUnlimited))
+        entries.append(.oneTimeMediaUnlimited(strings.text("Unlimited One-Time View", "Одноразовый просмотр без ограничений"), settings.oneTimeMediaUnlimited))
+        entries.append(.downloadOneTimeMedia(strings.text("Download One-Time Media", "Скачать одноразовые медиа"), settings.downloadOneTimeMedia))
         entries.append(.uploadVideoMessage(strings.text("Upload Video Message", "Загрузить видеосообщение"), settings.uploadVideoMessage))
         entries.append(.hdPhotos(strings.text("Send Photos in HD", "Отправлять фото в HD"), settings.hdPhotos))
         entries.append(.translateVoiceMessages(strings.text("Translate Voice Messages", "Переводить голосовые"), settings.translateVoiceMessages))
@@ -1491,8 +1489,8 @@ private func telewhiteModsEntries(tab: TelewhiteModsTab, settings: TelewhiteMods
     case .privacy:
         entries.append(.privacyHeader(telewhiteTabTitle(.privacy, strings: strings)))
         entries.append(.hiddenChatsEnabled(strings.text("Hidden Chats", "Скрытые чаты"), settings.hiddenChatsEnabled))
-        entries.append(.screenshotProtectionBypass(strings.text("Allow Screenshots Anywhere", "Разрешить скриншоты везде"), settings.screenshotProtectionBypass))
-        entries.append(.contentRestrictionBypass(strings.text("Allow Forward & Save Everywhere", "Разрешить пересылку и сохранение"), settings.contentRestrictionBypass))
+        entries.append(.screenshotProtectionBypass(strings.text("Screenshot Protection Bypass", "Обход защиты скриншотов"), settings.screenshotProtectionBypass))
+        entries.append(.contentRestrictionBypass(strings.text("Content Restriction Bypass", "Обход ограничений контента"), settings.contentRestrictionBypass))
         entries.append(.hidePhoneInSettings(strings.text("Hide Phone and Username", "Скрыть номер и юзернейм"), settings.hidePhoneInSettings))
         let groupEventCount = TelewhiteGroupEventLog.entries.count
         entries.append(.groupEventLog(strings.text("Group Removal Log", "Журнал удалений из групп"), groupEventCount == 0 ? "" : "\(groupEventCount)"))
@@ -1508,7 +1506,7 @@ private func telewhiteModsEntries(tab: TelewhiteModsTab, settings: TelewhiteMods
 
     case .channels:
         entries.append(.channelsHeader(telewhiteTabTitle(.channels, strings: strings)))
-        entries.append(.channelContentRestrictionBypass(strings.text("Allow Forward & Save Everywhere", "Разрешить пересылку и сохранение"), settings.contentRestrictionBypass))
+        entries.append(.channelContentRestrictionBypass(strings.text("Content Restriction Bypass", "Обход ограничений контента"), settings.contentRestrictionBypass))
         entries.append(.channelHideReactions(strings.text("Hide Reactions in Channels", "Скрыть реакции в каналах"), settings.channelHideReactions))
         entries.append(.channelHideComments(strings.text("Hide Comments in Channels", "Скрыть комментарии в каналах"), settings.channelHideComments))
         entries.append(.channelHideShareButton(strings.text("Hide Share Button in Channels", "Скрыть кнопку «Поделиться» в каналах"), settings.channelHideShareButton))
