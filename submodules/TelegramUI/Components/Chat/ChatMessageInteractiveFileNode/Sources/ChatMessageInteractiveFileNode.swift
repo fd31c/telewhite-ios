@@ -347,6 +347,55 @@ public final class ChatMessageInteractiveFileNode: ASDisplayNode {
         }
     }
     
+    // Telewhite: when "Translate Voice Messages" is on, run the finished
+    // transcript through the free Google Translate endpoint (no key) into the
+    // app language. Appends the translation under the original transcript. If the
+    // text is already in the target language, Google returns it unchanged and we
+    // skip appending a duplicate.
+    private static func telewhiteTranslateTranscript(_ text: String, toLang: String, completion: @escaping (String?) -> Void) {
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else {
+            completion(nil)
+            return
+        }
+        var components = URLComponents(string: "https://translate.googleapis.com/translate_a/single")
+        components?.queryItems = [
+            URLQueryItem(name: "client", value: "gtx"),
+            URLQueryItem(name: "sl", value: "auto"),
+            URLQueryItem(name: "tl", value: toLang),
+            URLQueryItem(name: "dt", value: "t"),
+            URLQueryItem(name: "q", value: trimmed)
+        ]
+        guard let url = components?.url else {
+            completion(nil)
+            return
+        }
+        var request = URLRequest(url: url)
+        request.httpMethod = "GET"
+        request.timeoutInterval = 8.0
+        let task = URLSession.shared.dataTask(with: request) { data, _, error in
+            guard error == nil, let data = data,
+                  let json = try? JSONSerialization.jsonObject(with: data) as? [Any],
+                  let segments = json.first as? [Any] else {
+                completion(nil)
+                return
+            }
+            var translated = ""
+            for segment in segments {
+                if let parts = segment as? [Any], let piece = parts.first as? String {
+                    translated += piece
+                }
+            }
+            translated = translated.trimmingCharacters(in: .whitespacesAndNewlines)
+            if translated.isEmpty || translated.caseInsensitiveCompare(trimmed) == .orderedSame {
+                completion(nil)
+            } else {
+                completion(translated)
+            }
+        }
+        task.resume()
+    }
+
     private func transcribe() {
         guard let arguments = self.arguments, let context = self.context, let message = self.message else {
             return
@@ -360,9 +409,10 @@ public final class ChatMessageInteractiveFileNode: ASDisplayNode {
         let premiumConfiguration = PremiumConfiguration.with(appConfiguration: arguments.context.currentAppConfiguration.with { $0 })
         let telewhiteOpenRouterKey = UserDefaults.standard.string(forKey: "telewhite.mods.openRouterApiKey") ?? ""
         let canUseTelewhiteOpenRouterTranscription = !telewhiteOpenRouterKey.isEmpty
+        let telewhiteTranslateVoice = UserDefaults.standard.bool(forKey: "telewhite.mods.translateVoiceMessages")
         
         let transcriptionText = self.forcedAudioTranscriptionText ?? transcribedText(message: EngineMessage(message))
-        if transcriptionText == nil && !arguments.associatedData.alwaysDisplayTranscribeButton.providedByGroupBoost && !canUseTelewhiteOpenRouterTranscription {
+        if transcriptionText == nil && !arguments.associatedData.alwaysDisplayTranscribeButton.providedByGroupBoost && !canUseTelewhiteOpenRouterTranscription && !telewhiteTranslateVoice {
             if premiumConfiguration.audioTransciptionTrialCount > 0 {
                 if !arguments.associatedData.isPremium {
                     if self.presentAudioTranscriptionTooltip(finished: false) {
@@ -421,7 +471,7 @@ public final class ChatMessageInteractiveFileNode: ASDisplayNode {
                 self.audioTranscriptionState = .inProgress
                 self.requestUpdateLayout(true)
                 
-                if context.sharedContext.immediateExperimentalUISettings.localTranscription || canUseTelewhiteOpenRouterTranscription {
+                if context.sharedContext.immediateExperimentalUISettings.localTranscription || canUseTelewhiteOpenRouterTranscription || telewhiteTranslateVoice {
                     let appLocale = presentationData.strings.baseLanguageCode
                     let useOpenRouterTranscription = canUseTelewhiteOpenRouterTranscription && !context.sharedContext.immediateExperimentalUISettings.localTranscription
                     
@@ -468,7 +518,23 @@ public final class ChatMessageInteractiveFileNode: ASDisplayNode {
                         }
                         
                         if let result = result {
-                            let _ = arguments.context.engine.messages.storeLocallyTranscribedAudio(messageId: arguments.message.id, text: result.text, isFinal: result.isFinal, error: nil).startStandalone()
+                            let messageId = arguments.message.id
+                            let engine = arguments.context.engine
+                            let translateVoice = UserDefaults.standard.bool(forKey: "telewhite.mods.translateVoiceMessages")
+                            if translateVoice && result.isFinal {
+                                let toLang = presentationData.strings.baseLanguageCode.components(separatedBy: "-").first ?? "en"
+                                ChatMessageInteractiveFileNode.telewhiteTranslateTranscript(result.text, toLang: toLang) { translated in
+                                    let finalText: String
+                                    if let translated = translated {
+                                        finalText = result.text + "\n\n🌐 " + translated
+                                    } else {
+                                        finalText = result.text
+                                    }
+                                    let _ = engine.messages.storeLocallyTranscribedAudio(messageId: messageId, text: finalText, isFinal: true, error: nil).startStandalone()
+                                }
+                            } else {
+                                let _ = engine.messages.storeLocallyTranscribedAudio(messageId: messageId, text: result.text, isFinal: result.isFinal, error: nil).startStandalone()
+                            }
                         } else {
                             strongSelf.audioTranscriptionState = .collapsed
                             strongSelf.requestUpdateLayout(true)

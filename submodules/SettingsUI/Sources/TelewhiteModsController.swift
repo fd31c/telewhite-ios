@@ -66,6 +66,7 @@ public struct TelewhiteModsSettings: Equatable {
     public var channelHideComments: Bool
     public var channelHideShareButton: Bool
     public var hdPhotos: Bool
+    public var translateVoiceMessages: Bool
 
     private enum Key {
         static let vpnEnabled = "telewhite.mods.vpnEnabled"
@@ -120,6 +121,7 @@ public struct TelewhiteModsSettings: Equatable {
         static let channelHideComments = "telewhite.mods.channelHideComments"
         static let channelHideShareButton = "telewhite.mods.channelHideShareButton"
         static let hdPhotos = "telewhite.mods.hdPhotos"
+        static let translateVoiceMessages = "telewhite.mods.translateVoiceMessages"
     }
     
     public static var current: TelewhiteModsSettings {
@@ -188,7 +190,8 @@ public struct TelewhiteModsSettings: Equatable {
             channelHideReactions: defaults.bool(forKey: Key.channelHideReactions),
             channelHideComments: defaults.bool(forKey: Key.channelHideComments),
             channelHideShareButton: defaults.bool(forKey: Key.channelHideShareButton),
-            hdPhotos: defaults.object(forKey: Key.hdPhotos) as? Bool ?? false
+            hdPhotos: defaults.object(forKey: Key.hdPhotos) as? Bool ?? false,
+            translateVoiceMessages: defaults.bool(forKey: Key.translateVoiceMessages)
         )
     }
 
@@ -318,6 +321,7 @@ public struct TelewhiteModsSettings: Equatable {
         defaults.set(self.channelHideComments, forKey: Key.channelHideComments)
         defaults.set(self.channelHideShareButton, forKey: Key.channelHideShareButton)
         defaults.set(self.hdPhotos, forKey: Key.hdPhotos)
+        defaults.set(self.translateVoiceMessages, forKey: Key.translateVoiceMessages)
         NotificationCenter.default.post(name: TelewhiteModsSettings.didChangeNotification, object: nil)
     }
 
@@ -437,6 +441,7 @@ private enum TelewhiteModsEntry: ItemListNodeEntry, Equatable {
     case downloadOneTimeMedia(String, Bool)
     case uploadVoice(String, Bool)
     case hdPhotos(String, Bool)
+    case translateVoiceMessages(String, Bool)
     case voiceChangeSettings(String)
     case uploadVideoMessage(String, Bool)
 
@@ -519,7 +524,7 @@ private enum TelewhiteModsEntry: ItemListNodeEntry, Equatable {
         switch self {
         case .menuItem:
             return TelewhiteModsSection.menu.rawValue
-        case .messengerHeader, .preserveDeletedMessages, .forwardHideNamesByDefault, .showPreviousEditedText, .translateMessages, .translateChats, .autoTranslateEnglish, .translationTargetLanguage, .outgoingTranslateButtonEnabled, .outgoingTranslationAutoEnabled, .openRouterApiKey, .messageFiltersEnabled, .messageFiltersUseRegex, .messageFilterRules, .messengerInfo, .oneTimeMediaUnlimited, .downloadOneTimeMedia, .uploadVoice, .hdPhotos, .voiceChangeSettings, .uploadVideoMessage:
+        case .messengerHeader, .preserveDeletedMessages, .forwardHideNamesByDefault, .showPreviousEditedText, .translateMessages, .translateChats, .autoTranslateEnglish, .translationTargetLanguage, .outgoingTranslateButtonEnabled, .outgoingTranslationAutoEnabled, .openRouterApiKey, .messageFiltersEnabled, .messageFiltersUseRegex, .messageFilterRules, .messengerInfo, .oneTimeMediaUnlimited, .downloadOneTimeMedia, .uploadVoice, .hdPhotos, .translateVoiceMessages, .voiceChangeSettings, .uploadVideoMessage:
             return TelewhiteModsSection.messenger.rawValue
         case .vpnHeader, .vpnEnabled, .vpnSubscription, .vpnStatus, .vpnStart, .vpnInfo:
             return TelewhiteModsSection.vpn.rawValue
@@ -564,6 +569,8 @@ private enum TelewhiteModsEntry: ItemListNodeEntry, Equatable {
             return 4
         case .hdPhotos:
             return 20
+        case .translateVoiceMessages:
+            return 21
         case .voiceChangeSettings:
             return 5
         case .uploadVideoMessage:
@@ -897,6 +904,10 @@ private enum TelewhiteModsEntry: ItemListNodeEntry, Equatable {
         case let .hdPhotos(text, value):
             return self.switchItem(presentationData: presentationData, arguments: arguments, text: text, value: value) { settings, value in
                 settings.hdPhotos = value
+            }
+        case let .translateVoiceMessages(text, value):
+            return self.switchItem(presentationData: presentationData, arguments: arguments, text: text, value: value) { settings, value in
+                settings.translateVoiceMessages = value
             }
         case let .voiceChangeSettings(text):
             return ItemListDisclosureItem(presentationData: presentationData, systemStyle: .glass, title: text, label: "", labelStyle: .text, sectionId: self.section, style: .blocks, disclosureStyle: .arrow, action: nil)
@@ -1395,6 +1406,8 @@ private func telewhiteEntryDescription(_ entry: TelewhiteModsEntry, presentation
         return text("Separate rules with commas. In keyword mode matching is case-insensitive.", "Разделяйте правила запятыми. В режиме ключевых слов регистр не учитывается.")
     case .uploadVideoMessage:
         return text("Videos from the gallery are sent as round video messages.", "Видео из галереи отправляются как круглые видеосообщения.")
+    case .translateVoiceMessages:
+        return text("Adds a translation under the transcript of voice messages when their language differs from yours. Uses a free translation service.", "Добавляет перевод под расшифровкой голосовых, если их язык отличается от вашего. Использует бесплатный переводчик.")
     case .oneTimeMediaUnlimited:
         return text("View-once photos and videos can be opened multiple times.", "Одноразовые фото и видео можно открывать сколько угодно раз.")
     case .downloadOneTimeMedia:
@@ -1459,6 +1472,7 @@ private func telewhiteModsEntries(tab: TelewhiteModsTab, settings: TelewhiteMods
         entries.append(.downloadOneTimeMedia(strings.text("Download One-Time Media", "Скачать одноразовые медиа"), settings.downloadOneTimeMedia))
         entries.append(.uploadVideoMessage(strings.text("Upload Video Message", "Загрузить видеосообщение"), settings.uploadVideoMessage))
         entries.append(.hdPhotos(strings.text("Send Photos in HD", "Отправлять фото в HD"), settings.hdPhotos))
+        entries.append(.translateVoiceMessages(strings.text("Translate Voice Messages", "Переводить голосовые"), settings.translateVoiceMessages))
         entries.append(.translateMessages(strings.text("Show Translate Button", "Показывать кнопку перевода"), translationSettings.showTranslate))
         entries.append(.translateChats(strings.text("Translate Entire Chats", "Перевод чатов"), translationSettings.translateChats))
         entries.append(.autoTranslateEnglish(strings.text("Incoming Message Translation", "Перевод входящих сообщений"), settings.autoTranslateEnglish))
