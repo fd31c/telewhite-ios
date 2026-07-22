@@ -10,6 +10,8 @@ import AlertUI
 import PromptUI
 import TelegramCore
 import TelegramUIPreferences
+import LegacyMediaPickerUI
+import TelewhiteVoiceChanger
 
 public struct TelewhiteModsSettings: Equatable {
     public static let didChangeNotification = Notification.Name("TelewhiteModsSettingsDidChange")
@@ -69,6 +71,10 @@ public struct TelewhiteModsSettings: Equatable {
     public var translateVoiceMessages: Bool
     public var quickForwardToSaved: Bool
     public var preciseLastSeen: Bool
+    public var voiceChangerEnabled: Bool
+    public var voiceChangerPitchShift: Int32
+    public var voiceChangerHubertInstalled: Bool
+    public var voiceChangerSelectedVoiceName: String
 
     private enum Key {
         static let vpnEnabled = "telewhite.mods.vpnEnabled"
@@ -126,6 +132,10 @@ public struct TelewhiteModsSettings: Equatable {
         static let translateVoiceMessages = "telewhite.mods.translateVoiceMessages"
         static let quickForwardToSaved = "telewhite.mods.quickForwardToSaved"
         static let preciseLastSeen = "telewhite.mods.preciseLastSeen"
+        static let voiceChangerEnabled = "telewhite.mods.voiceChangerEnabled"
+        static let voiceChangerPitchShift = "telewhite.mods.voiceChangerPitchShift"
+        static let voiceChangerHubertInstalled = "telewhite.mods.voiceChangerHubertInstalled"
+        static let voiceChangerSelectedVoiceName = "telewhite.mods.voiceChangerSelectedVoiceName"
     }
     
     public static var current: TelewhiteModsSettings {
@@ -197,7 +207,11 @@ public struct TelewhiteModsSettings: Equatable {
             hdPhotos: defaults.object(forKey: Key.hdPhotos) as? Bool ?? false,
             translateVoiceMessages: defaults.bool(forKey: Key.translateVoiceMessages),
             quickForwardToSaved: defaults.bool(forKey: Key.quickForwardToSaved),
-            preciseLastSeen: defaults.bool(forKey: Key.preciseLastSeen)
+            preciseLastSeen: defaults.bool(forKey: Key.preciseLastSeen),
+            voiceChangerEnabled: defaults.bool(forKey: Key.voiceChangerEnabled),
+            voiceChangerPitchShift: (defaults.object(forKey: Key.voiceChangerPitchShift) as? NSNumber)?.int32Value ?? 0,
+            voiceChangerHubertInstalled: defaults.bool(forKey: Key.voiceChangerHubertInstalled),
+            voiceChangerSelectedVoiceName: defaults.string(forKey: Key.voiceChangerSelectedVoiceName) ?? ""
         )
     }
 
@@ -330,6 +344,10 @@ public struct TelewhiteModsSettings: Equatable {
         defaults.set(self.translateVoiceMessages, forKey: Key.translateVoiceMessages)
         defaults.set(self.quickForwardToSaved, forKey: Key.quickForwardToSaved)
         defaults.set(self.preciseLastSeen, forKey: Key.preciseLastSeen)
+        defaults.set(self.voiceChangerEnabled, forKey: Key.voiceChangerEnabled)
+        defaults.set(NSNumber(value: self.voiceChangerPitchShift), forKey: Key.voiceChangerPitchShift)
+        defaults.set(self.voiceChangerHubertInstalled, forKey: Key.voiceChangerHubertInstalled)
+        defaults.set(self.voiceChangerSelectedVoiceName, forKey: Key.voiceChangerSelectedVoiceName)
         NotificationCenter.default.post(name: TelewhiteModsSettings.didChangeNotification, object: nil)
     }
 
@@ -362,7 +380,8 @@ private final class TelewhiteModsControllerArguments {
     let promptOpenRouterKey: () -> Void
     let promptMessageFilterRules: () -> Void
     let promptGroupEventLog: () -> Void
-    
+    let importVoiceChangerModel: (Bool) -> Void
+
     init(
         updateSettings: @escaping ((TelewhiteModsSettings) -> TelewhiteModsSettings) -> Void,
         updateTranslationSettings: @escaping (@escaping (TranslationSettings) -> TranslationSettings) -> Void,
@@ -372,7 +391,8 @@ private final class TelewhiteModsControllerArguments {
         openDebug: @escaping () -> Void = {},
         promptOpenRouterKey: @escaping () -> Void = {},
         promptMessageFilterRules: @escaping () -> Void = {},
-        promptGroupEventLog: @escaping () -> Void = {}
+        promptGroupEventLog: @escaping () -> Void = {},
+        importVoiceChangerModel: @escaping (Bool) -> Void = { _ in }
     ) {
         self.updateSettings = updateSettings
         self.updateTranslationSettings = updateTranslationSettings
@@ -383,6 +403,7 @@ private final class TelewhiteModsControllerArguments {
         self.promptOpenRouterKey = promptOpenRouterKey
         self.promptMessageFilterRules = promptMessageFilterRules
         self.promptGroupEventLog = promptGroupEventLog
+        self.importVoiceChangerModel = importVoiceChangerModel
     }
 }
 
@@ -500,6 +521,9 @@ private enum TelewhiteModsEntry: ItemListNodeEntry, Equatable {
     case callsHeader(String)
     case autoRecordCalls(String, Bool)
     case callRecordButton(String, Bool)
+    case voiceChangerEnabled(String, Bool)
+    case importHubertModel(String, Bool)
+    case importVoiceModel(String, String)
     case callsInfo(String)
 
     case appearanceHeader(String)
@@ -546,7 +570,7 @@ private enum TelewhiteModsEntry: ItemListNodeEntry, Equatable {
             return TelewhiteModsSection.channels.rawValue
         case .mediaHeader, .downloadStories, .hideStories, .autoCacheCleanup, .cacheLimit, .mediaInfo:
             return TelewhiteModsSection.media.rawValue
-        case .callsHeader, .autoRecordCalls, .callRecordButton, .callsInfo:
+        case .callsHeader, .autoRecordCalls, .callRecordButton, .voiceChangerEnabled, .importHubertModel, .importVoiceModel, .callsInfo:
             return TelewhiteModsSection.calls.rawValue
         case .appearanceHeader, .compactChatList, .chatSplitLandscape, .amoledMode:
             return TelewhiteModsSection.appearance.rawValue
@@ -691,8 +715,14 @@ private enum TelewhiteModsEntry: ItemListNodeEntry, Equatable {
             return 601
         case .callRecordButton:
             return 602
-        case .callsInfo:
+        case .voiceChangerEnabled:
             return 603
+        case .importHubertModel:
+            return 604
+        case .importVoiceModel:
+            return 605
+        case .callsInfo:
+            return 606
         case .appearanceHeader:
             return 700
         case .hideStories:
@@ -1075,6 +1105,18 @@ private enum TelewhiteModsEntry: ItemListNodeEntry, Equatable {
             return self.switchItem(presentationData: presentationData, arguments: arguments, text: text, value: value) { settings, value in
                 settings.callRecordButton = value
             }
+        case let .voiceChangerEnabled(text, value):
+            return self.switchItem(presentationData: presentationData, arguments: arguments, text: text, value: value) { settings, value in
+                settings.voiceChangerEnabled = value
+            }
+        case let .importHubertModel(text, installed):
+            return ItemListDisclosureItem(presentationData: presentationData, systemStyle: .glass, title: text, label: installed ? "✓" : "", labelStyle: .text, sectionId: self.section, style: .blocks, disclosureStyle: .arrow, action: {
+                arguments.importVoiceChangerModel(true)
+            })
+        case let .importVoiceModel(text, selectedName):
+            return ItemListDisclosureItem(presentationData: presentationData, systemStyle: .glass, title: text, label: selectedName.isEmpty ? "" : selectedName, labelStyle: .text, sectionId: self.section, style: .blocks, disclosureStyle: .arrow, action: {
+                arguments.importVoiceChangerModel(false)
+            })
         case let .hideStories(text, value):
             return self.switchItem(presentationData: presentationData, arguments: arguments, text: text, value: value) { settings, value in
                 settings.hideStories = value
@@ -1554,7 +1596,10 @@ private func telewhiteModsEntries(tab: TelewhiteModsTab, settings: TelewhiteMods
 
     case .calls:
         entries.append(.callsHeader(telewhiteTabTitle(.calls, strings: strings)))
-        entries.append(.callsInfo(strings.text("Recordings are saved to your Saved Messages. When the record button is on, it appears on the call screen so you can start and stop recording manually.", "Записи сохраняются в «Избранное». Если кнопка записи включена, она появляется на экране звонка — можно начинать и останавливать запись вручную.")))
+        entries.append(.voiceChangerEnabled(strings.text("AI Voice Changer", "AI-изменение голоса"), settings.voiceChangerEnabled))
+        entries.append(.importHubertModel(strings.text("Import Pronunciation Model (.onnx)", "Импорт модели произношения (.onnx)"), settings.voiceChangerHubertInstalled))
+        entries.append(.importVoiceModel(strings.text("Import Voice (.onnx)", "Импорт голоса (.onnx)"), settings.voiceChangerSelectedVoiceName))
+        entries.append(.callsInfo(strings.text("Recordings are saved to your Saved Messages. When the record button is on, it appears on the call screen so you can start and stop recording manually. The voice changer needs both a shared pronunciation model and a target voice imported as .onnx files; it replaces your voice with the imported voice during calls.", "Записи сохраняются в «Избранное». Если кнопка записи включена, она появляется на экране звонка — можно начинать и останавливать запись вручную. Для изменения голоса нужны обе модели: общая модель произношения и целевой голос, импортированные как .onnx файлы; во время звонка ваш голос заменяется на импортированный.")))
 
     case .proxy:
         let proxyStatus: String
@@ -1866,6 +1911,40 @@ private func telewhiteModsSectionController(context: AccountContext, tab: Telewh
             apply: { _ in }
         )
         presentControllerImpl?(prompt)
+    }, importVoiceChangerModel: { isHubert in
+        let presentationData = context.sharedContext.currentPresentationData.with { $0 }
+        let strings = TelewhiteModsStrings(presentationData: presentationData)
+        let picker = legacyICloudFilePicker(theme: presentationData.theme, documentTypes: ["public.item"], completion: { urls in
+            guard let sourceURL = urls.first else {
+                return
+            }
+            do {
+                let installedURL = try TelewhiteVoiceModelStore.shared.importModel(from: sourceURL, asHubert: isHubert)
+                updateSettings { current in
+                    var updated = current
+                    if isHubert {
+                        updated.voiceChangerHubertInstalled = true
+                    } else {
+                        updated.voiceChangerSelectedVoiceName = installedURL.lastPathComponent
+                    }
+                    return updated
+                }
+                presentControllerImpl?(UndoOverlayController(
+                    presentationData: presentationData,
+                    content: .info(title: nil, text: isHubert ? strings.text("Pronunciation model imported.", "Модель произношения импортирована.") : strings.text("Voice imported.", "Голос импортирован."), timeout: nil, customUndoText: nil),
+                    elevatedLayout: false,
+                    action: { _ in return false }
+                ))
+            } catch {
+                presentControllerImpl?(UndoOverlayController(
+                    presentationData: presentationData,
+                    content: .info(title: nil, text: strings.text("Import failed: \(error.localizedDescription)", "Не удалось импортировать: \(error.localizedDescription)"), timeout: nil, customUndoText: nil),
+                    elevatedLayout: false,
+                    action: { _ in return false }
+                ))
+            }
+        })
+        presentControllerImpl?(picker)
     })
 
     let translationSettings = context.sharedContext.accountManager.sharedData(keys: [ApplicationSpecificSharedDataKeys.translationSettings])
