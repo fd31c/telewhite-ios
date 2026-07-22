@@ -725,8 +725,20 @@ public class ChatListControllerImpl: TelegramBaseController, ChatListController 
                             }
                         )))
                     }
-                } else {
-                    if let navigationBarView = strongSelf.chatListDisplayNode.navigationBarView.view as? ChatListNavigationBar.View {
+                } else if let navigationBarView = strongSelf.chatListDisplayNode.navigationBarView.view as? ChatListNavigationBar.View {
+                    // Telewhite: keep a persistent shortcut into the downloads pane
+                    // even once the active download finishes, instead of only
+                    // showing it while something is actively downloading.
+                    if strongSelf.hasDownloads {
+                        let icon = generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/Download"), color: strongSelf.presentationData.theme.list.itemAccentColor)
+                        let contentComponent = AnyComponent(Image(image: icon, size: icon?.size ?? CGSize(width: 24.0, height: 24.0)))
+                        navigationBarView.searchContentNode?.placeholderNode.setAccessoryComponent(component: AnyComponent(Button(
+                            content: contentComponent,
+                            action: { [weak self] in
+                                self?.activateSearch(filter: .downloads, query: nil)
+                            }
+                        )))
+                    } else {
                         navigationBarView.searchContentNode?.placeholderNode.setAccessoryComponent(component: nil)
                     }
                 }

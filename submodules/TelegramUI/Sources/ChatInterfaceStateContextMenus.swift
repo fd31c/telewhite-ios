@@ -1921,7 +1921,7 @@ func contextMenuForChatPresentationInterfaceState(chatPresentationInterfaceState
                             return .forward(source: message.id, threadId: nil, grouping: .auto, attributes: [], correlationId: nil)
                         }
                         let _ = enqueueMessages(account: context.account, peerId: context.account.peerId, messages: messagesToForward).startStandalone()
-                        controllerInteraction?.displayUndo(.succeed(text: chatPresentationInterfaceState.strings.Conversation_ForwardTooltip_SavedMessages_One, timeout: nil, customUndoText: nil))
+                        controllerInteraction.displayUndo(.succeed(text: chatPresentationInterfaceState.strings.Conversation_ForwardTooltip_SavedMessages_One, timeout: nil, customUndoText: nil))
                         f(.dismissWithoutContent)
                     })))
                 }
