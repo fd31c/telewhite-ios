@@ -1,4 +1,4 @@
-#import "ONNXSession.h"
+#import <ONNXBridge/ONNXSession.h>
 // Bazel's apple_static_xcframework_import adds the framework's Headers/ dir
 // directly to the include search path (unlike a dynamic -F framework
 // import), so the header is reachable by its bare name, not framework-
