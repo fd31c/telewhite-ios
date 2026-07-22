@@ -1,9 +1,10 @@
 #import <ONNXBridge/ONNXSession.h>
-// Bazel's apple_static_xcframework_import adds the framework's Headers/ dir
-// directly to the include search path (unlike a dynamic -F framework
-// import), so the header is reachable by its bare name, not framework-
-// prefixed as `<onnxruntime/onnxruntime_c_api.h>`.
-#import <onnxruntime_c_api.h>
+// Bazel's apple_static_xcframework_import propagates the xcframework via a
+// framework search path (-F .../onnxruntime.xcframework/ios-arm64), NOT by
+// adding the framework's Headers/ dir to the include path. The header must
+// therefore be imported framework-style, prefixed with the framework name:
+// <onnxruntime/...> resolves to onnxruntime.framework/Headers/.
+#import <onnxruntime/onnxruntime_c_api.h>
 
 #import <vector>
 #import <string>
