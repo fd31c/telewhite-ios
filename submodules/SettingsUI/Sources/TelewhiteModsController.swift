@@ -11,6 +11,7 @@ import PromptUI
 import TelegramCore
 import TelegramUIPreferences
 import LegacyMediaPickerUI
+import UndoUI
 import TelewhiteVoiceChanger
 
 public struct TelewhiteModsSettings: Equatable {
