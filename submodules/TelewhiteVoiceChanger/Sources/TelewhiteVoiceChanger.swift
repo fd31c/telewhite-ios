@@ -188,3 +188,94 @@ public final class TelewhiteVoiceChanger {
         return pitches
     }
 }
+
+public extension TelewhiteVoiceChanger {
+    // Offline, whole-utterance transform for a recorded voice note. Input is
+    // 16 kHz mono signed-16-bit PCM (the rate HuBERT expects and the rate the
+    // voice-note Opus encoder consumes). Runs the full HuBERT -> pitch -> RVC
+    // pipeline and returns 16 kHz mono Int16 PCM of the converted voice, ready
+    // to be re-encoded. Returns nil if the pipeline cannot run for any reason
+    // (missing/incompatible model, empty input) so the caller can fall back to
+    // the original recording — a voice note is never lost to a converter error.
+    //
+    // ponytail: the RVC decoder's synthesis rate is not carried in its output
+    // tensor, so it is inferred from output length vs. the known 16 kHz input
+    // duration and resampled back with a linear interpolator. Good enough to
+    // hear the converted voice; upgrade the resampler (and the autocorrelation
+    // pitch estimator) if quality is lacking.
+    static func convertVoiceNote(int16Data: Data, hubertURL: URL, rvcURL: URL, pitchShift: Float) -> Data? {
+        let sampleCount = int16Data.count / 2
+        guard sampleCount > 0 else {
+            return nil
+        }
+
+        var floatSamples = [Float](repeating: 0.0, count: sampleCount)
+        int16Data.withUnsafeBytes { rawBuffer -> Void in
+            let samples = rawBuffer.baseAddress!.assumingMemoryBound(to: Int16.self)
+            for index in 0 ..< sampleCount {
+                floatSamples[index] = Float(samples[index]) / 32768.0
+            }
+        }
+
+        do {
+            let changer = try TelewhiteVoiceChanger(hubertURL: hubertURL, rvcURL: rvcURL)
+            let extracted = try changer.extractFeatures(floatSamples)
+            guard extracted.frames > 0, extracted.dim > 0 else {
+                return nil
+            }
+            let pitch = TelewhiteVoiceChanger.estimatePitch(floatSamples, frames: extracted.frames)
+            let synthesized = try changer.synthesize(
+                features: extracted.features,
+                frames: extracted.frames,
+                dim: extracted.dim,
+                pitch: pitch,
+                pitchShift: pitchShift
+            )
+            guard !synthesized.isEmpty else {
+                return nil
+            }
+
+            let inputSeconds = Double(sampleCount) / Double(hubertSampleRate)
+            let inferredRate = inputSeconds > 0.0 ? Double(synthesized.count) / inputSeconds : Double(hubertSampleRate)
+            let resampled = resampleLinear(synthesized, fromRate: inferredRate, toRate: Double(hubertSampleRate))
+            guard !resampled.isEmpty else {
+                return nil
+            }
+
+            var outData = Data(count: resampled.count * 2)
+            outData.withUnsafeMutableBytes { rawBuffer -> Void in
+                let samples = rawBuffer.baseAddress!.assumingMemoryBound(to: Int16.self)
+                for index in 0 ..< resampled.count {
+                    let clamped = max(-1.0, min(1.0, resampled[index]))
+                    samples[index] = Int16(clamped * 32767.0)
+                }
+            }
+            return outData
+        } catch {
+            return nil
+        }
+    }
+
+    private static func resampleLinear(_ input: [Float], fromRate: Double, toRate: Double) -> [Float] {
+        guard fromRate > 0.0, toRate > 0.0, !input.isEmpty else {
+            return input
+        }
+        if abs(fromRate - toRate) < 1.0 {
+            return input
+        }
+        let ratio = toRate / fromRate
+        let outputCount = max(1, Int(Double(input.count) * ratio))
+        var output = [Float](repeating: 0.0, count: outputCount)
+        for index in 0 ..< outputCount {
+            let sourcePosition = Double(index) / ratio
+            let lowerIndex = Int(sourcePosition)
+            let fraction = Float(sourcePosition - Double(lowerIndex))
+            if lowerIndex + 1 < input.count {
+                output[index] = input[lowerIndex] * (1.0 - fraction) + input[lowerIndex + 1] * fraction
+            } else {
+                output[index] = input[input.count - 1]
+            }
+        }
+        return output
+    }
+}
