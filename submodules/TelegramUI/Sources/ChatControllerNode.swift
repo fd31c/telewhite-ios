@@ -4680,7 +4680,19 @@ class ChatControllerNode: ASDisplayNode, ASScrollViewDelegate {
         }
     }
     
+    // Telewhite: small in-memory cache so repeated phrases translate instantly and
+    // repeated sends don't re-hit the network. NSCache is thread-safe and self-evicting.
+    private static let telewhiteTranslateCache: NSCache<NSString, NSString> = {
+        let cache = NSCache<NSString, NSString>()
+        cache.countLimit = 400
+        return cache
+    }()
+
     private static func telewhiteFreeTranslate(text: String, toLang: String) -> Signal<String?, NoError> {
+        let cacheKey = "\(toLang)\u{1}\(text)" as NSString
+        if let cached = ChatControllerNode.telewhiteTranslateCache.object(forKey: cacheKey) {
+            return .single(cached as String)
+        }
         return Signal { subscriber in
             // Free Google Translate endpoint — no API key, no tokens. Same approach
             // Teledark uses. "sl=auto" auto-detects the source language.
@@ -4701,7 +4713,7 @@ class ChatControllerNode: ASDisplayNode, ASScrollViewDelegate {
             request.httpMethod = "GET"
             // Keep this short: this request blocks message sending, so a slow
             // response must not hold the message hostage.
-            request.timeoutInterval = 6.0
+            request.timeoutInterval = 3.0
 
             let task = URLSession.shared.dataTask(with: request) { data, response, error in
                 // Response is a nested JSON array: [[["translated","original",...],...],...]
@@ -4719,6 +4731,9 @@ class ChatControllerNode: ASDisplayNode, ASScrollViewDelegate {
                     }
                 }
                 translated = translated.trimmingCharacters(in: .whitespacesAndNewlines)
+                if !translated.isEmpty {
+                    ChatControllerNode.telewhiteTranslateCache.setObject(translated as NSString, forKey: cacheKey)
+                }
                 subscriber.putNext(translated.isEmpty ? nil : translated)
                 subscriber.putCompletion()
             }
@@ -4798,7 +4813,7 @@ class ChatControllerNode: ASDisplayNode, ASScrollViewDelegate {
                     return telegramFallback
                 }
             }
-            |> timeout(10.0, queue: Queue.mainQueue(), alternate: .single(nil))
+            |> timeout(4.0, queue: Queue.mainQueue(), alternate: .single(nil))
             translationSignals.append(signal)
         }
         

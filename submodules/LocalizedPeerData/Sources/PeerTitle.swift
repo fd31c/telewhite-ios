@@ -46,9 +46,8 @@ public extension EnginePeer {
             } else if let lastName = user.lastName, !lastName.isEmpty {
                 return lastName
             } else if let _ = user.phone {
-                if UserDefaults.standard.bool(forKey: "telewhite.mods.hidePhoneInSettings") {
-                    return "—"
-                }
+                // Telewhite: hide toggle covers phone + username only. Never redact the
+                // NAME with a dash — a nameless user simply shows no title (as stock does).
                 return "" //formatPhoneNumber("+\(phone)")
             } else {
                 return strings.User_DeletedAccount

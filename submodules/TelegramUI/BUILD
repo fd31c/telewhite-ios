@@ -192,7 +192,6 @@ swift_library(
         "//submodules/DeviceProximity:DeviceProximity",
         "//submodules/RaiseToListen:RaiseToListen",
         "//submodules/OpusBinding:OpusBinding",
-        "//submodules/TelewhiteVoiceChanger:TelewhiteVoiceChanger",
         "//third-party/opus:opus",
         "//submodules/ShareItems:ShareItems",
         "//submodules/ShareItems/Impl:ShareItemsImpl",

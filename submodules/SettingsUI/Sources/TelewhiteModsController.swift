@@ -12,7 +12,6 @@ import TelegramCore
 import TelegramUIPreferences
 import LegacyMediaPickerUI
 import UndoUI
-import TelewhiteVoiceChanger
 
 public struct TelewhiteModsSettings: Equatable {
     public static let didChangeNotification = Notification.Name("TelewhiteModsSettingsDidChange")
@@ -1364,9 +1363,8 @@ private func telewhiteMenuEntries(strings: TelewhiteModsStrings) -> [TelewhiteMo
         .menuItem(3, .groups, telewhiteTabTitle(.channels, strings: strings), strings.text("Channel and group content controls.", "\u{0424}\u{0443}\u{043d}\u{043a}\u{0446}\u{0438}\u{0438} \u{0434}\u{043b}\u{044f} \u{043a}\u{0430}\u{043d}\u{0430}\u{043b}\u{043e}\u{0432} \u{0438} \u{0433}\u{0440}\u{0443}\u{043f}\u{043f}."), .channels),
         .menuItem(4, .media, telewhiteTabTitle(.media, strings: strings), strings.text("Stories, downloads and media actions.", "\u{0418}\u{0441}\u{0442}\u{043e}\u{0440}\u{0438}\u{0438}, \u{0441}\u{043a}\u{0430}\u{0447}\u{0438}\u{0432}\u{0430}\u{043d}\u{0438}\u{0435} \u{0438} \u{043c}\u{0435}\u{0434}\u{0438}\u{0430}-\u{0434}\u{0435}\u{0439}\u{0441}\u{0442}\u{0432}\u{0438}\u{044f}."), .media),
         // Telewhite: Smart Proxy tab and its engine were removed per user request.
-        .menuItem(5, .calls, telewhiteTabTitle(.calls, strings: strings), strings.text("Call recording and AI voice changer.", "Запись звонков и AI-изменение голоса."), .calls),
-        .menuItem(6, .appearance, telewhiteTabTitle(.appearance, strings: strings), strings.text("Colors, chat list and split view.", "Цвета, список чатов и сплит-режим."), .appearance),
-        .menuItem(7, .developer, telewhiteTabTitle(.developer, strings: strings), strings.text("Push diagnostics and technical tools.", "Диагностика push и технические инструменты."), .developer)
+        .menuItem(5, .appearance, telewhiteTabTitle(.appearance, strings: strings), strings.text("Colors, chat list and split view.", "Цвета, список чатов и сплит-режим."), .appearance),
+        .menuItem(6, .developer, telewhiteTabTitle(.developer, strings: strings), strings.text("Push diagnostics and technical tools.", "Диагностика push и технические инструменты."), .developer)
     ]
 }
 
@@ -1822,41 +1820,7 @@ private func telewhiteModsSectionController(context: AccountContext, tab: Telewh
             apply: { _ in }
         )
         presentControllerImpl?(prompt)
-    }, importVoiceChangerModel: { isHubert in
-        let presentationData = context.sharedContext.currentPresentationData.with { $0 }
-        let strings = TelewhiteModsStrings(presentationData: presentationData)
-        let picker = legacyICloudFilePicker(theme: presentationData.theme, documentTypes: ["public.item"], completion: { urls in
-            guard let sourceURL = urls.first else {
-                return
-            }
-            do {
-                let installedURL = try TelewhiteVoiceModelStore.shared.importModel(from: sourceURL, asHubert: isHubert)
-                updateSettings { current in
-                    var updated = current
-                    if isHubert {
-                        updated.voiceChangerHubertInstalled = true
-                    } else {
-                        updated.voiceChangerSelectedVoiceName = installedURL.lastPathComponent
-                    }
-                    return updated
-                }
-                presentControllerImpl?(UndoOverlayController(
-                    presentationData: presentationData,
-                    content: .info(title: nil, text: isHubert ? strings.text("Pronunciation model imported.", "Модель произношения импортирована.") : strings.text("Voice imported.", "Голос импортирован."), timeout: nil, customUndoText: nil),
-                    elevatedLayout: false,
-                    action: { _ in return false }
-                ))
-            } catch {
-                presentControllerImpl?(UndoOverlayController(
-                    presentationData: presentationData,
-                    content: .info(title: nil, text: strings.text("Import failed: \(error.localizedDescription)", "Не удалось импортировать: \(error.localizedDescription)"), timeout: nil, customUndoText: nil),
-                    elevatedLayout: false,
-                    action: { _ in return false }
-                ))
-            }
-        })
-        presentControllerImpl?(picker)
-    })
+    }, importVoiceChangerModel: { _ in })
 
     let translationSettings = context.sharedContext.accountManager.sharedData(keys: [ApplicationSpecificSharedDataKeys.translationSettings])
     |> map { sharedData -> TranslationSettings in

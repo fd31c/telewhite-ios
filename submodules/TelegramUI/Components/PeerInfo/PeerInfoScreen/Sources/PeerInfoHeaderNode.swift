@@ -1223,8 +1223,9 @@ final class PeerInfoHeaderNode: ASDisplayNode {
             }
             if title.isEmpty {
                 if self.isSettings && TelewhiteModsSettings.current.hidePhoneInSettings {
-                    // Telewhite: the hide toggle covers phone and username alike.
-                    title = "—"
+                    // Telewhite: hide phone + username only — never paint a "—" bar over
+                    // the avatar/name. A nameless account simply shows a blank title.
+                    title = ""
                 } else if case let .user(user) = peer, let phone = user.phone, !TelewhiteModsSettings.current.hidePhoneInSettings {
                     title = formatPhoneNumber(context: self.context, number: phone)
                 } else if let addressName = peer.addressName {

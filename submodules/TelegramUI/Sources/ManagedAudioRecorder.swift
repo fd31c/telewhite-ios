@@ -10,7 +10,6 @@ import OpusBinding
 import ChatPresentationInterfaceState
 import AudioWaveform
 import FFMpegBinding
-import TelewhiteVoiceChanger
 
 private let kOutputBus: UInt32 = 0
 private let kInputBus: UInt32 = 1
@@ -163,13 +162,6 @@ final class ManagedAudioRecorderContext {
     private var oggWriter: TGOggOpusWriter
     private var dataItem: TGDataItem
     private var audioBuffer = Data()
-
-    // Telewhite: when the AI voice changer is enabled we accumulate the raw
-    // 16 kHz mono Int16 PCM of the whole utterance (the same stream fed to the
-    // Opus encoder) so it can be converted offline at finalization. Read once
-    // here so the recording hot path only does a cheap bool check + append.
-    private let telewhiteVoiceChangeEnabled = UserDefaults.standard.bool(forKey: "telewhite.mods.voiceChangerEnabled")
-    private var telewhiteCapturedSamples = Data()
     
     private let audioUnit = Atomic<AudioUnit?>(value: nil)
     
@@ -632,11 +624,7 @@ final class ManagedAudioRecorderContext {
                 self.processWaveformPreview(samples: currentEncoderPacket.assumingMemoryBound(to: Int16.self), count: currentEncoderPacketSize / 2)
                 
                 self.oggWriter.writeFrame(currentEncoderPacket.assumingMemoryBound(to: UInt8.self), frameByteCount: UInt(currentEncoderPacketSize))
-
-                if self.telewhiteVoiceChangeEnabled {
-                    self.telewhiteCapturedSamples.append(currentEncoderPacket.assumingMemoryBound(to: UInt8.self), count: currentEncoderPacketSize)
-                }
-
+                
                 let timestamp = CACurrentMediaTime()
                 if self.recordingStateUpdateTimestamp == nil || self.recordingStateUpdateTimestamp! < timestamp + 0.1 {
                     self.recordingStateUpdateTimestamp = timestamp
@@ -752,87 +740,10 @@ final class ManagedAudioRecorderContext {
                 waveform = AudioWaveform(bitstream: bitstream, bitsPerSample: 5).makeBitstream()
             }
             
-            let original = RecordedAudioData(
-                compressedData: self.dataItem.data(),
-                resumeData: self.resumeData,
-                duration: self.oggWriter.encodedDuration(),
-                waveform: waveform,
-                trimRange: nil
-            )
-
-            // Telewhite: apply the on-device AI voice changer to the finished
-            // voice note. Strictly opt-in (toggle) and best-effort: any failure
-            // falls back to the untouched recording so a note is never lost.
-            if self.telewhiteVoiceChangeEnabled, self.telewhiteCapturedSamples.count > 0 {
-                if let converted = self.telewhiteConvertedVoiceNote(waveform: waveform) {
-                    Logger.shared.log("ManagedAudioRecorder", "Telewhite voice changer applied to voice note")
-                    return converted
-                }
-                Logger.shared.log("ManagedAudioRecorder", "Telewhite voice changer unavailable or failed; sending original recording")
-            }
-
-            return original
+            return RecordedAudioData(compressedData: self.dataItem.data(), resumeData: self.resumeData, duration: self.oggWriter.encodedDuration(), waveform: waveform, trimRange: nil)
         } else {
             return nil
         }
-    }
-
-    // Telewhite: runs the captured PCM through the voice changer and re-encodes
-    // the result to an Opus voice note. Returns nil (caller keeps the original)
-    // when the toggle is on but models are missing/incompatible or any step
-    // fails. The transformed note reuses the original waveform preview — the
-    // RVC decoder preserves timing, so the envelope stays visually accurate.
-    private func telewhiteConvertedVoiceNote(waveform: Data?) -> RecordedAudioData? {
-        let defaults = UserDefaults.standard
-        let store = TelewhiteVoiceModelStore.shared
-        let voiceName = defaults.string(forKey: "telewhite.mods.voiceChangerSelectedVoiceName") ?? ""
-        guard store.hubertInstalled, !voiceName.isEmpty else {
-            return nil
-        }
-        let rvcURL = store.modelsDirectory.appendingPathComponent(voiceName)
-        guard FileManager.default.fileExists(atPath: rvcURL.path) else {
-            return nil
-        }
-        let pitchShift = Float((defaults.object(forKey: "telewhite.mods.voiceChangerPitchShift") as? NSNumber)?.int32Value ?? 0)
-
-        guard let convertedPcm = TelewhiteVoiceChanger.convertVoiceNote(
-            int16Data: self.telewhiteCapturedSamples,
-            hubertURL: store.hubertURL,
-            rvcURL: rvcURL,
-            pitchShift: pitchShift
-        ), convertedPcm.count > 0 else {
-            return nil
-        }
-
-        let reencodedItem = TGDataItem()
-        let writer = TGOggOpusWriter()
-        guard writer.begin(with: reencodedItem) else {
-            return nil
-        }
-
-        let packetSizeInBytes = 16000 / 1000 * 60 * 2
-        var offset = 0
-        let totalBytes = convertedPcm.count
-        var packet = [UInt8](repeating: 0, count: packetSizeInBytes)
-        while offset < totalBytes {
-            let chunk = min(packetSizeInBytes, totalBytes - offset)
-            convertedPcm.copyBytes(to: &packet, from: offset ..< (offset + chunk))
-            packet.withUnsafeMutableBufferPointer { pointer -> Void in
-                _ = writer.writeFrame(pointer.baseAddress, frameByteCount: UInt(chunk))
-            }
-            offset += chunk
-        }
-        guard writer.writeFrame(nil, frameByteCount: 0), let data = reencodedItem.data() else {
-            return nil
-        }
-
-        return RecordedAudioData(
-            compressedData: data,
-            resumeData: nil,
-            duration: writer.encodedDuration(),
-            waveform: waveform,
-            trimRange: nil
-        )
     }
 }
 
