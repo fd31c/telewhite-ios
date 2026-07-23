@@ -2326,10 +2326,6 @@ public final class SharedAccountContextImpl: SharedAccountContext {
         return telewhiteModsController(context: context)
     }
 
-    public func makeTelewhiteVpnController(context: AccountContext) -> ViewController {
-        return telewhiteVpnController(context: context)
-    }
-
     public func makeLocalizationListController(context: AccountContext) -> ViewController {
         return LocalizationListController(context: context)
     }

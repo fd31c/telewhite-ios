@@ -1420,7 +1420,6 @@ public protocol SharedAccountContext: AnyObject {
     func makePeerSelectionController(_ params: PeerSelectionControllerParams) -> PeerSelectionController
     func makeProxySettingsController(context: AccountContext) -> ViewController
     func makeTelewhiteModsController(context: AccountContext) -> ViewController
-    func makeTelewhiteVpnController(context: AccountContext) -> ViewController
     func makeLocalizationListController(context: AccountContext) -> ViewController
     func makeCreateGroupController(context: AccountContext, peerIds: [EnginePeer.Id], initialTitle: String?, mode: CreateGroupMode, completion: ((EnginePeer.Id, @escaping () -> Void) -> Void)?) -> ViewController
     func makeChatRecentActionsController(context: AccountContext, peer: EnginePeer, adminPeerId: EnginePeer.Id?, starsState: StarsRevenueStats?) -> ViewController

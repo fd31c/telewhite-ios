@@ -17,8 +17,6 @@ import TelewhiteVoiceChanger
 public struct TelewhiteModsSettings: Equatable {
     public static let didChangeNotification = Notification.Name("TelewhiteModsSettingsDidChange")
 
-    public var vpnEnabled: Bool
-    public var vpnSubscription: String
     public var ghostMode: Bool
     public var ghostChatButtonEnabled: Bool
     public var hiddenChatsEnabled: Bool
@@ -78,8 +76,6 @@ public struct TelewhiteModsSettings: Equatable {
     public var voiceChangerSelectedVoiceName: String
 
     private enum Key {
-        static let vpnEnabled = "telewhite.mods.vpnEnabled"
-        static let vpnSubscription = "telewhite.mods.vpnSubscription"
         static let ghostMode = "telewhite.mods.ghostMode"
         static let ghostChatButtonEnabled = "telewhite.mods.ghostChatButtonEnabled"
         static let hiddenChatsEnabled = "telewhite.hiddenChats.enabled"
@@ -142,8 +138,6 @@ public struct TelewhiteModsSettings: Equatable {
     public static var current: TelewhiteModsSettings {
         let defaults = UserDefaults.standard
         return TelewhiteModsSettings(
-            vpnEnabled: defaults.bool(forKey: Key.vpnEnabled),
-            vpnSubscription: defaults.string(forKey: Key.vpnSubscription) ?? "",
             // Telewhite: global Ghost Mode is an optional master switch; the granular
             // stealth toggles below are independent and persist on their own keys.
             ghostMode: defaults.bool(forKey: Key.ghostMode),
@@ -269,8 +263,6 @@ public struct TelewhiteModsSettings: Equatable {
     
     public func save() {
         let defaults = UserDefaults.standard
-        defaults.set(self.vpnEnabled, forKey: Key.vpnEnabled)
-        defaults.set(self.vpnSubscription, forKey: Key.vpnSubscription)
         defaults.set(self.ghostMode, forKey: Key.ghostMode)
         defaults.set(self.ghostChatButtonEnabled, forKey: Key.ghostChatButtonEnabled)
         defaults.set(self.hiddenChatsEnabled, forKey: Key.hiddenChatsEnabled)
@@ -374,7 +366,6 @@ enum TelewhiteCustomColorTarget {
 private final class TelewhiteModsControllerArguments {
     let updateSettings: ((TelewhiteModsSettings) -> TelewhiteModsSettings) -> Void
     let updateTranslationSettings: (@escaping (TranslationSettings) -> TranslationSettings) -> Void
-    let startVpn: () -> Void
     let openTab: (TelewhiteModsTab) -> Void
     let promptCustomColor: (TelewhiteCustomColorTarget) -> Void
     let openDebug: () -> Void
@@ -386,7 +377,6 @@ private final class TelewhiteModsControllerArguments {
     init(
         updateSettings: @escaping ((TelewhiteModsSettings) -> TelewhiteModsSettings) -> Void,
         updateTranslationSettings: @escaping (@escaping (TranslationSettings) -> TranslationSettings) -> Void,
-        startVpn: @escaping () -> Void,
         openTab: @escaping (TelewhiteModsTab) -> Void = { _ in },
         promptCustomColor: @escaping (TelewhiteCustomColorTarget) -> Void = { _ in },
         openDebug: @escaping () -> Void = {},
@@ -397,7 +387,6 @@ private final class TelewhiteModsControllerArguments {
     ) {
         self.updateSettings = updateSettings
         self.updateTranslationSettings = updateTranslationSettings
-        self.startVpn = startVpn
         self.openTab = openTab
         self.promptCustomColor = promptCustomColor
         self.openDebug = openDebug
@@ -432,7 +421,6 @@ private enum TelewhiteModsTab: Int32, Equatable {
     case channels
     case media
     case calls
-    case proxy
     case appearance
     case developer
 }
@@ -444,7 +432,6 @@ private enum TelewhiteModsMenuIcon: Int32, Equatable {
     case groups
     case media
     case calls
-    case proxy
     case appearance
     case developer
 }
@@ -477,13 +464,6 @@ private enum TelewhiteModsEntry: ItemListNodeEntry, Equatable {
     case voiceChangeSettings(String)
     case uploadVideoMessage(String, Bool)
 
-    case vpnHeader(String)
-    case vpnEnabled(String, Bool)
-    case vpnSubscription(String, String)
-    case vpnStatus(String, String)
-    case vpnStart(String)
-    case vpnInfo(String)
-    
     case privacyHeader(String)
     case hideOnlineStatus(String, Bool)
     case ghostMode(String, Bool)
@@ -561,8 +541,6 @@ private enum TelewhiteModsEntry: ItemListNodeEntry, Equatable {
             return TelewhiteModsSection.menu.rawValue
         case .messengerHeader, .preserveDeletedMessages, .forwardHideNamesByDefault, .showPreviousEditedText, .translateMessages, .translateChats, .autoTranslateEnglish, .translationTargetLanguage, .outgoingTranslateButtonEnabled, .outgoingTranslationAutoEnabled, .openRouterApiKey, .messageFiltersEnabled, .messageFiltersUseRegex, .messageFilterRules, .messengerInfo, .oneTimeMediaUnlimited, .downloadOneTimeMedia, .uploadVoice, .hdPhotos, .translateVoiceMessages, .quickForwardToSaved, .voiceChangeSettings, .uploadVideoMessage:
             return TelewhiteModsSection.messenger.rawValue
-        case .vpnHeader, .vpnEnabled, .vpnSubscription, .vpnStatus, .vpnStart, .vpnInfo:
-            return TelewhiteModsSection.vpn.rawValue
         case .privacyHeader, .hiddenChatsEnabled, .screenshotProtectionBypass, .contentRestrictionBypass, .hidePhoneInSettings, .groupEventLog, .showProfileIds, .showUserIds, .showChatIds, .showMessageIds, .preciseLastSeen, .privacyInfo:
             return TelewhiteModsSection.privacy.rawValue
         case .stealthHeader, .ghostMode, .hideOnlineStatus, .ghostMessages, .hideReadReceipts, .hideTypingStatus, .ghostChatButtonEnabled, .ghostStories, .clearGhostChats, .stealthInfo:
@@ -666,18 +644,6 @@ private enum TelewhiteModsEntry: ItemListNodeEntry, Equatable {
             return 112
         case .preciseLastSeen:
             return 113
-        case .vpnHeader:
-            return 200
-        case .vpnEnabled:
-            return 201
-        case .vpnSubscription:
-            return 202
-        case .vpnStatus:
-            return 203
-        case .vpnStart:
-            return 204
-        case .vpnInfo:
-            return 205
         case .stealthHeader:
             return 300
         case .ghostMessages:
@@ -802,7 +768,7 @@ private enum TelewhiteModsEntry: ItemListNodeEntry, Equatable {
             return ItemListDisclosureItem(presentationData: presentationData, systemStyle: .glass, icon: telewhiteMenuIcon(icon, color: presentationData.theme.list.itemAccentColor), title: title, titleFont: .bold, label: subtitle, labelStyle: .multilineDetailText, sectionId: self.section, style: .blocks, disclosureStyle: .arrow, action: {
                 arguments.openTab(tab)
             })
-        case let .messengerHeader(text), let .vpnHeader(text), let .privacyHeader(text), let .stealthHeader(text), let .channelsHeader(text), let .mediaHeader(text), let .callsHeader(text), let .appearanceHeader(text), let .developerHeader(text), let .accentColorHeader(text), let .bubbleColorHeader(text), let .backgroundColorHeader(text), let .cornerRadiusHeader(text):
+        case let .messengerHeader(text), let .privacyHeader(text), let .stealthHeader(text), let .channelsHeader(text), let .mediaHeader(text), let .callsHeader(text), let .appearanceHeader(text), let .developerHeader(text), let .accentColorHeader(text), let .bubbleColorHeader(text), let .backgroundColorHeader(text), let .cornerRadiusHeader(text):
             return ItemListSectionHeaderItem(presentationData: presentationData, text: text, sectionId: self.section)
         case let .accentColorOption(_, title, value, selected):
             return ItemListCheckboxItem(presentationData: presentationData, systemStyle: .glass, icon: telewhiteColorSwatchImage(value), iconSize: CGSize(width: 22.0, height: 22.0), title: title, style: .right, checked: selected, zeroSeparatorInsets: false, sectionId: self.section, action: {
@@ -968,26 +934,6 @@ private enum TelewhiteModsEntry: ItemListNodeEntry, Equatable {
             return self.switchItem(presentationData: presentationData, arguments: arguments, text: text, value: value) { settings, value in
                 settings.uploadVideoMessage = value
             }
-        case let .vpnEnabled(text, value):
-            return ItemListSwitchItem(presentationData: presentationData, systemStyle: .glass, title: text, value: value, sectionId: self.section, style: .blocks, updated: { _ in
-                // Toggling runs the smart connect / disconnect flow; the flag is
-                // set by that flow once the proxy is actually (de)activated.
-                arguments.startVpn()
-            })
-        case let .vpnSubscription(placeholder, text):
-            return ItemListSingleLineInputItem(presentationData: presentationData, systemStyle: .glass, title: NSAttributedString(), text: text, placeholder: placeholder, type: .regular(capitalization: false, autocorrection: false), returnKeyType: .done, clearType: .onFocus, maxLength: 4096, sectionId: self.section, textUpdated: { text in
-                arguments.updateSettings { current in
-                    var updated = current
-                    updated.vpnSubscription = text.trimmingCharacters(in: .whitespacesAndNewlines)
-                    return updated
-                }
-            }, action: {})
-        case let .vpnStatus(text, value):
-            return ItemListDisclosureItem(presentationData: presentationData, systemStyle: .glass, title: text, label: value, labelStyle: .text, sectionId: self.section, style: .blocks, disclosureStyle: .none, action: nil)
-        case let .vpnStart(text):
-            return ItemListActionItem(presentationData: presentationData, systemStyle: .glass, title: text, kind: .generic, alignment: .natural, sectionId: self.section, style: .blocks, action: {
-                arguments.startVpn()
-            })
         case let .debugMenu(text):
             return ItemListDisclosureItem(presentationData: presentationData, systemStyle: .glass, title: text, label: "", sectionId: self.section, style: .blocks, disclosureStyle: .arrow, action: {
                 arguments.openDebug()
@@ -996,7 +942,7 @@ private enum TelewhiteModsEntry: ItemListNodeEntry, Equatable {
             return ItemListDisclosureItem(presentationData: presentationData, systemStyle: .glass, title: text, label: label, labelStyle: .text, sectionId: self.section, style: .blocks, disclosureStyle: .arrow, action: {
                 arguments.promptGroupEventLog()
             })
-        case let .messengerInfo(text), let .vpnInfo(text), let .privacyInfo(text), let .stealthInfo(text), let .channelsInfo(text), let .mediaInfo(text), let .callsInfo(text), let .developerInfo(text), let .appearanceInfo(text):
+        case let .messengerInfo(text), let .privacyInfo(text), let .stealthInfo(text), let .channelsInfo(text), let .mediaInfo(text), let .callsInfo(text), let .developerInfo(text), let .appearanceInfo(text):
             return ItemListTextItem(presentationData: presentationData, text: .plain(text), sectionId: self.section)
         case let .hideOnlineStatus(text, value):
             return self.switchItem(presentationData: presentationData, arguments: arguments, text: text, value: value) { settings, value in
@@ -1362,19 +1308,6 @@ private func telewhiteMenuIcon(_ icon: TelewhiteModsMenuIcon, color: UIColor) ->
             let half = UIBezierPath(arcCenter: CGPoint(x: 14.5, y: 14.5), radius: 6.5, startAngle: -.pi / 2.0, endAngle: .pi / 2.0, clockwise: true)
             half.close()
             half.fill()
-        case .proxy:
-            // Globe: circle + vertical meridian ellipse + horizontal equator line
-            let circle = UIBezierPath(ovalIn: CGRect(x: 6.0, y: 6.0, width: 17.0, height: 17.0))
-            circle.lineWidth = lineWidth
-            circle.stroke()
-            let meridian = UIBezierPath(ovalIn: CGRect(x: 10.5, y: 6.0, width: 8.0, height: 17.0))
-            meridian.lineWidth = lineWidth
-            meridian.stroke()
-            let equator = UIBezierPath()
-            equator.move(to: CGPoint(x: 6.0, y: 14.5))
-            equator.addLine(to: CGPoint(x: 23.0, y: 14.5))
-            equator.lineWidth = lineWidth
-            equator.stroke()
         case .developer:
             // Angle brackets </> 
             let left = UIBezierPath()
@@ -1416,8 +1349,6 @@ private func telewhiteTabTitle(_ tab: TelewhiteModsTab, strings: TelewhiteModsSt
         return strings.text("Media and Stories", "\u{041c}\u{0435}\u{0434}\u{0438}\u{0430} \u{0438} \u{0438}\u{0441}\u{0442}\u{043e}\u{0440}\u{0438}\u{0438}")
     case .calls:
         return strings.text("Calls", "\u{0417}\u{0432}\u{043e}\u{043d}\u{043a}\u{0438}")
-    case .proxy:
-        return strings.text("Smart Proxy", "Умный прокси")
     case .appearance:
         return strings.text("Look", "\u{0412}\u{043d}\u{0435}\u{0448}\u{043d}\u{0438}\u{0439} \u{0432}\u{0438}\u{0434}")
     case .developer:
@@ -1432,8 +1363,7 @@ private func telewhiteMenuEntries(strings: TelewhiteModsStrings) -> [TelewhiteMo
         .menuItem(2, .messages, telewhiteTabTitle(.messenger, strings: strings), strings.text("Deleted messages, one-time media, uploads and translation.", "\u{0423}\u{0434}\u{0430}\u{043b}\u{0451}\u{043d}\u{043d}\u{044b}\u{0435} \u{0441}\u{043e}\u{043e}\u{0431}\u{0449}\u{0435}\u{043d}\u{0438}\u{044f}, \u{043e}\u{0434}\u{043d}\u{043e}\u{0440}\u{0430}\u{0437}\u{043e}\u{0432}\u{044b}\u{0435} \u{043c}\u{0435}\u{0434}\u{0438}\u{0430}, \u{0437}\u{0430}\u{0433}\u{0440}\u{0443}\u{0437}\u{043a}\u{0438} \u{0438} \u{043f}\u{0435}\u{0440}\u{0435}\u{0432}\u{043e}\u{0434}."), .messenger),
         .menuItem(3, .groups, telewhiteTabTitle(.channels, strings: strings), strings.text("Channel and group content controls.", "\u{0424}\u{0443}\u{043d}\u{043a}\u{0446}\u{0438}\u{0438} \u{0434}\u{043b}\u{044f} \u{043a}\u{0430}\u{043d}\u{0430}\u{043b}\u{043e}\u{0432} \u{0438} \u{0433}\u{0440}\u{0443}\u{043f}\u{043f}."), .channels),
         .menuItem(4, .media, telewhiteTabTitle(.media, strings: strings), strings.text("Stories, downloads and media actions.", "\u{0418}\u{0441}\u{0442}\u{043e}\u{0440}\u{0438}\u{0438}, \u{0441}\u{043a}\u{0430}\u{0447}\u{0438}\u{0432}\u{0430}\u{043d}\u{0438}\u{0435} \u{0438} \u{043c}\u{0435}\u{0434}\u{0438}\u{0430}-\u{0434}\u{0435}\u{0439}\u{0441}\u{0442}\u{0432}\u{0438}\u{044f}."), .media),
-        // Telewhite: Smart Proxy tab removed per user request; the engine code
-        // stays but is unreachable from the UI.
+        // Telewhite: Smart Proxy tab and its engine were removed per user request.
         .menuItem(5, .calls, telewhiteTabTitle(.calls, strings: strings), strings.text("Call recording and AI voice changer.", "Запись звонков и AI-изменение голоса."), .calls),
         .menuItem(6, .appearance, telewhiteTabTitle(.appearance, strings: strings), strings.text("Colors, chat list and split view.", "Цвета, список чатов и сплит-режим."), .appearance),
         .menuItem(7, .developer, telewhiteTabTitle(.developer, strings: strings), strings.text("Push diagnostics and technical tools.", "Диагностика push и технические инструменты."), .developer)
@@ -1482,8 +1412,6 @@ private func telewhiteEntryDescription(_ entry: TelewhiteModsEntry, presentation
         return text("View-once photos and videos can be opened multiple times.", "Одноразовые фото и видео можно открывать сколько угодно раз.")
     case .downloadOneTimeMedia:
         return text("Lets you save view-once photos and videos.", "Позволяет сохранять одноразовые фото и видео.")
-    case .vpnEnabled:
-        return text("Routes Telegram traffic through a proxy server. Other apps are not affected.", "Пропускает трафик Telegram через прокси-сервер. Другие приложения не затрагиваются.")
     case .hideOnlineStatus:
         return text("Others won't see you online.", "Другие не будут видеть вас в сети.")
     case .ghostMode:
@@ -1598,26 +1526,12 @@ private func telewhiteModsEntries(tab: TelewhiteModsTab, settings: TelewhiteMods
 
     case .calls:
         entries.append(.callsHeader(telewhiteTabTitle(.calls, strings: strings)))
+        entries.append(.autoRecordCalls(strings.text("Auto-Record Calls", "Автозапись звонков"), settings.autoRecordCalls))
+        entries.append(.callRecordButton(strings.text("Record Button on Call Screen", "Кнопка записи на экране звонка"), settings.callRecordButton))
         entries.append(.voiceChangerEnabled(strings.text("AI Voice Changer", "AI-изменение голоса"), settings.voiceChangerEnabled))
         entries.append(.importHubertModel(strings.text("Import Pronunciation Model (.onnx)", "Импорт модели произношения (.onnx)"), settings.voiceChangerHubertInstalled))
         entries.append(.importVoiceModel(strings.text("Import Voice (.onnx)", "Импорт голоса (.onnx)"), settings.voiceChangerSelectedVoiceName))
         entries.append(.callsInfo(strings.text("Recordings are saved to your Saved Messages. When the record button is on, it appears on the call screen so you can start and stop recording manually. The voice changer needs both a shared pronunciation model and a target voice imported as .onnx files; it replaces your voice with the imported voice during calls.", "Записи сохраняются в «Избранное». Если кнопка записи включена, она появляется на экране звонка — можно начинать и останавливать запись вручную. Для изменения голоса нужны обе модели: общая модель произношения и целевой голос, импортированные как .onnx файлы; во время звонка ваш голос заменяется на импортированный.")))
-
-    case .proxy:
-        let proxyStatus: String
-        if !TelewhiteVpnEngine.lastStatus.isEmpty {
-            proxyStatus = TelewhiteVpnEngine.lastStatus
-        } else if settings.vpnEnabled {
-            proxyStatus = strings.text("Connected", "Подключён")
-        } else {
-            proxyStatus = strings.text("Off", "Выключен")
-        }
-        entries.append(.vpnHeader(strings.text("Smart Proxy — Telegram only", "Умный прокси — только Telegram")))
-        entries.append(.vpnEnabled(strings.text("Smart Proxy", "Умный прокси"), settings.vpnEnabled))
-        entries.append(.vpnSubscription(strings.text("Server list URL (optional)", "Ссылка на список серверов (опц.)"), settings.vpnSubscription))
-        entries.append(.vpnStatus(strings.text("Status", "Статус"), proxyStatus))
-        entries.append(.vpnStart(settings.vpnEnabled ? strings.text("Disconnect", "Отключить") : strings.text("Connect", "Подключить")))
-        entries.append(.vpnInfo(strings.text("Telewhite pings every server (your list plus built-in ones) and automatically connects to the fastest working proxy. Only Telegram traffic goes through it. Formats: tg://proxy or t.me/proxy links, or host:port:secret, one per line.", "Telewhite пингует все серверы (ваш список плюс встроенные) и автоматически подключается к самому быстрому рабочему прокси. Через него идёт только трафик Telegram. Форматы: ссылки tg://proxy или t.me/proxy, либо host:port:secret, по одному в строке.")))
 
     case .appearance:
         entries.append(.appearanceHeader(telewhiteTabTitle(.appearance, strings: strings)))
@@ -1767,7 +1681,6 @@ public func telewhiteModsController(context: AccountContext) -> ViewController {
     var pushControllerImpl: ((ViewController) -> Void)?
 
     let arguments = TelewhiteModsControllerArguments(updateSettings: updateSettings, updateTranslationSettings: { _ in
-    }, startVpn: {
     }, openTab: { tab in
         pushControllerImpl?(telewhiteModsSectionController(context: context, tab: tab, statePromise: statePromise, stateValue: stateValue, updateSettings: updateSettings))
     })
@@ -1795,10 +1708,6 @@ private func telewhiteModsSectionController(context: AccountContext, tab: Telewh
 
     let arguments = TelewhiteModsControllerArguments(updateSettings: updateSettings, updateTranslationSettings: { f in
         let _ = updateTranslationSettingsInteractively(accountManager: context.sharedContext.accountManager, f).start()
-    }, startVpn: {
-        telewhiteRunVpnConnect(context: context, stateValue: stateValue, updateSettings: updateSettings, present: { c in
-            presentControllerImpl?(c)
-        })
     }, promptCustomColor: { target in
         let presentationData = context.sharedContext.currentPresentationData.with { $0 }
         let strings = TelewhiteModsStrings(presentationData: presentationData)
@@ -1971,22 +1880,4 @@ private func telewhiteModsSectionController(context: AccountContext, tab: Telewh
         (controller?.navigationController as? NavigationController)?.pushViewController(c)
     }
     return controller
-}
-
-public func telewhiteVpnController(context: AccountContext) -> ViewController {
-    // The old standalone VPN screen is gone; open the Smart Proxy tab instead.
-    let initialSettings = TelewhiteModsSettings.current
-    let stateValue = Atomic(value: initialSettings)
-    let statePromise = ValuePromise(initialSettings, ignoreRepeated: true)
-
-    let updateSettings: ((TelewhiteModsSettings) -> TelewhiteModsSettings) -> Void = { f in
-        let updated = stateValue.modify { current in
-            let updated = f(current)
-            updated.save()
-            return updated
-        }
-        statePromise.set(updated)
-    }
-
-    return telewhiteModsSectionController(context: context, tab: .proxy, statePromise: statePromise, stateValue: stateValue, updateSettings: updateSettings)
 }
