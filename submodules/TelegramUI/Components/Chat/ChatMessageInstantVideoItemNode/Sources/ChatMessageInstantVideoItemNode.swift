@@ -656,7 +656,19 @@ public class ChatMessageInstantVideoItemNode: ChatMessageItemView, ASGestureReco
                     strongSelf.containerNode.frame = CGRect(origin: CGPoint(), size: layoutSize)
                     strongSelf.contextSourceNode.contentNode.frame = CGRect(origin: CGPoint(), size: layoutSize)
                     strongSelf.messageAccessibilityArea.frame = CGRect(origin: CGPoint(), size: layoutSize)
-                    
+
+                    // Telewhite: fade deleted-and-preserved video notes (кружки). This node
+                    // is separate from the message bubble, so the bubble's deleted overlay
+                    // never covers it — dim its content directly to signal deletion.
+                    var isTelewhiteDeleted = false
+                    for attribute in item.message.attributes {
+                        if attribute is TelewhiteDeletedMessageAttribute {
+                            isTelewhiteDeleted = true
+                            break
+                        }
+                    }
+                    strongSelf.contextSourceNode.contentNode.alpha = isTelewhiteDeleted ? 0.5 : 1.0
+
                     strongSelf.appliedParams = params
                     strongSelf.appliedItem = item
                     strongSelf.appliedHasAvatar = hasAvatar

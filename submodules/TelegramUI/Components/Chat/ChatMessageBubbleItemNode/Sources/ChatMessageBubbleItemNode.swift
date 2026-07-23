@@ -3896,6 +3896,11 @@ public class ChatMessageBubbleItemNode: ChatMessageItemView, ChatMessagePreviewI
                 break
             }
         }
+        // Telewhite: fade the whole content wrapper for deleted-and-preserved messages.
+        // The bubble-shaped overlay below only tints text bubbles; opaque photos/videos
+        // covered it, so dim the content itself to make deleted media visibly faded too.
+        // Applied unconditionally (also for hideBackground media like stickers/round video).
+        strongSelf.contentContainersWrapperNode.alpha = isTelewhiteDeleted ? 0.5 : 1.0
         if isTelewhiteDeleted, !hideBackground {
             let telewhiteDeletedOverlayNode: ChatMessageBackground
             if let current = strongSelf.telewhiteDeletedOverlayNode {
