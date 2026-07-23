@@ -1434,8 +1434,9 @@ private func telewhiteMenuEntries(strings: TelewhiteModsStrings) -> [TelewhiteMo
         .menuItem(4, .media, telewhiteTabTitle(.media, strings: strings), strings.text("Stories, downloads and media actions.", "\u{0418}\u{0441}\u{0442}\u{043e}\u{0440}\u{0438}\u{0438}, \u{0441}\u{043a}\u{0430}\u{0447}\u{0438}\u{0432}\u{0430}\u{043d}\u{0438}\u{0435} \u{0438} \u{043c}\u{0435}\u{0434}\u{0438}\u{0430}-\u{0434}\u{0435}\u{0439}\u{0441}\u{0442}\u{0432}\u{0438}\u{044f}."), .media),
         // Telewhite: Smart Proxy tab removed per user request; the engine code
         // stays but is unreachable from the UI.
-        .menuItem(5, .appearance, telewhiteTabTitle(.appearance, strings: strings), strings.text("Colors, chat list and split view.", "Цвета, список чатов и сплит-режим."), .appearance),
-        .menuItem(6, .developer, telewhiteTabTitle(.developer, strings: strings), strings.text("Push diagnostics and technical tools.", "Диагностика push и технические инструменты."), .developer)
+        .menuItem(5, .calls, telewhiteTabTitle(.calls, strings: strings), strings.text("Call recording and AI voice changer.", "Запись звонков и AI-изменение голоса."), .calls),
+        .menuItem(6, .appearance, telewhiteTabTitle(.appearance, strings: strings), strings.text("Colors, chat list and split view.", "Цвета, список чатов и сплит-режим."), .appearance),
+        .menuItem(7, .developer, telewhiteTabTitle(.developer, strings: strings), strings.text("Push diagnostics and technical tools.", "Диагностика push и технические инструменты."), .developer)
     ]
 }
 
