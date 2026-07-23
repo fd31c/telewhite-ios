@@ -951,7 +951,13 @@ public final class ChatHistoryListNodeImpl: ListViewImpl, ChatHistoryNode, ChatH
         }
 
         self.clipsToBounds = false
-        
+
+        // Telewhite: hide channel sponsored messages (ads) by default. A future
+        // "show ads" toggle can set this key true; absent/false = ads hidden.
+        if !UserDefaults.standard.bool(forKey: "telewhite.mods.showSponsoredMessages") {
+            adMessages = .single((nil, [], nil, nil))
+        }
+
         self.beginAdMessageManagement(adMessages: adMessages)
         
         self.accessibilityPageScrolledString = { [weak self] row, count in

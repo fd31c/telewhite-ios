@@ -1478,21 +1478,14 @@ private func telewhiteModsEntries(tab: TelewhiteModsTab, settings: TelewhiteMods
         // Telewhite: "Smart Auto-Translate" removed — outgoing translation is now
         // strictly manual via the per-chat translator button. Translation uses a
         // free translation service, so no API key is required.
-        entries.append(.messageFiltersEnabled(strings.text("Message Filters", "Фильтры сообщений"), settings.messageFiltersEnabled))
-        entries.append(.messageFiltersUseRegex(strings.text("Use Regex Rules", "Использовать regex"), settings.messageFiltersUseRegex))
-        entries.append(.messageFilterRules(strings.text("Filter Rules", "Правила фильтра"), settings.messageFilterRules))
-        entries.append(.messengerInfo(strings.text("Message features are split here: deleted messages, one-time media, uploads, translation and filters.", "Здесь собраны функции сообщений: удалённые сообщения, одноразовые медиа, загрузка, перевод и фильтры.")))
+        entries.append(.messengerInfo(strings.text("Message features are split here: deleted messages, one-time media, uploads and translation.", "Здесь собраны функции сообщений: удалённые сообщения, одноразовые медиа, загрузка и перевод.")))
 
     case .privacy:
         entries.append(.privacyHeader(telewhiteTabTitle(.privacy, strings: strings)))
         entries.append(.hiddenChatsEnabled(strings.text("Hidden Chats", "Скрытые чаты"), settings.hiddenChatsEnabled))
         entries.append(.screenshotProtectionBypass(strings.text("Screenshot Protection Bypass", "Обход защиты скриншотов"), settings.screenshotProtectionBypass))
-        entries.append(.contentRestrictionBypass(strings.text("Content Restriction Bypass", "Обход ограничений контента"), settings.contentRestrictionBypass))
         entries.append(.hidePhoneInSettings(strings.text("Hide Phone and Username", "Скрыть номер и юзернейм"), settings.hidePhoneInSettings))
-        let groupEventCount = TelewhiteGroupEventLog.entries.count
-        entries.append(.groupEventLog(strings.text("Group Removal Log", "Журнал удалений из групп"), groupEventCount == 0 ? "" : "\(groupEventCount)"))
         entries.append(.showProfileIds(strings.text("Show IDs", "Показывать ID"), settings.showUserIds && settings.showChatIds))
-        entries.append(.preciseLastSeen(strings.text("Precise Last Seen", "Точное «был в сети»"), settings.preciseLastSeen))
         entries.append(.privacyInfo(strings.text("Hidden chats, content protection and optional technical IDs are managed here.", "Здесь собраны скрытые чаты, защита контента и показ технических ID.")))
 
     case .stealth:

@@ -576,10 +576,6 @@ public func stringAndActivityForUserPresence(strings: PresentationStrings, dateT
         } else {
             let difference = timestamp - statusTimestamp
             if difference < 60 {
-                // Telewhite: show exact seconds instead of "just now" when enabled.
-                if UserDefaults.standard.bool(forKey: "telewhite.mods.preciseLastSeen") && difference >= 1 {
-                    return (strings.FormattedDate_SecondsAgo(difference), false)
-                }
                 return (strings.LastSeen_JustNow, false)
             } else if difference < 60 * 60 && !expanded {
                 let minutes = difference / 60
@@ -663,11 +659,6 @@ public func userPresenceStringRefreshTimeout(_ presence: TelegramUserPresence, r
             return Double(statusTimestamp - timestamp)
         } else {
             let difference = timestamp - statusTimestamp
-            // Telewhite: when precise last-seen is on, refresh every second within
-            // the first minute so the seconds counter ticks.
-            if UserDefaults.standard.bool(forKey: "telewhite.mods.preciseLastSeen") && difference < 60 {
-                return 1.0
-            }
             if difference < 30 {
                 return Double((30 - difference) + 1)
             } else if difference < 60 * 60 {
