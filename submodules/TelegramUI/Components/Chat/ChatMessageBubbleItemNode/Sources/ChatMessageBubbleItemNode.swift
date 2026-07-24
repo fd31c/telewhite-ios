@@ -3900,7 +3900,9 @@ public class ChatMessageBubbleItemNode: ChatMessageItemView, ChatMessagePreviewI
         // The bubble-shaped overlay below only tints text bubbles; opaque photos/videos
         // covered it, so dim the content itself to make deleted media visibly faded too.
         // Applied unconditionally (also for hideBackground media like stickers/round video).
-        strongSelf.contentContainersWrapperNode.alpha = isTelewhiteDeleted ? 0.5 : 1.0
+        // 0.3 (not 0.5): a translucent photo over a black/AMOLED chat wallpaper still read
+        // as "normal" at 0.5 — a deeper fade makes deletion obvious on any background.
+        strongSelf.contentContainersWrapperNode.alpha = isTelewhiteDeleted ? 0.3 : 1.0
         if isTelewhiteDeleted, !hideBackground {
             let telewhiteDeletedOverlayNode: ChatMessageBackground
             if let current = strongSelf.telewhiteDeletedOverlayNode {

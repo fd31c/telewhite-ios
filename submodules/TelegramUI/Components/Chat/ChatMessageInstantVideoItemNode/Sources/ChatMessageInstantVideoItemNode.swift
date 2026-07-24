@@ -667,7 +667,7 @@ public class ChatMessageInstantVideoItemNode: ChatMessageItemView, ASGestureReco
                             break
                         }
                     }
-                    strongSelf.contextSourceNode.contentNode.alpha = isTelewhiteDeleted ? 0.5 : 1.0
+                    strongSelf.contextSourceNode.contentNode.alpha = isTelewhiteDeleted ? 0.3 : 1.0
 
                     strongSelf.appliedParams = params
                     strongSelf.appliedItem = item
