@@ -1235,6 +1235,13 @@ final class PeerInfoHeaderNode: ASDisplayNode {
                 }
             }
 
+            // Telewhite: for a nameless user with hide-phone on, displayTitle falls back
+            // to the phone or a "—" placeholder (non-empty, so the block above is skipped).
+            // Force the profile title blank in that case — real first/last names are kept.
+            if self.isSettings, TelewhiteModsSettings.current.hidePhoneInSettings, case let .user(hideUser) = peer, (hideUser.firstName ?? "").isEmpty, (hideUser.lastName ?? "").isEmpty {
+                title = ""
+            }
+
             titleStringText = title
             titleAttributes = MultiScaleTextState.Attributes(font: Font.medium(28.0), color: .white)
             smallTitleAttributes = MultiScaleTextState.Attributes(font: Font.medium(28.0), color: .white, shadowColor: titleShadowColor)
@@ -1242,7 +1249,7 @@ final class PeerInfoHeaderNode: ASDisplayNode {
             if self.isSettings, case let .user(user) = peer {
                 // Telewhite: one toggle hides both the phone number and the username.
                 let hideProfileInfo = TelewhiteModsSettings.current.hidePhoneInSettings
-                var subtitle = hideProfileInfo ? "—" : formatPhoneNumber(context: self.context, number: user.phone ?? "")
+                var subtitle = hideProfileInfo ? "" : formatPhoneNumber(context: self.context, number: user.phone ?? "")
                 
                 if !hideProfileInfo, let mainUsername = user.addressName, !mainUsername.isEmpty {
                     subtitle = "\(subtitle) • @\(mainUsername)"
