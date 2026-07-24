@@ -510,6 +510,7 @@ private enum TelewhiteModsEntry: ItemListNodeEntry, Equatable {
     case compactChatList(String, Bool)
     case chatSplitLandscape(String, Bool)
     case amoledMode(String, Bool)
+    case darkMonoPreset(String)
     case accentColorHeader(String)
     case accentColorOption(Int32, String, Int64?, Bool)
     case accentColorCustom(String, Int64?, Bool)
@@ -550,7 +551,7 @@ private enum TelewhiteModsEntry: ItemListNodeEntry, Equatable {
             return TelewhiteModsSection.media.rawValue
         case .callsHeader, .autoRecordCalls, .callRecordButton, .voiceChangerEnabled, .importHubertModel, .importVoiceModel, .callsInfo:
             return TelewhiteModsSection.calls.rawValue
-        case .appearanceHeader, .compactChatList, .chatSplitLandscape, .amoledMode:
+        case .appearanceHeader, .compactChatList, .chatSplitLandscape, .amoledMode, .darkMonoPreset:
             return TelewhiteModsSection.appearance.rawValue
         case .accentColorHeader, .accentColorOption, .accentColorCustom:
             return TelewhiteModsSection.accentColor.rawValue
@@ -697,6 +698,8 @@ private enum TelewhiteModsEntry: ItemListNodeEntry, Equatable {
             return 702
         case .amoledMode:
             return 703
+        case .darkMonoPreset:
+            return 705
         case .chatSplitLandscape:
             return 704
         case .accentColorHeader:
@@ -1002,6 +1005,22 @@ private enum TelewhiteModsEntry: ItemListNodeEntry, Equatable {
             return self.switchItem(presentationData: presentationData, arguments: arguments, text: text, value: value) { settings, value in
                 settings.ghostStories = value
             }
+        case let .darkMonoPreset(text):
+            return ItemListActionItem(presentationData: presentationData, systemStyle: .glass, title: text, kind: .generic, alignment: .natural, sectionId: self.section, style: .blocks, action: {
+                // Telewhite: one-tap dark monochrome theme (matches the reference look):
+                // true-black background, graphite outgoing bubbles, neutral-grey accent,
+                // large rounded corners, AMOLED on.
+                arguments.updateSettings { current in
+                    var updated = current
+                    updated.chatBackgroundGradientOverride = nil
+                    updated.chatBackgroundColorOverride = 0x000000
+                    updated.bubbleColorOverride = 0x1c1c1e
+                    updated.accentColorOverride = 0x8e8e93
+                    updated.bubbleCornerRadiusOverride = 17
+                    updated.amoledMode = true
+                    return updated
+                }
+            })
         case let .clearGhostChats(text):
             return ItemListActionItem(presentationData: presentationData, systemStyle: .glass, title: text, kind: .generic, alignment: .natural, sectionId: self.section, style: .blocks, action: {
                 arguments.updateSettings { current in
@@ -1529,21 +1548,15 @@ private func telewhiteModsEntries(tab: TelewhiteModsTab, settings: TelewhiteMods
         entries.append(.compactChatList(strings.text("Compact Chat List", "Компактный список чатов"), settings.compactChatList))
         entries.append(.chatSplitLandscape(strings.text("Split View in Landscape", "Сплит чатов (альбомная)"), settings.chatSplitLandscape))
         entries.append(.amoledMode(strings.text("AMOLED Mode", "AMOLED режим"), settings.amoledMode))
+        entries.append(.darkMonoPreset(strings.text("Dark Mono Theme", "Тёмная моно-тема")))
 
         let accentPresets: [(String, Int64?)] = [
             (strings.text("Default", "По умолчанию"), nil),
             (strings.text("Blue", "Синий"), 0x007aff),
-            (strings.text("Cyan", "Голубой"), 0x5ac8fa),
-            (strings.text("Teal", "Бирюзовый"), 0x30b0c7),
-            (strings.text("Mint", "Мятный"), 0x00c7be),
             (strings.text("Green", "Зелёный"), 0x34c759),
-            (strings.text("Yellow", "Жёлтый"), 0xffcc00),
-            (strings.text("Orange", "Оранжевый"), 0xff9500),
             (strings.text("Red", "Красный"), 0xff3b30),
             (strings.text("Pink", "Розовый"), 0xff2d55),
-            (strings.text("Coral", "Коралловый"), 0xff6b6b),
-            (strings.text("Indigo", "Индиго"), 0x5856d6),
-            (strings.text("Brown", "Коричневый"), 0xa2845e)
+            (strings.text("Indigo", "Индиго"), 0x5856d6)
         ]
         entries.append(.accentColorHeader(strings.text("Accent Color", "Акцентный цвет")))
         for (index, preset) in accentPresets.enumerated() {
@@ -1555,12 +1568,6 @@ private func telewhiteModsEntries(tab: TelewhiteModsTab, settings: TelewhiteMods
         let bubblePresets: [(String, Int64?)] = [
             (strings.text("Default", "По умолчанию"), nil),
             (strings.text("Blue", "Синий"), 0x007aff),
-            (strings.text("Teal", "Бирюзовый"), 0x30b0c7),
-            (strings.text("Green", "Зелёный"), 0x34c759),
-            (strings.text("Yellow", "Жёлтый"), 0xffcc00),
-            (strings.text("Orange", "Оранжевый"), 0xff9500),
-            (strings.text("Red", "Красный"), 0xff3b30),
-            (strings.text("Pink", "Розовый"), 0xff2d55),
             (strings.text("Indigo", "Индиго"), 0x5856d6),
             (strings.text("Graphite", "Графит"), 0x3a3a3c),
             (strings.text("Dark Green", "Тёмно-зелёный"), 0x1f3d2b)
@@ -1575,13 +1582,9 @@ private func telewhiteModsEntries(tab: TelewhiteModsTab, settings: TelewhiteMods
         let backgroundPresets: [(String, Int64?)] = [
             (strings.text("Default", "По умолчанию"), nil),
             (strings.text("Black", "Чёрный"), 0x000000),
-            (strings.text("Dark Blue", "Тёмно-синий"), 0x18222d),
             (strings.text("Graphite", "Графит"), 0x1c1c1e),
             (strings.text("Deep Green", "Тёмно-зелёный"), 0x0e1f16),
-            (strings.text("Coffee", "Кофейный"), 0x241a12),
-            (strings.text("Plum", "Сливовый"), 0x241726),
-            (strings.text("Light", "Светлый"), 0xf2f2f7),
-            (strings.text("Cream", "Кремовый"), 0xf7f2e7)
+            (strings.text("Light", "Светлый"), 0xf2f2f7)
         ]
         entries.append(.backgroundColorHeader(strings.text("Chat Background", "Фон чата")))
         for (index, preset) in backgroundPresets.enumerated() {
@@ -1589,17 +1592,6 @@ private func telewhiteModsEntries(tab: TelewhiteModsTab, settings: TelewhiteMods
             entries.append(.backgroundColorOption(Int32(index), preset.0, preset.1, selected))
         }
 
-        let gradientPresets: [(String, [Int64])] = [
-            (strings.text("Midnight", "Полночь"), [0x0f1621, 0x1c2b3a]),
-            (strings.text("Northern Lights", "Северное сияние"), [0x0b1e2d, 0x14453d]),
-            (strings.text("Sunset", "Закат"), [0x2d1b2f, 0x6b2d3c]),
-            (strings.text("Ocean", "Океан"), [0x0d2137, 0x1b4965]),
-            (strings.text("Morning", "Утро"), [0xdfe9f3, 0xf6f8fb]),
-            (strings.text("Peach", "Персик"), [0xf9e0c7, 0xf6cfcf])
-        ]
-        for (index, preset) in gradientPresets.enumerated() {
-            entries.append(.backgroundGradientOption(Int32(index), preset.0, preset.1, settings.chatBackgroundGradientOverride == preset.1))
-        }
         let backgroundIsCustom = settings.chatBackgroundGradientOverride == nil && settings.chatBackgroundColorOverride != nil && !backgroundPresets.contains(where: { $0.1 == settings.chatBackgroundColorOverride })
         entries.append(.backgroundColorCustom(telewhiteCustomColorTitle(strings: strings, value: backgroundIsCustom ? settings.chatBackgroundColorOverride : nil), settings.chatBackgroundColorOverride, backgroundIsCustom))
 
