@@ -167,6 +167,27 @@ public func telewhiteTranslationTargetLanguage(fallback baseLang: String) -> Str
 @available(iOS 12.0, *)
 private let languageRecognizer = NLLanguageRecognizer()
 
+// Telewhite: skip messages that are already in the target language (e.g. a Russian
+// message when translating to Russian). Per-message detection matters because a
+// mostly-foreign chat still contains Russian messages the user reads fine — sending
+// them to translation only wastes a round-trip and time. Short texts are left in
+// (detection is unreliable and translating them is cheap).
+private func telewhiteIsAlreadyTargetLanguage(_ text: String, toLang: String) -> Bool {
+    let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+    guard trimmed.count >= 4 else {
+        return false
+    }
+    let target = toLang.components(separatedBy: "-").first?.lowercased() ?? toLang.lowercased()
+    languageRecognizer.reset()
+    languageRecognizer.processString(String(trimmed.prefix(200)))
+    let hypotheses = languageRecognizer.languageHypotheses(withMaximum: 1)
+    guard let best = hypotheses.max(by: { $0.value < $1.value }), best.value >= 0.6 else {
+        return false
+    }
+    let detected = best.key.rawValue.components(separatedBy: "-").first?.lowercased() ?? ""
+    return detected == target
+}
+
 public func translateMessageIds(context: AccountContext, messageIds: [EngineMessage.Id], fromLang: String?, toLang: String) -> Signal<Never, NoError> {
     return context.account.postbox.transaction { transaction -> Signal<Never, NoError> in
         var messageIdsToTranslate: [EngineMessage.Id] = []
@@ -192,6 +213,10 @@ public func translateMessageIds(context: AccountContext, messageIds: [EngineMess
                 }
                 
                 if !message.text.isEmpty {
+                    // Telewhite: never translate messages already in the target language.
+                    if telewhiteIsAlreadyTargetLanguage(message.text, toLang: toLang) {
+                        continue
+                    }
                     if !messageIdsSet.contains(messageId) {
                         messageIdsToTranslate.append(messageId)
                         messageIdsSet.insert(messageId)
